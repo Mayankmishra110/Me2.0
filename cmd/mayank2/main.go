@@ -19,14 +19,15 @@ Commands:
   run       Start the daemon (not implemented yet)
   status    Show daemon / queue status (not implemented yet)
   doctor    Check tools, secrets presence, disk, RAM, channels
-  migrate   Run database migrations (not implemented yet)
+  migrate   Apply database migrations (idempotent)
   set-pin   Set the Telegram / dashboard PIN (not implemented yet)
   auth      OAuth sign-in for a platform account (not implemented yet)
 
-Global flags (doctor):
+Global flags (doctor / migrate):
   -config path   config YAML (default: config/config.yaml)
   -env path      .env file (default: .env)
   -env-example   .env.example for key-name checks (default: .env.example)
+  -db path       sqlite file for migrate (default: <data_dir>/mayank2.db)
 `
 
 func main() {
@@ -51,7 +52,9 @@ func run(args []string) int {
 	switch cmd {
 	case "doctor":
 		return cmdDoctor(ctx, rest)
-	case "run", "status", "migrate", "set-pin", "auth":
+	case "migrate":
+		return cmdMigrate(ctx, rest)
+	case "run", "status", "set-pin", "auth":
 		return cmdStub(cmd, rest)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", cmd, usage)
