@@ -1,34 +1,25 @@
-# Plan — owned by lead
+﻿# Plan — owned by lead
 
-Updated: 2026-09-28 · Phase: **P1 Foundation** · **Phase branch: `phase/p1-foundation`**
+Updated: 2026-09-28 · Phase: **P1 Foundation** · **phase/p1-foundation @ 3f1293e (PUSHED)**
 
-## North star
+## Override
+Push phase after each merge batch (Mayank).
 
-First income ASAP. P2 exit = first approved Short per channel via API.
+## Pushed on phase/p1-foundation
+Batch1 + **103, 104, 213, 114, 201** — tip `3f1293e` on origin.
 
-## Override (Mayank 2026-09-28)
-
-Push `phase/p1-foundation` after each merge batch — do **not** wait for all P1 tickets.
-
-## Done
-
-- Batch 1: 101, 102, 107, 109, 111, 206, 207, 208 (pushed earlier)
-- **M2-103** merged `18c7910` · **M2-104** merged `e520b9e` audit `8af5451` (push in flight)
-
-## Now (hot wave)
-
-| Agent | Work |
-|---|---|
-| ship | Push current phase tip; merge+push **213 → 114 → 201** |
-| be | **M2-105** Telegram (in progress) |
-| be-2 | **M2-106** HTTP API (104 done — claiming/building now) |
-| be | **M2-110** after 114 merges+pushes (cmd/mayank2 overlap) |
-| be | **M2-108** after 105 merged |
+## Now building (parallel)
+| Ticket | Role | Worktree |
+|---|---|---|
+| M2-105 | be | data/worktrees/m2-105 |
+| M2-106 | be-2 | data/worktrees/m2-106 |
+| M2-110 | be-3 | data/worktrees/m2-110 |
 
 ## Next
+- qa/sec → ship+push as each hits in-review
+- M2-108 after 105 merged
+- M2-202 Niche Scout is **ready** (deps 111+201+103 done) — start after P1 builders free or on phase/p2-content
+- Then phase/p2-content for remaining P2
 
-Finish P1 → create `phase/p2-content` → M2-202 scout onward. Write P3+ tickets at M2-210.
-
-## Mayank must do
-
-YouTube API audit, Meta/X/Pinterest/LinkedIn apps, CONTEXT §5 answers, `gh auth login`, public-vs-private repo.
+## Mayank
+YouTube audit, apps, CONTEXT §5, gh auth, public repo decision.

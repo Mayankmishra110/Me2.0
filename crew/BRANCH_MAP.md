@@ -49,6 +49,7 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 |---|---|---|---|---|---|
 | M2-105 | `m2/M2-105` | Telegram bot: allowlist, commands, approvals, PIN | be | `2d86848` plan | in-progress |
 | M2-106 | `m2/M2-106` | HTTP API, auth, embedded dashboard | be-2 | â€” | in-progress |
+| M2-110 | `m2/M2-110` | DPAPI token vault and OAuth helper | be-3 | — | in-progress |
 
 ## How to regenerate/verify this file
 
