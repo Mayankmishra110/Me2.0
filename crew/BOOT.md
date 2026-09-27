@@ -29,7 +29,9 @@ If there is no current work, pick new work with your role card's **Pick-up** rul
 
 - **One ticket at a time.** Claim per [SPEC §2](../docs/SPEC.md#2-tickets-and-parallel-work): set `status: in-progress`
   and `owner: crew-<role>`, commit only that change on `main` (`chore(M2-xxx): claim`).
-- **Work in a worktree:** `git worktree add data/worktrees/m2-xxx -b m2/M2-xxx`. `data/` is gitignored.
+- **Work in a worktree off the current phase branch** (named in [PLAN.md](PLAN.md), e.g. `phase/p1-foundation`):
+  `git worktree add data/worktrees/m2-xxx -b m2/M2-xxx phase/p1-foundation`. `data/` is gitignored.
+  Claims and queue bookkeeping still go on `main`.
 - **Stay inside the ticket's `touches`** plus tests next to them. Need a path another in-progress ticket owns?
   Stop, write it in the ticket's Notes, and tell Mayank.
 - **Never push to `main`.** Never skip hooks (`--no-verify`) unless Mayank says so for that commit.
@@ -40,7 +42,9 @@ If there is no current work, pick new work with your role card's **Pick-up** rul
 ## 4. Status flow
 
 ```
-todo → ready → in-progress (fe/be/ai) → in-review → qa pass (+ sec pass when flagged) → ship: rebase, PR → done after merge
+todo → ready → in-progress (fe/be/ai) → in-review → qa pass (+ sec pass when flagged)
+  → ship merges into the phase branch (--no-ff, keeps each role's commits), writes docs/audit/<phase>/M2-xxx.md → done
+  → phase branch pushed, kept in sync with main → Mayank opens ONE PR phase → main using .github/pull_request_template.md
                     ▲                                    │
                     └────────── changes requested ◄──────┘
 ```

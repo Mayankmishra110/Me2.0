@@ -1,6 +1,6 @@
 # Plan — owned by lead
 
-Updated: 2026-09-28 · Phase: **P1 Foundation** (no code merged yet)
+Updated: 2026-09-28 · Phase: **P1 Foundation** · **Phase branch: `phase/p1-foundation`** (new ticket branches start here; D23)
 
 ## North star
 

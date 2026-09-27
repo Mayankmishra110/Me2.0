@@ -38,7 +38,7 @@ touches: [internal/queue/, migrations/]
 2. Claim it: set `status: in-progress` and `owner`, commit **only that change** (`chore(M2-103): claim`), then work on branch `m2/<id>` (use a git worktree if another thread shares the folder).
 3. Only edit paths in `touches` (plus tests next to them). If you must touch another ticket's in-progress paths, stop and note it in the ticket.
 4. Done = acceptance criteria met, `go test ./...` / `npm test` green, docs updated. Set `status: in-review`, open a PR or leave the branch for Mayank.
-   Crew chats ([../crew/](../crew/README.md)): after `in-review`, qa (and sec when `needs-sec: yes`) write verdicts under `## Review`; ship rebases, runs checks and opens the PR; Mayank merges; ship sets `done`.
+   Crew chats ([../crew/](../crew/README.md)): after `in-review`, qa (and sec when `needs-sec: yes`) write verdicts under `## Review`; ship merges it into the phase branch (`phase/p1-foundation`, …) with an audit doc in `docs/audit/<phase>/` and sets `done`; Mayank opens one PR phase → main from `docs/audit/<phase>/README.md` (D23).
 5. When a ticket changes a decision, add a row to [CONTEXT.md §4](CONTEXT.md#4-decision-log).
 6. When a ticket's deps are all done, flip it from `todo` to `ready`.
 
