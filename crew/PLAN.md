@@ -1,9 +1,13 @@
-# Plan — owned by lead
+ï»¿# Plan â€” owned by lead
 
-Updated: 2026-09-28 · phase @ f5830ea
+Updated: 2026-09-28 Â· phase @ ad05ebb (pushed; M2-205 merged)
 
+## Now
 | Ticket | State |
 |---|---|
-| M2-209 | done — merge `878ccb7`, audit `cb34b18` |
-| M2-205 | done — merge `a76a141` |
-| M2-210 | ready — deps 205+209+105 all done |
+| M2-210 | claimed â€” final gates + approval |
+| M2-211 | after 210 (deps 110+210) |
+| M2-212 | after 211 |
+
+## Pushed recently
+209 @ 7f9fddf Â· 205 @ ad05ebb

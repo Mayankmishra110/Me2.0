@@ -71,3 +71,5 @@ git show phase/p1-foundation:tickets/M2-xxx.md | grep touches:   # confirm branc
 `m2/*` branches for done tickets are kept (not deleted) after merging, in case another session still has
 context on one - see `crew/SHIP_QUEUE.md` Notes. Safe to delete once Mayank confirms `phase/p1-foundation`
 is merged into `main`: `git branch -d m2/M2-101 m2/M2-102 m2/M2-107 m2/M2-109 m2/M2-111 m2/M2-206 m2/M2-207 m2/M2-208`.
+
+| M2-210 | `m2/M2-210` | Final gates and approval flow | be | — | in-progress |
