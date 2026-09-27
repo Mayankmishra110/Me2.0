@@ -28,27 +28,27 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | — | — | Independent qa+sec review of M2-109 + M2-207 | qa/sec | `cd5590a` | (direct to phase branch) | housekeeping, not a ticket |
 | — | — | Clear review blocker in audit docs | lead | `f1ed852` | (direct to phase branch) | housekeeping, not a ticket |
 | M2-103 | `m2/M2-103` | Durable job queue and worker pool | be | `55c4c53`, `41108ee`, `d547f6b`, `3aaa20d`, `5e87c8a`, `7240e91`, `ee8876e`, `9eb1800`, `82df3c6` | `18c7910` | merged, done |
+| M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | through `5403142` qa | `e520b9e` | merged, done (audit `8af5451`; push in flight) |
 
 **Not a ticket branch:** `phase/p1-foundation` itself — one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
 
-## Phase P1 batch 2 (in progress, all branched from `phase/p1-foundation`)
+## Phase P1 batch 2 remaining (ship + push each)
 
 | Ticket | Branch | Feature | Role | Commits so far | State |
 |---|---|---|---|---|---|
-| M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | … + `21aca50` qa | QA pass · SEC n/a · awaiting ship |
-| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | … + `5d126ae` qa/sec | QA pass · SEC pass · awaiting ship |
-| M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` (+ uncommitted QA lines) | QA pass · SEC n/a · ship commits review then merges |
-| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | … + `22437fb` qa/sec | QA pass · SEC pass · awaiting ship |
+| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | … + `5d126ae` qa/sec | QA+SEC pass · ship next after 213 |
+| M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` (+ uncommitted QA) | QA pass · ship after 114 |
+| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | … + `13bc7b2` | QA+SEC pass · ship merging now |
 
-Ship merges in order **104 → 213 → 114 → 201**, then moves each row into the merged P1 table with the
-merge hash. Do not push `phase/p1-foundation` until remaining P1 tickets (105, 106, 108, 110) are also merged.
+**Mayank override:** push `origin phase/p1-foundation` after each merge — do not wait for end of P1.
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits so far | State |
 |---|---|---|---|---|---|
-| M2-105 | `m2/M2-105` | Telegram bot: allowlist, commands, approvals, PIN | be | — | in-progress |
+| M2-105 | `m2/M2-105` | Telegram bot: allowlist, commands, approvals, PIN | be | `2d86848` plan | in-progress |
+| M2-106 | `m2/M2-106` | HTTP API, auth, embedded dashboard | be-2 | — | in-progress |
 
 ## How to regenerate/verify this file
 
