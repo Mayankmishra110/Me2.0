@@ -21,13 +21,13 @@ Commands:
   doctor    Check tools, secrets presence, disk, RAM, channels
   migrate   Apply database migrations (idempotent)
   set-pin   Set the Telegram / dashboard PIN (not implemented yet)
-  auth      OAuth sign-in for a platform account (not implemented yet)
+  auth      OAuth sign-in for a platform account (DPAPI vault)
 
-Global flags (doctor / migrate):
+Global flags (doctor / migrate / auth):
   -config path   config YAML (default: config/config.yaml)
   -env path      .env file (default: .env)
-  -env-example   .env.example for key-name checks (default: .env.example)
-  -db path       sqlite file for migrate (default: <data_dir>/mayank2.db)
+  -env-example   .env.example for key-name checks (default: .env.example; doctor only)
+  -db path       sqlite file for migrate/auth (default: <data_dir>/mayank2.db)
 `
 
 func main() {
@@ -54,7 +54,9 @@ func run(args []string) int {
 		return cmdDoctor(ctx, rest)
 	case "migrate":
 		return cmdMigrate(ctx, rest)
-	case "run", "status", "set-pin", "auth":
+	case "auth":
+		return cmdAuth(ctx, rest)
+	case "run", "status", "set-pin":
 		return cmdStub(cmd, rest)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", cmd, usage)
