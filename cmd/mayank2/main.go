@@ -22,13 +22,13 @@ Commands:
   migrate   Apply database migrations (idempotent)
   llm ask   Run one prompt through the model router (internal/llm)
   set-pin   Set the Telegram / dashboard PIN (not implemented yet)
-  auth      OAuth sign-in for a platform account (not implemented yet)
+  auth      OAuth sign-in for a platform account (DPAPI vault)
 
-Global flags (doctor / migrate / llm ask):
+Global flags (doctor / migrate / llm ask / auth):
   -config path   config YAML (default: config/config.yaml)
   -env path      .env file (default: .env)
   -env-example   .env.example for key-name checks (default: .env.example; doctor only)
-  -db path       sqlite file for migrate (default: <data_dir>/mayank2.db)
+  -db path       sqlite file for migrate/auth (default: <data_dir>/mayank2.db)
 
 llm ask flags:
   -task name     route from config llm.routes (default: script)
@@ -63,7 +63,9 @@ func run(args []string) int {
 		return cmdMigrate(ctx, rest)
 	case "llm":
 		return cmdLLM(ctx, rest)
-	case "run", "status", "set-pin", "auth":
+	case "auth":
+		return cmdAuth(ctx, rest)
+	case "run", "status", "set-pin":
 		return cmdStub(cmd, rest)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", cmd, usage)
