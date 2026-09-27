@@ -153,11 +153,6 @@ func TestHandleVoiceTTS(t *testing.T) {
 
 func TestHandleRenderLong_short_thumbnail(t *testing.T) {
 	sqlDB := renderTestDB(t)
-	clip := filepath.Join(t.TempDir(), "beat.png")
-	voice := filepath.Join(t.TempDir(), "voice.wav")
-	_ = os.WriteFile(clip, []byte("PNG"), 0o644)
-	_ = os.WriteFile(voice, []byte("WAV"), 0o644)
-
 	r := testRenderer(t, sqlDB, func(ctx context.Context, name string, args []string, dir string, env []string) ([]byte, []byte, error) {
 		_ = ctx
 		_ = dir
@@ -176,6 +171,19 @@ func TestHandleRenderLong_short_thumbnail(t *testing.T) {
 		}
 		return nil, nil, os.WriteFile(out, []byte("bytes"), 0o644)
 	})
+
+	rawDir := filepath.Join(r.Layout.Root(), "raw")
+	if err := os.MkdirAll(rawDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	clip := filepath.Join(rawDir, "beat.png")
+	voice := filepath.Join(rawDir, "voice.wav")
+	if err := os.WriteFile(clip, []byte("PNG"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(voice, []byte("WAV"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	payload := map[string]any{
 		"content_id": "c1",
@@ -247,6 +255,84 @@ func TestHandleRenderLong_short_thumbnail(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), `"kind":"thumb"`) {
 		t.Fatalf("thumb result=%s", raw)
+	}
+}
+
+func TestRetention_zeroUsesDefault(t *testing.T) {
+	r := &Renderer{} // RetentionDays unset / zero
+	if got := r.retention(); got != defaultRetentionDays {
+		t.Fatalf("zero RetentionDays → %d, want %d", got, defaultRetentionDays)
+	}
+	r.RetentionDays = 3
+	if got := r.retention(); got != 3 {
+		t.Fatalf("RetentionDays=3 → %d", got)
+	}
+	r.Now = func() time.Time { return time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC) }
+	r.RetentionDays = 0
+	da := r.deleteAfter()
+	if !strings.HasPrefix(da, "2026-10-05") {
+		t.Fatalf("delete_after with zero retention=%s want ~2026-10-05 (+7d)", da)
+	}
+}
+
+func TestHandleRender_pathOutsideMediaRoot(t *testing.T) {
+	sqlDB := renderTestDB(t)
+	r := testRenderer(t, sqlDB, nil)
+
+	outside := filepath.Join(t.TempDir(), "secret.env")
+	if err := os.WriteFile(outside, []byte("SECRET=1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	inside := filepath.Join(r.Layout.Root(), "raw", "ok.wav")
+	if err := os.MkdirAll(filepath.Dir(inside), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(inside, []byte("WAV"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	payload := map[string]any{
+		"content_id": "c1",
+		"format":     "explained_60s",
+		"brand_kit":  BrandKit{Primary: "#22D3EE", Secondary: "#0F172A", FontHeading: "M", FontBody: "I", CaptionStyle: CaptionWordHighlight},
+		"beats": []map[string]any{
+			{"text": "Hook", "clip_path": outside, "duration_in_seconds": 2},
+		},
+		"voice_path": inside,
+		"words":      []media.WordTiming{{Word: "Hook", Start: 0, End: 0.5}},
+	}
+	body, _ := json.Marshal(payload)
+	cid := "c1"
+	_, err := r.handleRenderLong(context.Background(), queue.Job{ID: "jobescape1", Type: JobRenderLong, ContentID: &cid, Payload: body})
+	if err == nil || !queue.IsPermanent(err) {
+		t.Fatalf("want permanent err for outside clip_path, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "clip_path") && !strings.Contains(err.Error(), "escapes") {
+		t.Fatalf("want escape/clip_path in error, got %v", err)
+	}
+
+	// voice_path outside also fails closed
+	payload["beats"] = []map[string]any{
+		{"text": "Hook", "clip_path": filepath.Join(r.Layout.Root(), "raw", "beat.png"), "duration_in_seconds": 2},
+	}
+	_ = os.WriteFile(filepath.Join(r.Layout.Root(), "raw", "beat.png"), []byte("PNG"), 0o644)
+	payload["voice_path"] = outside
+	body, _ = json.Marshal(payload)
+	_, err = r.handleRenderLong(context.Background(), queue.Job{ID: "jobescape2", Type: JobRenderLong, ContentID: &cid, Payload: body})
+	if err == nil || !queue.IsPermanent(err) {
+		t.Fatalf("want permanent err for outside voice_path, got %v", err)
+	}
+
+	// thumbnail focal outside
+	thumbPayload := map[string]any{
+		"content_id":      "c1",
+		"thumb_text":      "Hook",
+		"focal_clip_path": outside,
+	}
+	body, _ = json.Marshal(thumbPayload)
+	_, err = r.handleRenderThumbnail(context.Background(), queue.Job{ID: "jobescape3", Type: JobRenderThumbnail, ContentID: &cid, Payload: body})
+	if err == nil || !queue.IsPermanent(err) {
+		t.Fatalf("want permanent err for outside focal_clip_path, got %v", err)
 	}
 }
 

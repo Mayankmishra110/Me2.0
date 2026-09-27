@@ -135,6 +135,41 @@ func TestStagePublicAndRemove(t *testing.T) {
 	}
 }
 
+func TestConfineUnderRoot(t *testing.T) {
+	root := t.TempDir()
+	inside := filepath.Join(root, "raw", "clip.png")
+	if err := os.MkdirAll(filepath.Dir(inside), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(inside, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := ConfineUnderRoot(root, inside)
+	if err != nil {
+		t.Fatalf("inside: %v", err)
+	}
+	if !filepath.IsAbs(got) {
+		t.Fatalf("want abs, got %q", got)
+	}
+
+	outside := filepath.Join(t.TempDir(), "secret.env")
+	if err := os.WriteFile(outside, []byte("SECRET=1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ConfineUnderRoot(root, outside); err == nil {
+		t.Fatal("outside path: want error")
+	}
+	if _, err := ConfineUnderRoot(root, filepath.Join(root, "..", "outside.txt")); err == nil {
+		t.Fatal("traversal: want error")
+	}
+	if _, err := ConfineUnderRoot("", inside); err == nil {
+		t.Fatal("empty root: want error")
+	}
+	if _, err := ConfineUnderRoot(root, ""); err == nil {
+		t.Fatal("empty path: want error")
+	}
+}
+
 func TestTools_NormalizeLoudnessAndMux_fakeRunner(t *testing.T) {
 	dir := t.TempDir()
 	inVid := filepath.Join(dir, "v.mp4")

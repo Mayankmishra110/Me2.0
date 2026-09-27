@@ -91,7 +91,8 @@ func (r *Renderer) newID() string {
 }
 
 func (r *Renderer) retention() int {
-	if r != nil && r.RetentionDays >= 0 {
+	// Unset / zero means "use default"; RetentionDays: 0 must not expire immediately.
+	if r != nil && r.RetentionDays > 0 {
 		return r.RetentionDays
 	}
 	return defaultRetentionDays
@@ -239,6 +240,10 @@ func (r *Renderer) handleRenderThumbnail(ctx context.Context, job queue.Job) (js
 	if focal == "" {
 		return nil, queue.Permanent(fmt.Errorf("content render.thumbnail: focal_clip_path or beats[0].clip_path required"))
 	}
+	focal, err = r.confineMediaPath(focal, "focal_clip_path")
+	if err != nil {
+		return nil, err
+	}
 
 	jobDir, err := r.jobDir(job.ID)
 	if err != nil {
@@ -310,13 +315,18 @@ func (r *Renderer) renderVideo(ctx context.Context, job queue.Job, orientation, 
 		return json.Marshal(map[string]any{"skipped": "already_rendered", "asset": existing})
 	}
 
+	voicePath, err := r.confineMediaPath(p.VoicePath, "voice_path")
+	if err != nil {
+		return nil, err
+	}
+
 	jobDir, err := r.jobDir(job.ID)
 	if err != nil {
 		return nil, err
 	}
 	defer media.RemoveStagedPublic(r.Tools.RemotionRoot, job.ID)
 
-	relVoice, _, err := media.StagePublic(r.Tools.RemotionRoot, job.ID, p.VoicePath, "voice"+filepath.Ext(p.VoicePath))
+	relVoice, _, err := media.StagePublic(r.Tools.RemotionRoot, job.ID, voicePath, "voice"+filepath.Ext(voicePath))
 	if err != nil {
 		return nil, fmt.Errorf("content render stage voice: %w", err)
 	}
@@ -326,7 +336,11 @@ func (r *Renderer) renderVideo(ctx context.Context, job queue.Job, orientation, 
 		if b.ClipPath == "" {
 			return nil, queue.Permanent(fmt.Errorf("content render: beats[%d].clip_path required", i))
 		}
-		rel, _, err := media.StagePublic(r.Tools.RemotionRoot, job.ID, b.ClipPath, fmt.Sprintf("beat-%d%s", i, filepath.Ext(b.ClipPath)))
+		clipPath, err := r.confineMediaPath(b.ClipPath, fmt.Sprintf("beats[%d].clip_path", i))
+		if err != nil {
+			return nil, err
+		}
+		rel, _, err := media.StagePublic(r.Tools.RemotionRoot, job.ID, clipPath, fmt.Sprintf("beat-%d%s", i, filepath.Ext(clipPath)))
 		if err != nil {
 			return nil, fmt.Errorf("content render stage beat %d: %w", i, err)
 		}
@@ -339,7 +353,9 @@ func (r *Renderer) renderVideo(ctx context.Context, job queue.Job, orientation, 
 			"clipPath":          rel,
 			"durationInSeconds": dur,
 		})
+		p.Beats[i].ClipPath = clipPath
 	}
+	p.VoicePath = voicePath
 
 	props := map[string]any{
 		"brandKit":    p.BrandKit,
@@ -362,7 +378,7 @@ func (r *Renderer) renderVideo(ctx context.Context, job queue.Job, orientation, 
 	// then loudnorm. When Remotion already baked audio, loudnorm alone is enough;
 	// MuxAV is still available for callers that pass a silent plate.
 	muxed := filepath.Join(jobDir, "muxed.mp4")
-	if err := r.Tools.MuxAV(ctx, rawMP4, p.VoicePath, muxed); err != nil {
+	if err := r.Tools.MuxAV(ctx, rawMP4, voicePath, muxed); err != nil {
 		// Fall back to raw remotion output (already has Audio track).
 		r.log().Warn("content render: mux skipped, using remotion output", "error", err)
 		muxed = rawMP4
@@ -407,8 +423,9 @@ func (r *Renderer) renderVideo(ctx context.Context, job queue.Job, orientation, 
 			if focal == "" {
 				focal = p.Beats[0].ClipPath
 			}
-			relClip, _, err := media.StagePublic(r.Tools.RemotionRoot, job.ID, focal, "focal"+filepath.Ext(focal))
-			if err == nil {
+			if confined, cerr := r.confineMediaPath(focal, "focal_clip_path"); cerr != nil {
+				r.log().Warn("content render: thumb skipped, path outside media root", "error", cerr)
+			} else if relClip, _, err := media.StagePublic(r.Tools.RemotionRoot, job.ID, confined, "focal"+filepath.Ext(confined)); err == nil {
 				tprops := map[string]any{
 					"brandKit":      p.BrandKit,
 					"title":         thumbText,
@@ -465,6 +482,20 @@ func (r *Renderer) renderDir(contentID string) (string, error) {
 		return "", fmt.Errorf("content render: mkdir renders %s: %w", dir, err)
 	}
 	return dir, nil
+}
+
+// confineMediaPath Abs+Cleans path and refuses anything outside Layout.Root()
+// (data/media). Permanent — a crafted payload must not copy host files into
+// remotion/public.
+func (r *Renderer) confineMediaPath(path, field string) (string, error) {
+	if r.Layout == nil {
+		return "", fmt.Errorf("content render: Layout is required")
+	}
+	abs, err := media.ConfineUnderRoot(r.Layout.Root(), path)
+	if err != nil {
+		return "", queue.Permanent(fmt.Errorf("content render: %s: %w", field, err))
+	}
+	return abs, nil
 }
 
 func (r *Renderer) recordFile(ctx context.Context, contentID, kind, path string) (recordedAsset, error) {

@@ -443,6 +443,56 @@ func DigestFile(path string) (sha string, size int64, err error) {
 	return hex.EncodeToString(h.Sum(nil)), n, nil
 }
 
+// ConfineUnderRoot returns the absolute cleaned form of path if it lies under
+// root (media data root). Relative paths, "..", and absolute paths outside
+// root are refused. Comparison is case-insensitive on Windows (NTFS).
+func ConfineUnderRoot(root, path string) (string, error) {
+	if strings.TrimSpace(root) == "" {
+		return "", errors.New("media: storage root is required")
+	}
+	if strings.TrimSpace(path) == "" {
+		return "", errors.New("media: path is required")
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return "", fmt.Errorf("media: resolve storage root %q: %w", root, err)
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("media: resolve path %q: %w", path, err)
+	}
+	absRoot = filepath.Clean(absRoot)
+	absPath = filepath.Clean(absPath)
+	if resolved, err := filepath.EvalSymlinks(absRoot); err == nil {
+		absRoot = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(absPath); err == nil {
+		absPath = resolved
+	}
+	if !pathWithinRoot(absRoot, absPath) {
+		return "", fmt.Errorf("media: path %q escapes storage root", path)
+	}
+	return absPath, nil
+}
+
+// pathWithinRoot reports whether path is root or a child of root. Both args
+// must already be filepath.Clean absolute paths.
+func pathWithinRoot(root, path string) bool {
+	r, p := root, path
+	if isCaseInsensitiveFS {
+		r = strings.ToLower(r)
+		p = strings.ToLower(p)
+	}
+	if r == p {
+		return true
+	}
+	sep := string(filepath.Separator)
+	return strings.HasPrefix(p, r+sep)
+}
+
+// isCaseInsensitiveFS is true on the only target platform (Windows).
+const isCaseInsensitiveFS = true
+
 // StagePublic copies src into remotionRoot/public/jobs/<jobID>/<name> and
 // returns the path relative to public/ (for Remotion staticFile props).
 func StagePublic(remotionRoot, jobID, src, name string) (rel string, abs string, err error) {
