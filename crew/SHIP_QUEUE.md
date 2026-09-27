@@ -3,13 +3,14 @@
 Which branches need a PR, where each one stands, and the PR text. Newest at the top.
 Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://github.com/Mayankmishra110/Me2.0/compare/main...<branch>`
 
-**Merge order (when push allowed):** merge **M2-101 first**, then **M2-102** (102’s branch still carries rebased M2-101 commits until 101 lands). **M2-206**, **M2-107**, and **M2-208** do not depend on each other or on M2-101 — open in any order; prefer landing 101 before other Go work that touches `internal/config` / `cmd/mayank2`.
+**Merge order (when push allowed):** merge **M2-101 first**, then **M2-102** and **M2-111** (both still carry rebased M2-101 commits until 101 lands). **M2-206**, **M2-107**, and **M2-208** do not depend on each other or on M2-101 — open in any order; prefer landing 101 before other Go work that touches `internal/config` / `cmd/mayank2`.
 
 **Push held:** do not `git push` / `gh pr create` until Mayank decides whether `Mayankmishra110/Me2.0` stays public. Remote verified: `https://github.com/Mayankmishra110/Me2.0.git`
 
 | Ticket | Branch | QA | SEC | Rebased on main | Checks | PR | State |
 |---|---|---|---|---|---|---|---|
-| M2-102 | m2/M2-102 | pass | n/a | yes → `cd68e03` on main `9e32c62` (includes rewritten M2-101 commits; ticket conflict resolved) | gofmt clean; vet pass; db/cmd packages pass; `go test ./...` FAIL: UTF-8 BOM on `tickets/M2-111.md` (main; hands-off) | held — public-repo decision | ready-for-pr |
+| M2-111 | m2/M2-111 | pass | pass | yes → `212d9e9` on main `254176d` (includes rewritten M2-101; ticket conflict resolved) | gofmt/vet/`go test ./...` pass; content routes skip Claude | held — public-repo decision | ready-for-pr |
+| M2-102 | m2/M2-102 | pass | n/a | yes → `cd68e03` on main `9e32c62` (includes rewritten M2-101 commits; ticket conflict resolved) | gofmt clean; vet pass; db/cmd packages pass; BOM on M2-111 ticket fixed on main (`254176d`) — re-run full test after rebase | held — public-repo decision | ready-for-pr |
 | M2-208 | m2/M2-208 | pass | n/a | yes → `4c95713` on main `b7b5f5c` | remotion lint/typecheck/format/test/build pass (no full mp4 re-render) | held — public-repo decision | ready-for-pr |
 | M2-101 | m2/M2-101 | pass | pass | yes → `75397aa` on main `bd8f6d8` | go vet + go test pass; gofmt -l lists CRLF-only (autocrlf; content clean — no commit) | held — public-repo decision | ready-for-pr |
 | M2-107 | m2/M2-107 | pass | n/a | yes → `96c5b4d` on main `bd8f6d8` | lint/typecheck/test/build pass; format:check fails on CRLF (autocrlf; ignore-cr clean — no commit) | held — public-repo decision | ready-for-pr |
@@ -37,6 +38,63 @@ Branch: m2/M2-xxx · Compare: https://github.com/Mayankmishra110/Me2.0/compare/m
 -->
 
 ## PR bodies
+
+### M2-111 — LLM router and providers
+Branch: `m2/M2-111` @ `212d9e9` (rebased; was `d8ba007`) · Worktree: `data/worktrees/m2-111` · Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...m2/M2-111  
+**Push held** · **Depends on M2-101**. Branch includes rewritten M2-101 commit stack until 101 merges. **Content routes must not call Claude** (enforced in router + tests).
+
+**Goal** One `llm.Complete(ctx, task, req)` that walks the configured provider chain (ollama → openai_compat → claude_cli) with fallthrough, quotas, and optional JSON-schema repair.
+
+**Acceptance**
+- [x] Providers: ollama (chat + embeddings), openai_compat, claude_cli (fixed argv + stdin).
+- [x] Routes from config; 429/5xx/timeout → mark unavailable and fall through.
+- [x] Optional JSON-schema validate + one repair retry.
+- [x] Response records Provider + Model.
+- [x] httptest tests for fallthrough/quota; content tasks skip Claude.
+
+**Checks** (real output, worktree `data/worktrees/m2-111`, 2026-09-28)
+
+```
+# BOM proof (post-rebase)
+tickets\M2-111.md first3=2D-2D-2D hasBOM=False
+
+gofmt -l ./internal/llm
+(no output)
+GOFMT_EXIT=0
+
+go vet ./...
+VET_EXIT=0
+
+go test ./... -count=1
+ok  	mayank2/cmd/mayank2	0.800s
+ok  	mayank2/internal/config	0.311s
+ok  	mayank2/internal/llm	0.338s
+ok  	mayank2/internal/tickets	0.299s
+TEST_EXIT=0
+```
+
+**Rebase notes:** Same pattern as M2-102 — main lacked M2-101; rebase replayed 15 commits (101 + 111). Conflict in `tickets/M2-111.md` at docs/plan commit — kept proper `§` + Notes from incoming (dropped corrupted `Â§` from main claim). Branch copy already had no BOM; main BOM stripped in `254176d`.
+
+**Review** QA: pass — 2026-09-28 — routes/fallthrough/content-guard/schema repair; httptest · SEC: pass — 2026-09-28 — KeyEnv only; claude fixed argv+stdin; content tasks skip Claude; ollama loopback from M2-101 Load
+
+**Risks / follow-ups**
+- Merge M2-101 first to shrink history.
+- Content pipelines must keep using content routes (never Claude).
+- In-memory quotas until DB `quotas` table (M2-102 schema) is wired.
+
+**How to test**
+1. `cd data/worktrees/m2-111`
+2. `go test ./internal/llm ./...`
+3. Inspect tests for content-task Claude skip + httptest fallthrough.
+
+**Open PR (after push allowed):**
+```
+git -C data/worktrees/m2-111 push -u origin m2/M2-111
+gh pr create --repo Mayankmishra110/Me2.0 --base main --head m2/M2-111 --title "LLM router and providers (M2-111)"
+```
+(Paste this PR body section into `--body`. Prefer merging M2-101 first.)
+
+---
 
 ### M2-102 — SQLite open, embedded migrations, initial schema
 Branch: `m2/M2-102` @ `cd68e03` (rebased; was `12c2ee9`) · Worktree: `data/worktrees/m2-102` · Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...m2/M2-102  
