@@ -12,7 +12,7 @@ Audit docs sit next to this file, one per ticket.
 `phase/p1-foundation` → `main`: batch 1 (8 tickets) plus batch 2 as tickets merge. Batch 1: Go CLI with
 config, `doctor` and SQLite; LLM router; dashboard shell; media-tools TTS/STT; stock visuals; Remotion;
 Windows start-at-logon. Batch 2 so far: durable job queue and worker pool (**M2-103**, merged
-`18c7910`).
+`18c7910`). Events log / SSE bus (**M2-104**, merged `e520b9e`).
 
 ## Features in this PR
 | Ticket | Role | Branch | Merge commit | Audit doc | Reviews |
@@ -26,11 +26,11 @@ Windows start-at-logon. Batch 2 so far: durable job queue and worker pool (**M2-
 | M2-109 Windows build, start at logon, power settings | be-2 | `m2/M2-109` | `9886b06` | [M2-109.md](M2-109.md) | QA pass · SEC pass — 2026-09-28, independent crew review (`cd5590a`) |
 | M2-207 Stock visuals with license records | be-3 | `m2/M2-207` | `ba50300` | [M2-207.md](M2-207.md) | QA pass · SEC pass — 2026-09-28, independent crew review (`cd5590a`) |
 | M2-103 Durable job queue and worker pool | be | `m2/M2-103` | `18c7910` | [M2-103.md](M2-103.md) | QA pass · SEC n/a (`needs-sec: no`) — 2026-09-28 |
+| M2-104 Events log and SSE broadcaster | be-2 | `m2/M2-104` | `e520b9e` | [M2-104.md](M2-104.md) | QA pass · SEC n/a (`needs-sec: no`) — 2026-09-28 |
 
-Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. **M2-103**
-is the first batch-2 merge (QA pass, SEC n/a). Remaining in-review (not merged yet): M2-104, M2-114,
-M2-201, M2-213 — do not treat the phase branch as ready for the final PR push until those land or are
-explicitly deferred.
+Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
+merged so far: **M2-103**, **M2-104**. Remaining awaiting ship: M2-213, M2-114, M2-201 — do not treat
+the phase branch as ready for the final PR push until those land or are explicitly deferred.
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
 task on this laptop, self-detected and removed within the same session; AC power settings were never
@@ -56,6 +56,7 @@ ok  	mayank2/cmd/mayank2
 ok  	mayank2/internal/config
 ok  	mayank2/internal/db
 ok  	mayank2/internal/llm
+ok  	mayank2/internal/events
 ok  	mayank2/internal/media
 ok  	mayank2/internal/queue
 ok  	mayank2/internal/tickets
@@ -114,8 +115,10 @@ M2-111) is scoped to fix, alongside adding `mayank2 llm ask` for a real one-key 
   works end to end."
 
 Tickets flipped to `ready` when batch 1 merged: **M2-103**, **M2-104**, **M2-110**, **M2-114**,
-**M2-201**, **M2-213**. After **M2-103** merged (`18c7910`): **M2-105** (Telegram) → `ready` (depends
-only on M2-103). Left `todo`: **M2-108** (still needs M2-105), **M2-202** (still needs M2-201 + M2-103).
+**M2-201**, **M2-213**. After **M2-103** merged (`18c7910`): **M2-105** (Telegram) → `ready`. After
+**M2-104** merged (`e520b9e`): **M2-106** (HTTP API) → `ready`. Left `todo`: **M2-108** (still needs
+M2-105), **M2-202** (still needs M2-201 + M2-103). **M2-110** stays `ready` but waits for **M2-114**
+merge before claiming (both touch `cmd/mayank2/`).
 
 ## How to test
 ```
