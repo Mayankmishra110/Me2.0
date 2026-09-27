@@ -1036,14 +1036,16 @@ func (s *Scout) trendsInterest(ctx context.Context, query string) (float64, erro
 func (s *Scout) getJSON(ctx context.Context, rawURL string, headers map[string]string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("new request: %w", err)
+		return nil, fmt.Errorf("new request: %w", stripURLError(err))
 	}
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
 	res, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("GET %s: %w", redactURL(rawURL), err)
+		// Do not %w-wrap the raw client.Do error: *url.Error embeds the full
+		// request URL (including ?key=…) which would leak YouTube API keys.
+		return nil, fmt.Errorf("GET %s: %w", redactURL(rawURL), stripURLError(err))
 	}
 	defer res.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxScoutBody))
@@ -1054,6 +1056,16 @@ func (s *Scout) getJSON(ctx context.Context, rawURL string, headers map[string]s
 		return nil, fmt.Errorf("GET %s: status %d", redactURL(rawURL), res.StatusCode)
 	}
 	return body, nil
+}
+
+// stripURLError drops the request URL from *url.Error so query-string API keys
+// (YouTube Data API) never end up in errors or logs. Mirrors media.stripURLError.
+func stripURLError(err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		return fmt.Errorf("%s: %w", ue.Op, ue.Err)
+	}
+	return err
 }
 
 func redactURL(raw string) string {

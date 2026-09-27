@@ -445,6 +445,49 @@ func TestTrendsSkippedWithoutBaseURL(t *testing.T) {
 	}
 }
 
+// TestDoErrorStripsYouTubeKey ensures a failed client.Do that would produce
+// *url.Error with ?key=… never puts the API key in err.Error() (SEC review).
+func TestDoErrorStripsYouTubeKey(t *testing.T) {
+	const secret = "SUPER_SECRET_YT_KEY_MUST_NOT_LEAK"
+	ctx := context.Background()
+	sqlDB, cleanup := openScoutDB(t)
+	defer cleanup()
+	seedChannel(t, sqlDB, "yt-money-en", "money_side_hustles")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	client := srv.Client()
+	base := srv.URL
+	srv.Close() // force transport failure on Do → *url.Error with full URL
+
+	s, err := content.NewScout(sqlDB, content.ScoutOptions{
+		YouTubeAPIKey:  secret,
+		YouTubeBaseURL: base,
+		HTTPClient:     client,
+		Keywords:       []string{"side hustle"},
+		Limit:          1,
+		Now:            func() time.Time { return time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC) },
+		NewID:          seqID("leak"),
+		RandFloat:      func() float64 { return 0 },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ch := content.Channel{ID: "yt-money-en", Niche: "money_side_hustles", Language: content.LanguageEN}
+	warmup := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	_, err = s.Run(ctx, ch, &warmup)
+	if err == nil {
+		t.Fatal("want transport error from closed server")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("YouTube API key leaked in error: %v", err)
+	}
+	if strings.Contains(err.Error(), "key="+secret) {
+		t.Fatalf("?key= query leaked in error: %v", err)
+	}
+}
+
 // --- helpers ----------------------------------------------------------------
 
 func openScoutDB(t *testing.T) (*sql.DB, func()) {
