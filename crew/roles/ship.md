@@ -34,6 +34,11 @@ and which aren't yet in SHIP_QUEUE as `merged`.
    ticket `status: done` there, run all checks on the merged tree, update `docs/audit/<phase>/README.md`
    (the PR body), and push the phase branch. Mayank opens and merges the PR.
    Per-ticket PRs (below) only when Mayank asks for one.
+   **In the same session, sync `tickets/*.md` status back onto `main`** for every ticket you just marked
+   `done` or flipped `ready` on the phase branch — copy the frontmatter over and commit on `main`
+   (`chore(crew): sync ticket statuses`). `main` is where the next claim's `sed` looks for `status: ready`;
+   if it's stale, a claim silently sets an owner without moving the status (seen once, 2026-09-28 — see
+   CONTEXT decision log if this recurs and needs a real fix instead of manual discipline).
 6. **Per-ticket PR (optional):** push the branch (`git push -u origin m2/M2-xxx`). Never push `main`; the pre-push hook blocks it.
    With `gh` installed: `gh pr create --base main --head m2/M2-xxx --title "<ticket title> (M2-xxx)" --body-file <file>`.
    Without `gh`: write the PR body into SHIP_QUEUE with the compare URL and let Mayank click it.
