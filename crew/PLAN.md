@@ -1,10 +1,1 @@
-﻿# Plan — owned by lead
-
-Updated: 2026-09-28 · phase @ ee67b77
-
-| Ticket | State |
-|---|---|
-| M2-205 | in-review 6d55085 — qa/sec running |
-| M2-209 | in-progress — fixing path confinement (QA/SEC changes) |
-| M2-210 | after 205+209 done |
-
+# Plan ΓÇö owned by lead  Updated: 2026-09-28 ┬╖ phase @ cb34b18  | Ticket | State | |---|---| | M2-209 | done ΓÇö merge `878ccb7`, audit `cb34b18` | | M2-205 | in-review ΓÇö still fixing (do not merge) | | M2-210 | todo ΓÇö after 205 done | 
