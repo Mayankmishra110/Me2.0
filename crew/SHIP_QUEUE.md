@@ -3,12 +3,13 @@
 Which branches need a PR, where each one stands, and the PR text. Newest at the top.
 Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://github.com/Mayankmishra110/Me2.0/compare/main...<branch>`
 
-**Merge order (when push allowed):** merge **M2-101 first** (critical path / foundation for later Go tickets). **M2-206** and **M2-107** do not depend on each other (or on M2-101) and can open in any order after 101 is merged or in parallel as separate PRs — prefer landing 101 before other Go work that touches `internal/config` / `cmd/mayank2`.
+**Merge order (when push allowed):** merge **M2-101 first** (critical path / foundation for later Go tickets). **M2-206**, **M2-107**, and **M2-208** do not depend on each other or on M2-101 — open in any order; prefer landing 101 before other Go work that touches `internal/config` / `cmd/mayank2`.
 
 **Push held:** do not `git push` / `gh pr create` until Mayank decides whether `Mayankmishra110/Me2.0` stays public. Remote verified: `https://github.com/Mayankmishra110/Me2.0.git`
 
 | Ticket | Branch | QA | SEC | Rebased on main | Checks | PR | State |
 |---|---|---|---|---|---|---|---|
+| M2-208 | m2/M2-208 | pass | n/a | yes → `4c95713` on main `b7b5f5c` | remotion lint/typecheck/format/test/build pass (no full mp4 re-render) | held — public-repo decision | ready-for-pr |
 | M2-101 | m2/M2-101 | pass | pass | yes → `75397aa` on main `bd8f6d8` | go vet + go test pass; gofmt -l lists CRLF-only (autocrlf; content clean — no commit) | held — public-repo decision | ready-for-pr |
 | M2-107 | m2/M2-107 | pass | n/a | yes → `96c5b4d` on main `bd8f6d8` | lint/typecheck/test/build pass; format:check fails on CRLF (autocrlf; ignore-cr clean — no commit) | held — public-repo decision | ready-for-pr |
 | M2-206 | m2/M2-206 | pass | pass | yes (on prior main tip; re-rebase before push if main moved) | ruff+pytest pass; pre-commit --all pass (see body) | held — public-repo decision | ready-for-pr |
@@ -35,6 +36,68 @@ Branch: m2/M2-xxx · Compare: https://github.com/Mayankmishra110/Me2.0/compare/m
 -->
 
 ## PR bodies
+
+### M2-208 — Remotion compositions: explained_60s, myth_vs_fact, top_n
+Branch: `m2/M2-208` @ `4c95713` (rebased; was `b978271`) · Worktree: `data/worktrees/m2-208` · Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...m2/M2-208  
+**Push held** · Does **not** depend on M2-101 (touches `remotion/` only).
+
+**Goal** First three video formats as Remotion compositions, driven by props (brand kit, beats, voice, word timings, orientation).
+
+**Acceptance**
+- [x] Props: brand kit, beats, voice file, word timings, orientation 16:9 or 9:16 — `src/types.ts` + `samples/*.json`.
+- [x] Captions per `caption_style`; DESIGN §3 safe zones; thumbnail still composition — unit tests + `thumbnail` 1280×720.
+- [x] CLI render with props JSON; sample each format × orientation — fixtures under `fixtures/`; full mp4s gitignored under `out/`.
+
+**Checks** (real output, worktree `data/worktrees/m2-208/remotion`, 2026-09-28)
+
+```
+npm run lint
+> oxlint src scripts
+LINT=0
+
+npm run typecheck
+> tsc --noEmit
+TYPE=0
+
+npm run format:check
+Checking formatting...
+All matched files use Prettier code style!
+FMT=0
+
+npm test
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+ Duration  142ms
+TEST=0
+
+npm run build
+> remotion bundle
+○ .../data/worktrees/m2-208/remotion/build
+BUILD=0
+```
+
+(Full mp4 re-render skipped; fixtures already present. Build = Remotion bundle only.)
+
+**Review** QA: pass — 2026-09-28 — remotion formats×orientations + thumbnail; pure props; lint/typecheck/format/test/build green; full mp4 re-render skipped · SEC: n/a — needs-sec unset / no (fixed argv render scripts; no fetch in compositions)
+
+**Risks / follow-ups**
+- Remotion composition IDs use hyphens (Remotion forbids `_` in IDs); folder names keep underscores.
+- Full sample mp4 render is heavy; use fixtures for CI-style checks.
+- Independent of M2-101 / other queued tickets.
+
+**How to test**
+1. `cd data/worktrees/m2-208/remotion && npm install`
+2. `npm run lint && npm run typecheck && npm run format:check && npm test && npm run build`
+3. Optional: `npm run render` for full sample mp4s (heavy).
+
+**Open PR (after push allowed):**
+```
+git -C data/worktrees/m2-208 push -u origin m2/M2-208
+gh pr create --repo Mayankmishra110/Me2.0 --base main --head m2/M2-208 --title "Remotion compositions: explained_60s, myth_vs_fact, top_n (M2-208)"
+```
+(Paste this PR body section into `--body`.)
+
+---
 
 ### M2-101 — Repo skeleton, config loader, doctor command
 Branch: `m2/M2-101` @ `75397aa` (rebased; was `246b6a3`) · Worktree: `data/worktrees/m2-101` · Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...m2/M2-101  
