@@ -190,13 +190,9 @@ func (e *Engine) Handle(ctx context.Context, p ScriptPayload) (Outcome, error) {
 		if e.Enqueue == nil {
 			return Outcome{Report: report}, queue.Permanent(fmt.Errorf("compliance: rewrite needed but no Enqueuer: %s", feedback))
 		}
-		payload := map[string]any{
-			"content_id":        item.ID,
-			"channel_id":        item.ChannelID,
-			"rewrite_attempt":   p.RewriteAttempt + 1,
-			"gate_feedback":     feedback,
-			"compliance_report": report,
-		}
+		// Merge script_write base first; compliance-owned keys last so
+		// ScriptWrite cannot overwrite rewrite_attempt / feedback / report.
+		payload := map[string]any{}
 		if len(p.ScriptWrite) > 0 {
 			var sw map[string]any
 			if err := json.Unmarshal(p.ScriptWrite, &sw); err == nil {
@@ -205,6 +201,11 @@ func (e *Engine) Handle(ctx context.Context, p ScriptPayload) (Outcome, error) {
 				}
 			}
 		}
+		payload["content_id"] = item.ID
+		payload["channel_id"] = item.ChannelID
+		payload["rewrite_attempt"] = p.RewriteAttempt + 1
+		payload["gate_feedback"] = feedback
+		payload["compliance_report"] = report
 		_, err := e.Enqueue.Enqueue(ctx, JobScriptWrite, payload,
 			queue.ContentID(item.ID),
 		)

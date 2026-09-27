@@ -44,6 +44,69 @@ func TestReportShape_COMPLIANCE_S5(t *testing.T) {
 	}
 }
 
+func TestHandle_scriptWriteCannotOverwriteComplianceKeys(t *testing.T) {
+	th := DefaultThresholds()
+	th.MaxRewrites = 2
+	eq := &fakeEnqueuer{}
+	e := NewEngine(th, nil, nil)
+	e.Enqueue = eq
+	e.Reports = &memSaver{}
+	item := ContentItem{
+		ID:         "c-sw",
+		ChannelID:  "ch1",
+		Language:   "en",
+		ScriptText: "Investors get guaranteed returns with this plan.",
+		Brief:      Brief{Facts: []Fact{{Claim: "x", Sources: []string{"https://x.test"}}}},
+	}
+	// Hostile script_write tries to reset rewrite_attempt and wipe feedback.
+	sw, err := json.Marshal(map[string]any{
+		"topic":             "side hustles",
+		"rewrite_attempt":   0,
+		"gate_feedback":     "",
+		"compliance_report": map[string]any{"passed": true},
+		"extra_field":       "keep-me",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := e.Handle(context.Background(), ScriptPayload{
+		ContentID:      "c-sw",
+		ChannelID:      "ch1",
+		Item:           item,
+		RewriteAttempt: 0,
+		ScriptWrite:    sw,
+	})
+	if err != nil {
+		t.Fatalf("want rewrite enqueue, got err=%v", err)
+	}
+	if !out.Rewritten {
+		t.Fatalf("want rewritten; got %+v", out)
+	}
+	m, ok := eq.lastPayload.(map[string]any)
+	if !ok {
+		t.Fatalf("payload type %T", eq.lastPayload)
+	}
+	if m["rewrite_attempt"] != 1 {
+		t.Fatalf("rewrite_attempt must stay compliance-owned=1, got %#v", m["rewrite_attempt"])
+	}
+	fb, _ := m["gate_feedback"].(string)
+	if fb == "" || !strings.Contains(fb, "G4") {
+		t.Fatalf("gate_feedback must be set by compliance, got %#v", m["gate_feedback"])
+	}
+	if _, ok := m["compliance_report"].(Report); !ok {
+		t.Fatalf("compliance_report must be Report from gates, got %T", m["compliance_report"])
+	}
+	if m["extra_field"] != "keep-me" {
+		t.Fatalf("non-compliance ScriptWrite keys should forward; got %#v", m["extra_field"])
+	}
+	if m["topic"] != "side hustles" {
+		t.Fatalf("topic should forward from ScriptWrite; got %#v", m["topic"])
+	}
+	if m["content_id"] != "c-sw" || m["channel_id"] != "ch1" {
+		t.Fatalf("ids: content_id=%#v channel_id=%#v", m["content_id"], m["channel_id"])
+	}
+}
+
 func TestHandle_rewriteThenDeadLetter(t *testing.T) {
 	th := DefaultThresholds()
 	th.MaxRewrites = 2
@@ -128,13 +191,15 @@ func TestEncodeDecodeEmbedding(t *testing.T) {
 }
 
 type fakeEnqueuer struct {
-	n        int
-	lastType string
+	n           int
+	lastType    string
+	lastPayload any
 }
 
 func (f *fakeEnqueuer) Enqueue(ctx context.Context, jobType string, payload any, opts ...queue.EnqueueOpt) (string, error) {
 	f.n++
 	f.lastType = jobType
+	f.lastPayload = payload
 	return "job-1", nil
 }
 
