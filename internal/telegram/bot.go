@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,8 +34,9 @@ type Bot struct {
 	chatID int64
 
 	mu           sync.Mutex
-	awaitingPIN  map[int64]string // chatID → resume target ("all"|"heavy"|…)
+	awaitingPIN  map[int64]string // chatID → "pause|resume:<target>" (ARCH §7 bulk PIN)
 	awaitingRedo map[int64]string // chatID → approval id waiting for a note
+	dataRoot     string           // absolute path; preview uploads must stay under this
 }
 
 // Config holds construction inputs. Token/IDs normally come from env.
@@ -42,6 +44,7 @@ type Config struct {
 	Token      string
 	UserID     int64
 	ChatID     int64
+	DataRoot   string // media/preview confinement root (config data_dir); empty → refuse file uploads
 	DB         *sql.DB
 	Queue      *queue.Queue
 	Log        *slog.Logger
@@ -91,13 +94,22 @@ func New(cfg Config) (*Bot, error) {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
+	dataRoot := strings.TrimSpace(cfg.DataRoot)
+	if dataRoot != "" {
+		if abs, err := filepath.Abs(dataRoot); err == nil {
+			dataRoot = abs
+		}
+	}
+	opts := append([]ClientOption{}, cfg.ClientOpts...)
+	opts = append(opts, WithDataRoot(dataRoot))
 	return &Bot{
-		client:       NewClient(cfg.Token, cfg.ClientOpts...),
+		client:       NewClient(cfg.Token, opts...),
 		db:           cfg.DB,
 		q:            cfg.Queue,
 		log:          cfg.Log,
 		userID:       cfg.UserID,
 		chatID:       cfg.ChatID,
+		dataRoot:     dataRoot,
 		awaitingPIN:  make(map[int64]string),
 		awaitingRedo: make(map[int64]string),
 	}, nil

@@ -23,6 +23,7 @@ type Client struct {
 	token      string
 	httpClient *http.Client
 	baseURL    string // scheme+host, e.g. https://api.telegram.org (no trailing slash)
+	dataRoot   string // absolute; empty refuses all local file uploads
 }
 
 // ClientOption configures a Client.
@@ -36,6 +37,23 @@ func WithHTTPClient(c *http.Client) ClientOption {
 // WithBaseURL overrides the API host (tests point at httptest.Server.URL).
 func WithBaseURL(base string) ClientOption {
 	return func(cl *Client) { cl.baseURL = strings.TrimRight(base, "/") }
+}
+
+// WithDataRoot confines SendPhoto/SendVideo to files under root (config data_dir).
+// An empty root refuses every local file upload.
+func WithDataRoot(root string) ClientOption {
+	return func(cl *Client) {
+		root = strings.TrimSpace(root)
+		if root == "" {
+			cl.dataRoot = ""
+			return
+		}
+		if abs, err := filepath.Abs(root); err == nil {
+			cl.dataRoot = abs
+		} else {
+			cl.dataRoot = root
+		}
+	}
 }
 
 // NewClient builds a raw Bot API client for the given bot token.
@@ -83,16 +101,18 @@ func (c *Client) do(ctx context.Context, method string, req *http.Request) (json
 	_ = ctx
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("telegram: %s: %w", method, err)
+		// http.Client errors embed req.URL via URL.Redacted(), which does NOT
+		// strip path segments — and Bot API puts the token in the path.
+		return nil, c.safeErrorf("telegram: %s: %s", method, err)
 	}
 	defer res.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if err != nil {
-		return nil, fmt.Errorf("telegram: read %s body: %w", method, err)
+		return nil, c.safeErrorf("telegram: read %s body: %s", method, err)
 	}
 	var env apiResponse
 	if err := json.Unmarshal(body, &env); err != nil {
-		return nil, fmt.Errorf("telegram: decode %s (http %d): %w", method, res.StatusCode, err)
+		return nil, c.safeErrorf("telegram: decode %s (http %d): %s", method, res.StatusCode, err)
 	}
 	if !env.OK {
 		desc := env.Description
@@ -102,6 +122,20 @@ func (c *Client) do(ctx context.Context, method string, req *http.Request) (json
 		return nil, fmt.Errorf("telegram: %s: %s", method, desc)
 	}
 	return env.Result, nil
+}
+
+// safeErrorf builds an error whose string never contains the bot token.
+func (c *Client) safeErrorf(format string, args ...any) error {
+	msg := fmt.Sprintf(format, args...)
+	return fmt.Errorf("%s", redactToken(msg, c.token))
+}
+
+// redactToken replaces every occurrence of the bot token in s.
+func redactToken(s, token string) string {
+	if token == "" || !strings.Contains(s, token) {
+		return s
+	}
+	return strings.ReplaceAll(s, token, "[REDACTED]")
 }
 
 // GetUpdates long-polls for updates starting at offset. timeoutSec is the
@@ -153,6 +187,9 @@ func (c *Client) SendVideo(ctx context.Context, chatID int64, path, caption stri
 }
 
 func (c *Client) sendFile(ctx context.Context, method, field string, chatID int64, path, caption string, markup *InlineKeyboardMarkup) (int64, error) {
+	if err := confineUnderRoot(c.dataRoot, path); err != nil {
+		return 0, fmt.Errorf("telegram: %s: %w", method, err)
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return 0, fmt.Errorf("telegram: open %s for %s: %w", filepath.Base(path), method, err)
