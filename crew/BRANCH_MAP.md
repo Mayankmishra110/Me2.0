@@ -36,13 +36,19 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 
 | Ticket | Branch | Feature | Role | Commits so far | State |
 |---|---|---|---|---|---|
-| M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | `915d170`, `5e47c99`, `151967e`, `82ee5ac`, `c1034e2` | in-review, awaiting qa/sec |
-| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | `5c0c958`, `033b33e`, `c361776`, `6525b28`, `f4d213a` | in-review, awaiting qa/sec |
-| M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` | in-review, awaiting qa/sec |
-| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `540e194`, `b52b5c0`, `0bba43e`, `d14a96e`, `e0971c2`, `1291cd7` | in-review, awaiting qa/sec (needs-sec: yes) |
+| M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | … + `21aca50` qa | QA pass · SEC n/a · awaiting ship |
+| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | … + `5d126ae` qa/sec | QA pass · SEC pass · awaiting ship |
+| M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` (+ uncommitted QA lines) | QA pass · SEC n/a · ship commits review then merges |
+| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | … + `22437fb` qa/sec | QA pass · SEC pass · awaiting ship |
 
-Update this table's "Commits so far" / "State" as each finishes; move the row up into a new "P1 batch 2"
-section under Phase P1 Foundation once merged, same format as batch 1.
+Ship merges in order **104 → 213 → 114 → 201**, then moves each row into the merged P1 table with the
+merge hash. Do not push `phase/p1-foundation` until remaining P1 tickets (105, 106, 108, 110) are also merged.
+
+## In progress (branched from `phase/p1-foundation`)
+
+| Ticket | Branch | Feature | Role | Commits so far | State |
+|---|---|---|---|---|---|
+| M2-105 | `m2/M2-105` | Telegram bot: allowlist, commands, approvals, PIN | be | — | in-progress |
 
 ## How to regenerate/verify this file
 
