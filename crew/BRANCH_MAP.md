@@ -28,31 +28,30 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | ? | ? | Independent qa+sec review of M2-109 + M2-207 | qa/sec | `cd5590a` | (direct to phase branch) | housekeeping, not a ticket |
 | ? | ? | Clear review blocker in audit docs | lead | `f1ed852` | (direct to phase branch) | housekeeping, not a ticket |
 | M2-103 | `m2/M2-103` | Durable job queue and worker pool | be | `55c4c53`, `41108ee`, `d547f6b`, `3aaa20d`, `5e87c8a`, `7240e91`, `ee8876e`, `9eb1800`, `82df3c6` | `18c7910` | merged, done |
-| M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | through `5403142` qa | `e520b9e` | merged, done (audit `8af5451`; push in flight) |
+| M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | `370ea1d`, `daeaa1b`, `1f5517a`, `d314dd0`, `fe93dd4`, `5403142` | `e520b9e` | merged, done |
+| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `51bb8e3`, `b0002d2`, `580f837`, `6627e86`, `8bcd623`, `3def108`, `13bc7b2` | `7d0c3fa` | merged, done |
+| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | `71d973e`, `d9a8f4e`, `b2666c2`, `0410a86`, `fadc7ad`, `a780106` | `9c0b970` | merged, done |
+| M2-201 | `m2/M2-201` | Channel and format config | be-3 | `983be38`, `6ba672b`, `5b40258`, `2ae7005` | `3f1293e` | merged, done |
+| M2-105 | `m2/M2-105` | Telegram bot: allowlist, commands, approvals, PIN | be | `60ee164`, `4538c2c`, `d79f039`, `67229fd`, `c5008a4`, `a34657e`, `9db5f4b`, `22f5c37`, `e4c5d6d` | `d7c2558` | merged, done, QA+SEC pass |
+| M2-106 | `m2/M2-106` | HTTP API, auth, embedded dashboard | be-2 | `948e4cd`, `53b5c3e`, `b526979`, `e428e5e`, `c0d194f`, `a4a8806`, `62e752a` | `96adf6a` | merged, done, QA+SEC pass |
 | M2-110 | `m2/M2-110` | DPAPI token vault and OAuth helper | be-3 | `a701d57`, `ea83c08`, `ca751c8`, `dd3a2f7`, `2ce1355` | `880b852` | merged, done, QA+SEC pass |
+| M2-202 | `m2/M2-202` | Niche Scout | ai | `613d633`, `033687a`, `4818e97`, `065c928`, `c530123`, `a1216f8`, `ded5522`, `cbca048`, `7581bb0`, `54f5cde` | `560e002` | merged, done, QA+SEC pass |
 
 **Not a ticket branch:** `phase/p1-foundation` itself ? one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
 
-## Phase P1 batch 2 remaining (ship + push each)
+## Phase P1 batch 2 (in progress, all branched from `phase/p1-foundation`)
 
-| Ticket | Branch | Feature | Role | Commits so far | State |
-|---|---|---|---|---|---|
-| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | ? + `5d126ae` qa/sec | QA+SEC pass · ship next after 213 |
-| M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` (+ uncommitted QA) | QA pass · ship after 114 |
-| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | ? + `13bc7b2` | QA+SEC pass · ship merging now |
-
-**Mayank override:** push `origin phase/p1-foundation` after each merge ? do not wait for end of P1.
+Batch-2 merge wave complete for 103/104/213/114/201/105/106/110 + Niche Scout **M2-202**. Remaining P1 build: **M2-108**.
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits so far | State |
 |---|---|---|---|---|---|
-| M2-108 | `m2/M2-108` | Scheduler and daily summary | be | ? | in-progress |
-| M2-203 | `m2/M2-203` | Research brief with sources | ai | — | in-progress |
-| M2-105 | `m2/M2-105` | Telegram bot | be | SEC fixes in flight | in-progress (QA changes)
-| M2-106 | `m2/M2-106` | HTTP API | be-2 | tip in-review | in-review awaiting qa/sec
-| M2-202 | `m2/M2-202` | Niche Scout | ai | tip in-review | in-review awaiting qa/sec
+| M2-108 | `m2/M2-108` | Scheduler and daily summary | be | building | in-progress |
+| M2-203 | `m2/M2-203` | Research brief with sources | ai | claimed after `560e002` | in-progress |
+
+**Deps unblocked by M2-202:** M2-203 claimed on main (`5dfd871`).
 
 ## How to regenerate/verify this file
 
