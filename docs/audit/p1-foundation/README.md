@@ -20,6 +20,7 @@ HTTP API + auth + embedded dashboard (**M2-106**, merged `96adf6a`). DPAPI token
 (**M2-203**, merged `1491844`). Scheduler + daily summary (**M2-108**, merged `a485988`).
 Script writer native EN/HI (**M2-204**, merged `d69dcae`). Render long/short/thumb/subs
 (**M2-209**, merged `878ccb7`). Compliance script gates G1–G7 (**M2-205**, merged `a76a141`).
+Final gates F1–F6 + approval flow (**M2-210**, code `9646b4b`, QA/SEC `d283fb4`).
 
 ## Features in this PR
 | Ticket | Role | Branch | Merge commit | Audit doc | Reviews |
@@ -46,6 +47,7 @@ Script writer native EN/HI (**M2-204**, merged `d69dcae`). Render long/short/thu
 | M2-204 Script writer (native EN and HI) | ai | `m2/M2-204` | `d69dcae` | [M2-204.md](M2-204.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-209 Render long, short, thumbnail, subtitles | be | `m2/M2-209` | `878ccb7` | [M2-209.md](M2-209.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-205 Compliance script gates G1–G7 | be | `m2/M2-205` | `a76a141` | [M2-205.md](M2-205.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
+| M2-210 Final gates and approval flow | be | `m2/M2-210` | `d283fb4` | [M2-210.md](M2-210.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 
 Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
 merge wave **103 / 104 / 213 / 114 / 201 / 105 / 106 / 110 / 202 / 203 / 108** is on the phase branch.
