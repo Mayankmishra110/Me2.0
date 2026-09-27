@@ -1,0 +1,41 @@
+[project]
+name = "mediatools"
+version = "0.1.0"
+description = "Mayank 2.0 media-tools: Kokoro TTS and faster-whisper STT (JSON in/out)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "kokoro>=0.9.4",
+    "soundfile>=0.12.1",
+    "faster-whisper>=1.1.0",
+    "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.9.0",
+]
+
+[project.scripts]
+mediatools = "mediatools.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mediatools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: requires downloaded Kokoro / Whisper models (skipped by default offline)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
