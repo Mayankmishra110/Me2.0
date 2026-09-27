@@ -7,20 +7,31 @@ Updated: 2026-09-28 · Phase: **P1 Foundation** · **Phase branch: `phase/p1-fou
 First income as early as possible. The P2 exit gives the first real proof: one approved Short per channel
 published through the API, with metrics at +24h. Everything in P1 exists to make that safe and hands-off.
 
-## Now (one ticket per role, no overlapping paths)
+## Done — P1 batch 1 (2026-09-28)
+
+M2-101, M2-102, M2-107, M2-109, M2-111, M2-206, M2-207, M2-208 are **done**, merged into
+`phase/p1-foundation`, and pushed. PR ready to open: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md).
+M2-109 and M2-207 still need a qa/sec crew-role pass (flagged `needs-sec: yes`, built by background
+sub-agents and only audited directly by ship so far).
+
+## Now (P1 batch 2 — all `ready`, no overlapping paths)
 
 | Role | Ticket | Why now |
 |---|---|---|
-| be | **M2-101** skeleton, config, doctor | Critical path. 102, 109, 111 and 207 wait on it; 103, 104, 105 and 201 are behind 102 |
-| fe | **M2-107** dashboard shell (mock API) | Independent; gives Mayank something to see |
-| ai | **M2-206** media-tools TTS/STT | Independent; the longest-lead local tooling (Kokoro HI quality is a real risk) |
-| qa | reviews as tickets land; until then, audit that SPEC §2's "can start now" list matches the ticket `depends` (M2-207 depends on 101) | |
-| sec | baseline: `.gitignore`, hook secret patterns, threat list below | |
-| ship | first commit + remote setup (see SHIP_QUEUE), hooks on | |
+| be | **M2-103** durable job queue | Critical path: 108 (scheduler), 202 (scout) wait on it |
+| be | **M2-104** events log + SSE | Independent of 103; dashboard needs it next |
+| ai | **M2-114** run with only the keys you have | Direct answer to Mayank's "one free Gemini key should work end to end" |
+| be | **M2-110** DPAPI secrets vault | Needed before any real OAuth (YouTube etc.) |
+| be | **M2-201** channel + format config | Unblocks the P2 content pipeline (202→205) |
+| be | **M2-213** storage retention + R2 | Independent, small |
+| qa | pass on M2-109 and M2-207 (not yet reviewed by a qa role) | |
+| sec | pass on M2-109 and M2-207 (both flagged `needs-sec: yes`) | |
+| ship | idle until Mayank opens/merges the P1 PR, then rebase phase-p1 onto main and clean up merged `m2/*` branches | |
 
 ## Next
 
-be: M2-102 → 103 → 104/105/110 · ai: M2-111 once 101 is done · fe: M2-208 Remotion after 107 · be: 207, 213.
+M2-108 scheduler (needs 103+105) · M2-105 Telegram (needs 103) · M2-106 HTTP API (needs 104) ·
+P2 pipeline starts once 111+201+103 are all done (M2-202 Niche Scout).
 
 ## Later
 
