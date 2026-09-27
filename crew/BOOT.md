@@ -31,7 +31,9 @@ If there is no current work, pick new work with your role card's **Pick-up** rul
   and `owner: crew-<role>`, commit only that change on `main` (`chore(M2-xxx): claim`).
 - **Work in a worktree off the current phase branch** (named in [PLAN.md](PLAN.md), e.g. `phase/p1-foundation`):
   `git worktree add data/worktrees/m2-xxx -b m2/M2-xxx phase/p1-foundation`. `data/` is gitignored.
-  Claims and queue bookkeeping still go on `main`.
+  Claims and queue bookkeeping still go on `main`. Add a row for the new branch to the "in progress" table
+  in [BRANCH_MAP.md](BRANCH_MAP.md) (ticket, branch, feature, role) in the same claim commit — every branch
+  that exists must be in that file.
 - **Stay inside the ticket's `touches`** plus tests next to them. Need a path another in-progress ticket owns?
   Stop, write it in the ticket's Notes, and tell Mayank.
 - **Never push to `main`.** Never skip hooks (`--no-verify`) unless Mayank says so for that commit.

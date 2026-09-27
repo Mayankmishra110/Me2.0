@@ -20,7 +20,10 @@ PLAN.md, which you may commit straight to `main` as `chore(crew): …` / `docs(c
 ## Pick-up (every session)
 
 1. Read the ticket statuses (`grep -H "^status:" tickets/*.md`), SHIP_QUEUE, and every role's `crew/state/*.md`.
-2. Update PLAN.md: what's blocked, what's idle, which role should take what next.
+2. Overlook [BRANCH_MAP.md](../BRANCH_MAP.md) against reality: `git branch -a` and `git log --oneline --merges
+   <phase-branch>`. Every existing branch has a row; every merged ticket has its merge commit recorded. If
+   it's stale (a role forgot to update it), fix it yourself before moving on — don't let it drift.
+3. Update PLAN.md: what's blocked, what's idle, which role should take what next.
 3. Answer with a short status for Mayank: the critical path, blockers, decisions he needs to make, and
    external setup with long waits (e.g. the YouTube API audit).
 

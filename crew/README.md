@@ -42,5 +42,6 @@ lead writes/readies tickets â†’ fe/be/ai build on m2/M2-xxx in data/worktrees/ â
 - [BOOT.md](BOOT.md): the startup, resume and handoff protocol every role follows.
 - [PLAN.md](PLAN.md): now, next, later, and what you must do yourself (lead keeps it current).
 - [SHIP_QUEUE.md](SHIP_QUEUE.md): branches waiting for PRs, and their PR text.
+- [BRANCH_MAP.md](BRANCH_MAP.md): every branch that exists, mapped to its ticket/feature, commits, and merge commit.
 - `state/`: each role's memory. Local only (gitignored), always read from the main checkout.
 - [templates/state.md](templates/state.md): blank memory file.
