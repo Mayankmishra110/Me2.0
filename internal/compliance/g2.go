@@ -15,7 +15,7 @@ type Embedder interface {
 // G2 Self-originality: embedding cosine vs prior scripts + title Jaccard.
 type G2 struct {
 	Th    Thresholds
-	Embed Embedder // optional; when nil and no PriorEmbeddings, G2 skips cosine (pass with note)
+	Embed Embedder // optional only when no PriorEmbeddings; with priors, missing embed fails closed
 }
 
 func (g G2) ID() string { return "G2" }
@@ -36,7 +36,15 @@ func (g G2) Check(ctx context.Context, item ContentItem) GateResult {
 	if err != nil {
 		return GateResult{ID: "G2", Passed: false, Detail: fmt.Sprintf("embed: %v", err)}
 	}
-	if len(vec) > 0 && len(item.PriorEmbeddings) > 0 {
+	if len(item.PriorEmbeddings) > 0 {
+		// Fail closed: originality vs priors requires a current embedding.
+		if len(vec) == 0 {
+			return GateResult{
+				ID:     "G2",
+				Passed: false,
+				Detail: "embedding required to compare against prior scripts",
+			}
+		}
 		for _, prior := range item.PriorEmbeddings {
 			c := cosine(vec, prior)
 			if c > maxCos {
@@ -45,7 +53,7 @@ func (g G2) Check(ctx context.Context, item ContentItem) GateResult {
 		}
 		cosDetail = fmt.Sprintf("max cosine=%.4f", maxCos)
 	} else if len(vec) == 0 {
-		cosDetail = "embedding unavailable; cosine skipped"
+		cosDetail = "no prior embeddings; cosine skipped"
 	}
 
 	titleJac := 0.0
@@ -72,10 +80,10 @@ func (g G2) Check(ctx context.Context, item ContentItem) GateResult {
 }
 
 func (g G2) scriptVector(ctx context.Context, item ContentItem) ([]float64, error) {
-	if len(item.PriorEmbeddings) == 0 && g.Embed == nil {
-		return nil, nil
-	}
 	if g.Embed == nil {
+		if len(item.PriorEmbeddings) > 0 {
+			return nil, fmt.Errorf("embedding required to compare against prior scripts")
+		}
 		return nil, nil
 	}
 	text := strings.TrimSpace(item.ScriptText)

@@ -66,6 +66,48 @@ func TestG2_distinctPasses(t *testing.T) {
 	}
 }
 
+func TestG2_priorsWithoutEmbedFailsClosed(t *testing.T) {
+	item := ContentItem{
+		ScriptText:      "Any script text that would otherwise look fine without an originality check.",
+		Title:           "Unique title about freelancing tips",
+		PriorEmbeddings: [][]float64{{1, 0, 0}},
+		PriorTitles:     []string{"Cooking pasta at home"},
+	}
+	r := (G2{Th: DefaultThresholds(), Embed: nil}).Check(context.Background(), item)
+	if r.Passed {
+		t.Fatalf("G2 must fail closed when priors exist but Embed is nil; got %+v", r)
+	}
+	if !strings.Contains(r.Detail, "embedding required") {
+		t.Fatalf("detail should say embedding required; got %q", r.Detail)
+	}
+}
+
+func TestG2_emptyEmbedAgainstPriorsFailsClosed(t *testing.T) {
+	item := ContentItem{
+		ScriptText:      "Script with an embedder that returns an empty vector.",
+		Title:           "Unique title words here",
+		PriorEmbeddings: [][]float64{{0, 1, 0}},
+	}
+	r := (G2{Th: DefaultThresholds(), Embed: staticEmbedder{v: nil}}).Check(context.Background(), item)
+	if r.Passed {
+		t.Fatalf("G2 must fail closed on empty embedding with priors; got %+v", r)
+	}
+	if !strings.Contains(strings.ToLower(r.Detail), "embed") {
+		t.Fatalf("detail should mention embed failure; got %q", r.Detail)
+	}
+}
+
+func TestG2_noPriorsNoEmbedPasses(t *testing.T) {
+	item := ContentItem{
+		ScriptText: "Fresh script with no channel history to compare.",
+		Title:      "Brand new channel first video",
+	}
+	r := (G2{Th: DefaultThresholds(), Embed: nil}).Check(context.Background(), item)
+	if !r.Passed {
+		t.Fatalf("G2 may skip cosine with no priors and no embedder; got %+v", r)
+	}
+}
+
 func TestG4_guaranteedReturnsFails(t *testing.T) {
 	item := ContentItem{
 		ScriptText: "This strategy offers guaranteed returns if you follow the plan carefully every month.",
