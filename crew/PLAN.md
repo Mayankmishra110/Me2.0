@@ -14,25 +14,34 @@ M2-101, M2-102, M2-107, M2-109, M2-111, M2-206, M2-207, M2-208 are **done**, mer
 M2-109 and M2-207 have now had their independent qa+sec pass too (2026-09-28, `cd5590a`) — both pass, no
 findings. **No open blockers on the P1 batch 1 PR.**
 
-## Now (P1 batch 2 — review, then merge)
+## Done — P1 batch 2 (partial)
 
-All five build branches are committed, worktrees clean, status `in-review` on the branch. Main ticket files were still `in-progress`; lead synced them to `in-review` on 2026-09-28.
+| Ticket | State |
+|---|---|
+| **M2-103** | merged `18c7910`, audit `4bf6bc4`, status `done`; **M2-105 → ready** |
+| M2-104 | QA pass · SEC n/a · `21aca50` — awaiting ship |
+| M2-114 | QA pass · SEC pass · `5d126ae` — awaiting ship |
+| M2-201 | QA pass · SEC n/a — review lines uncommitted on worktree; ship commits then merges |
+| M2-213 | QA pass · SEC pass · `22437fb` — awaiting ship |
+
+## Now
 
 | Role | Ticket | Why now |
 |---|---|---|
-| qa/sec | **M2-104, M2-201, M2-213, M2-103, M2-114** | Review wave. No shared `touches`. 103 and 114 are included because their worktrees are clean and `in-review`. |
-| ship | merge passed tickets into `phase/p1-foundation` | After QA (and SEC where `needs-sec: yes`: M2-114, M2-213). |
-| be | **M2-110** after M2-114 merges | Both touch `cmd/mayank2/`. |
-| be | **M2-105** after M2-103 · **M2-106** after M2-104 | Then **M2-108** after 103+105. |
+| ship | **M2-104 → M2-213 → M2-114 → M2-201** | Merge into `phase/p1-foundation` (one ship at a time). Do **not** push until every remaining P1 ticket is merged. |
+| be | **M2-105** Telegram | Deps met (103 done). `touches: [internal/telegram/]` — no overlap with ship merges. |
+| be | **M2-110** after **M2-114** merges | Both touch `cmd/mayank2/`. |
+| be | **M2-106** after **M2-104** merges | Then **M2-108** after 103+105. |
 
 ## Next
 
-M2-108 scheduler (needs 103+105) · M2-105 Telegram (needs 103) · M2-106 HTTP API (needs 104) ·
-P2 pipeline starts once 111+201+103 are all done (M2-202 Niche Scout).
+M2-108 scheduler (needs 103+105) · finish remaining P1 · push `phase/p1-foundation` when full suite green ·
+then `phase/p2-content` and P2 pipeline (M2-202 Niche Scout once 111+201+103 are all done).
 
 ## Later
 
-P2 pipeline 201→212 · P3 distribution · P4 blog · P5 Builder · P6 revenue lines.
+P2 pipeline 202→212 · P3 distribution · P4 blog · P5 Builder · P6 revenue lines.
+SPEC: write P3+ tickets when P2 reaches M2-210.
 
 ## Mayank must do (long waits first)
 
