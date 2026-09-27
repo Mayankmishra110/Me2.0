@@ -14,6 +14,7 @@ config, `doctor` and SQLite; LLM router; dashboard shell; media-tools TTS/STT; s
 Windows start-at-logon. Batch 2 so far: durable job queue and worker pool (**M2-103**, merged
 `18c7910`). Events log / SSE bus (**M2-104**, merged `e520b9e`). Storage retention + R2
 (**M2-213**, merged `7d0c3fa`). Single-key / Gemini doctor + `llm ask` (**M2-114**, merged `9c0b970`).
+Channel + format config (**M2-201**, merged `3f1293e`).
 
 ## Features in this PR
 | Ticket | Role | Branch | Merge commit | Audit doc | Reviews |
@@ -30,9 +31,12 @@ Windows start-at-logon. Batch 2 so far: durable job queue and worker pool (**M2-
 | M2-104 Events log and SSE broadcaster | be-2 | `m2/M2-104` | `e520b9e` | [M2-104.md](M2-104.md) | QA pass · SEC n/a (`needs-sec: no`) — 2026-09-28 |
 | M2-213 Storage retention and R2 | be-4 | `m2/M2-213` | `7d0c3fa` | [M2-213.md](M2-213.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-114 Run with only the keys you have | ai | `m2/M2-114` | `9c0b970` | [M2-114.md](M2-114.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
+| M2-201 Channel and format config | be-3 | `m2/M2-201` | `3f1293e` | [M2-201.md](M2-201.md) | QA pass · SEC n/a (`needs-sec: no`) — 2026-09-28 |
 
 Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
-merged so far: **M2-103**, **M2-104**, **M2-213**, **M2-114**. Remaining awaiting ship: M2-201.
+merge wave **103 / 104 / 213 / 114 / 201** is on the phase branch. Remaining P1 builds (105, 106, 108,
+110) still in progress or waiting on deps — do not treat the phase branch as the final P1 PR until
+those land or are explicitly deferred. **M2-202** flipped `ready` (deps 111+201+103 done).
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
 task on this laptop, self-detected and removed within the same session; AC power settings were never
