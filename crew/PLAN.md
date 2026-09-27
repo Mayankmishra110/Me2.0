@@ -1,16 +1,15 @@
 ﻿# Plan — owned by lead
 
-Updated: 2026-09-28 · phase/p1-foundation pushed (105 merged; tip may include 106/110)
+Updated: 2026-09-28 · phase/p1-foundation @ c49cebd (origin; includes Merge M2-202)
 
-## Done recently
-M2-105 Telegram merged+pushed (`d7c2558`). M2-108 → ready then claimed.
+## Pushed
+105, 106, 110, **202** (merge 560e002 on origin tip c49cebd). Ship may still finalize M2-202 audit doc.
 
-## Now
+## Building
 | Ticket | State |
 |---|---|
-| M2-108 | in-progress (building) |
-| M2-106 / M2-110 | may be merging via parallel ship |
-| M2-202 | in-review / qa |
+| M2-108 | building (plan 19f7714 + scheduler WIP) |
+| M2-203 | claimed — Research brief |
 
 ## Next
-Finish P1 (108 + any remaining) → phase/p2-content for rest of P2.
+108 → qa → ship+push · 203 → qa → ship · then 204/209 etc.
