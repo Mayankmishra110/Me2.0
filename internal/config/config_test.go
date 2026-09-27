@@ -160,6 +160,16 @@ func TestLoad_table(t *testing.T) {
 			wantErr: "duplicate id",
 		},
 		{
+			name: "ollama base_url not loopback",
+			mutate: func(dir string) {
+				body := strings.Replace(validConfigYAML("channels"),
+					`base_url: "http://127.0.0.1:11434"`,
+					`base_url: "http://example.com:11434"`, 1)
+				writeFile(t, filepath.Join(dir, "config", "config.yaml"), body)
+			},
+			wantErr: "not loopback",
+		},
+		{
 			name: "empty dashboard.listen",
 			mutate: func(dir string) {
 				body := strings.Replace(validConfigYAML("channels"), `listen: ["127.0.0.1:7070"]`, `listen: []`, 1)
@@ -275,6 +285,37 @@ func TestLoadEnvFile_and_RequiredEnvKeys(t *testing.T) {
 	}
 	if config.EnvKeyPresent("BAZ") {
 		t.Fatal("BAZ should be absent")
+	}
+}
+
+func TestRequireLoopbackURL_table(t *testing.T) {
+	tests := []struct {
+		raw     string
+		wantErr string
+	}{
+		{raw: "http://127.0.0.1:11434"},
+		{raw: "http://localhost:11434"},
+		{raw: "http://[::1]:11434"},
+		{raw: "https://127.0.0.1"},
+		{raw: "http://example.com:11434", wantErr: "not loopback"},
+		{raw: "http://192.168.1.1:11434", wantErr: "not loopback"},
+		{raw: "http://10.0.0.1", wantErr: "not loopback"},
+		{raw: "ftp://127.0.0.1:11434", wantErr: "scheme"},
+		{raw: "not a url", wantErr: "scheme"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.raw, func(t *testing.T) {
+			err := config.RequireLoopbackURL(tt.raw)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("want %q, got %v", tt.wantErr, err)
+			}
+		})
 	}
 }
 
