@@ -14,19 +14,16 @@ M2-101, M2-102, M2-107, M2-109, M2-111, M2-206, M2-207, M2-208 are **done**, mer
 M2-109 and M2-207 have now had their independent qa+sec pass too (2026-09-28, `cd5590a`) — both pass, no
 findings. **No open blockers on the P1 batch 1 PR.**
 
-## Now (P1 batch 2 — all `ready`, no overlapping paths)
+## Now (P1 batch 2 — review, then merge)
+
+All five build branches are committed, worktrees clean, status `in-review` on the branch. Main ticket files were still `in-progress`; lead synced them to `in-review` on 2026-09-28.
 
 | Role | Ticket | Why now |
 |---|---|---|
-| be | **M2-103** durable job queue | Critical path: 108 (scheduler), 202 (scout) wait on it |
-| be | **M2-104** events log + SSE | Independent of 103; dashboard needs it next |
-| ai | **M2-114** run with only the keys you have | Direct answer to Mayank's "one free Gemini key should work end to end" |
-| be | **M2-110** DPAPI secrets vault | Needed before any real OAuth (YouTube etc.) |
-| be | **M2-201** channel + format config | Unblocks the P2 content pipeline (202→205) |
-| be | **M2-213** storage retention + R2 | Independent, small |
-| qa | done — M2-109 and M2-207 both pass (2026-09-28) | |
-| sec | done — M2-109 and M2-207 both pass (2026-09-28) | |
-| ship | idle until Mayank opens/merges the P1 PR, then rebase phase-p1 onto main and clean up merged `m2/*` branches | |
+| qa/sec | **M2-104, M2-201, M2-213, M2-103, M2-114** | Review wave. No shared `touches`. 103 and 114 are included because their worktrees are clean and `in-review`. |
+| ship | merge passed tickets into `phase/p1-foundation` | After QA (and SEC where `needs-sec: yes`: M2-114, M2-213). |
+| be | **M2-110** after M2-114 merges | Both touch `cmd/mayank2/`. |
+| be | **M2-105** after M2-103 · **M2-106** after M2-104 | Then **M2-108** after 103+105. |
 
 ## Next
 
