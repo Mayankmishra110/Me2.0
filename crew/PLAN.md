@@ -12,7 +12,7 @@ Updated: 2026-09-28 · **pipeline complete** for tickets M2-210 ? M2-212 on `phas
 
 ## Phase tip
 
-`origin/phase/p1-foundation` @ (see ship commit after this PLAN update)
+`origin/phase/p1-foundation` @ `92a44c8`
 
 ## Next
 
