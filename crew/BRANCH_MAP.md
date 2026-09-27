@@ -37,20 +37,18 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-110 | `m2/M2-110` | DPAPI token vault and OAuth helper | be-3 | `a701d57`, `ea83c08`, `ca751c8`, `dd3a2f7`, `2ce1355` | `880b852` | merged, done, QA+SEC pass |
 | M2-202 | `m2/M2-202` | Niche Scout | ai | `613d633`, `033687a`, `4818e97`, `065c928`, `c530123`, `a1216f8`, `ded5522`, `cbca048`, `7581bb0`, `54f5cde` | `560e002` | merged, done, QA+SEC pass |
 | M2-203 | `m2/M2-203` | Research brief with sources | ai | `b2a03f4`, `3149cf9`, `8006d66` | `1491844` | merged, done, QA+SEC pass |
-| M2-204 | `m2/M2-204` | Script writer (native EN and HI) | ai | � | in-progress |
+| M2-108 | `m2/M2-108` | Scheduler and daily summary | be | `6f5f09d`, `7978deb`, `b14ddf6`, `4411da0`, `9eb9c00` | `a485988` | merged, done, QA+SEC pass |
 
 **Not a ticket branch:** `phase/p1-foundation` itself — one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
 
-## Phase P1 batch 2 (in progress, all branched from `phase/p1-foundation`)
+## Phase P1 batch 2 (complete on phase branch)
 
-Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202 + Research **M2-203**. Remaining P1 build: **M2-108**. **M2-204** flipped `ready` (depends on 203).
+Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Scheduler **M2-108**. P1 foundation tickets on this branch are done. **M2-204** (phase 2) remains `ready` (depends on 203).
 
 ## In progress (branched from `phase/p1-foundation`)
 
-| Ticket | Branch | Feature | Role | Commits so far | State |
-|---|---|---|---|---|---|
-| M2-108 | `m2/M2-108` | Scheduler and daily summary | be | building | in-progress |
+_(none — M2-108 merged `a485988`)_
 
 **Deps unblocked by M2-203:** M2-204 → `ready` on phase (and synced to main).
 
