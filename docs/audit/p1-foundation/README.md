@@ -60,6 +60,7 @@ $ go vet ./...
 $ go test -count=1 ./...
 ok  	mayank2/cmd/mayank2
 ok  	mayank2/internal/config
+ok  	mayank2/internal/content
 ok  	mayank2/internal/db
 ok  	mayank2/internal/llm
 ok  	mayank2/internal/events
@@ -123,9 +124,10 @@ M2-111) is scoped to fix, alongside adding `mayank2 llm ask` for a real one-key 
 
 Tickets flipped to `ready` when batch 1 merged: **M2-103**, **M2-104**, **M2-110**, **M2-114**,
 **M2-201**, **M2-213**. After **M2-103** merged (`18c7910`): **M2-105** (Telegram) → `ready`. After
-**M2-104** merged (`e520b9e`): **M2-106** (HTTP API) → `ready`. Left `todo`: **M2-108** (still needs
-M2-105), **M2-202** (still needs M2-201 + M2-103). **M2-110** stays `ready` but waits for **M2-114**
-merge before claiming (both touch `cmd/mayank2/`).
+**M2-104** merged (`e520b9e`): **M2-106** (HTTP API) → `ready`. After **M2-114** merged (`9c0b970`):
+**M2-110** unblocked for build (`cmd/mayank2` free). After **M2-201** merged (`3f1293e`): **M2-202**
+(Niche Scout) → `ready` (deps M2-111 + M2-201 + M2-103 all done). Left `todo`: **M2-108** (still
+needs M2-105).
 
 ## How to test
 ```
