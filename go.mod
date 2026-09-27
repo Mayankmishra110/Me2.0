@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.47.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.6
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.113.4
+	github.com/robfig/cron/v3 v3.0.1
 	golang.org/x/crypto v0.46.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.48.0
