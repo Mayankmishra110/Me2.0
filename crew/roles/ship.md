@@ -39,6 +39,10 @@ and which aren't yet in SHIP_QUEUE as `merged`.
    (`chore(crew): sync ticket statuses`). `main` is where the next claim's `sed` looks for `status: ready`;
    if it's stale, a claim silently sets an owner without moving the status (seen once, 2026-09-28 — see
    CONTEXT decision log if this recurs and needs a real fix instead of manual discipline).
+   **Update [`../BRANCH_MAP.md`](../BRANCH_MAP.md) in the same commit**: move the ticket's row from
+   "in progress" into the merged table with its real commit list and merge-commit hash
+   (`git log --oneline <merge>^1..<merge>^2`). Every branch you create or merge gets a row — this is what
+   Mayank means by "each commit, each branch mapped to a feature."
 6. **Per-ticket PR (optional):** push the branch (`git push -u origin m2/M2-xxx`). Never push `main`; the pre-push hook blocks it.
    With `gh` installed: `gh pr create --base main --head m2/M2-xxx --title "<ticket title> (M2-xxx)" --body-file <file>`.
    Without `gh`: write the PR body into SHIP_QUEUE with the compare URL and let Mayank click it.
