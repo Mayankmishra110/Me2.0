@@ -31,8 +31,8 @@ P2 pipeline 201→212 · P3 distribution · P4 blog · P5 Builder · P6 revenue 
 1. **YouTube API audit + quota increase.** Weeks of waiting. Start now (CONTEXT §6). Until approved, uploads stay private.
 2. Meta app (Instagram Professional + Page), X developer, Pinterest, LinkedIn apps.
 3. Answer CONTEXT §5 open questions (Builder repo list, channel names, Hindi voice).
-4. Upgrade Go to 1.24+ (`winget upgrade GoLang.Go`). Install `gh` (`winget install GitHub.cli`) so ship can open PRs.
-5. Decide: should the GitHub repo `Mayankmishra110/Me2` stay **public**? (See Risks.)
+4. ~~Upgrade Go, install gh~~ done 2026-09-28 (Go 1.27.0 in Program Files; gh 2.101.0). Still to do: `gh auth login`; Git Bash still resolves Go 1.23.4 via ~/.bashrc.
+5. Decide: should the GitHub repo `Mayankmishra110/Me2.0` stay **public**? (See Risks.)
 
 ## Product suggestions (not decided; Mayank to confirm)
 
