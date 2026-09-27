@@ -51,7 +51,7 @@ func (b *Bot) cmdHelp(ctx context.Context, chatID int64) error {
 /status — health snapshot
 /today — published vs target today
 /queue — pending approvals
-/pause <all|heavy|light|net|agent>
+/pause <all|heavy|light|net|agent> — asks for PIN
 /resume <all|heavy|light|net|agent> — asks for PIN
 /topic <text or URL> [channel]
 /blog <topic>
@@ -123,17 +123,16 @@ SELECT id, kind, summary FROM approvals WHERE status='pending' ORDER BY id LIMIT
 }
 
 func (b *Bot) cmdPause(ctx context.Context, chatID int64, args []string) error {
-	target := "all"
-	if len(args) > 0 {
-		target = strings.ToLower(args[0])
-	}
-	if err := b.applyPause(ctx, target, true); err != nil {
-		return b.reply(ctx, chatID, err.Error())
-	}
-	return b.reply(ctx, chatID, "Paused: "+target)
+	return b.beginPINGate(ctx, chatID, "pause", args)
 }
 
 func (b *Bot) cmdResume(ctx context.Context, chatID int64, args []string) error {
+	return b.beginPINGate(ctx, chatID, "resume", args)
+}
+
+// beginPINGate validates the target then prompts for PIN before applying
+// pause/resume (ARCHITECTURE §7: bulk actions need a PIN).
+func (b *Bot) beginPINGate(ctx context.Context, chatID int64, op string, args []string) error {
 	target := "all"
 	if len(args) > 0 {
 		target = strings.ToLower(args[0])
@@ -142,9 +141,9 @@ func (b *Bot) cmdResume(ctx context.Context, chatID int64, args []string) error 
 		return b.reply(ctx, chatID, err.Error())
 	}
 	b.mu.Lock()
-	b.awaitingPIN[chatID] = target
+	b.awaitingPIN[chatID] = op + ":" + target
 	b.mu.Unlock()
-	return b.reply(ctx, chatID, "Enter PIN to resume "+target+":")
+	return b.reply(ctx, chatID, "Enter PIN to "+op+" "+target+":")
 }
 
 func (b *Bot) applyPause(ctx context.Context, target string, pause bool) error {

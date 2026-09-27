@@ -5,9 +5,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -109,11 +111,12 @@ func newTestBot(t *testing.T, sqlDB *sql.DB, api *fakeAPI) (*Bot, *queue.Queue) 
 	t.Cleanup(srv.Close)
 	q := queue.New(sqlDB, queue.WithWorkerName("tg-test"))
 	bot, err := New(Config{
-		Token:  testToken,
-		UserID: testUserID,
-		ChatID: testChatID,
-		DB:     sqlDB,
-		Queue:  q,
+		Token:    testToken,
+		UserID:   testUserID,
+		ChatID:   testChatID,
+		DataRoot: t.TempDir(),
+		DB:       sqlDB,
+		Queue:    q,
 		ClientOpts: []ClientOption{
 			WithBaseURL(srv.URL),
 			WithHTTPClient(srv.Client()),
@@ -520,26 +523,162 @@ func TestNoShellFromCommands(t *testing.T) {
 	}
 }
 
-func TestPauseAll(t *testing.T) {
+func TestPINRequiredForPause(t *testing.T) {
 	sqlDB := testDB(t)
 	api := &fakeAPI{}
 	bot, _ := newTestBot(t, sqlDB, api)
 
-	if err := bot.HandleUpdate(context.Background(), Update{
-		UpdateID: 50,
-		Message: &Message{
-			MessageID: 1,
-			From:      &User{ID: testUserID},
-			Chat:      Chat{ID: testChatID},
-			Text:      "/pause all",
-		},
-	}); err != nil {
-		t.Fatalf("pause: %v", err)
+	hash, err := HashPIN("1357")
+	if err != nil {
+		t.Fatalf("HashPIN: %v", err)
 	}
-	var v string
-	_ = sqlDB.QueryRow(`SELECT value FROM settings WHERE key='pause:all'`).Scan(&v)
-	if v != "1" {
-		t.Fatalf("expected pause:all=1, got %q", v)
+	if err := bot.SetPINHash(context.Background(), hash); err != nil {
+		t.Fatalf("SetPINHash: %v", err)
+	}
+
+	send := func(text string) {
+		t.Helper()
+		if err := bot.HandleUpdate(context.Background(), Update{
+			UpdateID: time.Now().UnixNano(),
+			Message: &Message{
+				MessageID: time.Now().UnixNano(),
+				From:      &User{ID: testUserID},
+				Chat:      Chat{ID: testChatID},
+				Text:      text,
+			},
+		}); err != nil {
+			t.Fatalf("send %q: %v", text, err)
+		}
+	}
+
+	send("/pause all")
+	api.mu.Lock()
+	last := ""
+	if len(api.messages) > 0 {
+		last = msgText(api.messages[len(api.messages)-1])
+	}
+	api.mu.Unlock()
+	if !strings.Contains(last, "Enter PIN to pause") {
+		t.Fatalf("expected pause PIN prompt, got %q", last)
+	}
+
+	// Wrong PIN must leave the queue running (no pause:all=1).
+	send("0000")
+	var pauseVal string
+	err = sqlDB.QueryRow(`SELECT value FROM settings WHERE key='pause:all'`).Scan(&pauseVal)
+	if err == nil && pauseVal == "1" {
+		t.Fatalf("wrong PIN must not pause; pause:all=%q", pauseVal)
+	}
+	if err != nil && err != sql.ErrNoRows {
+		// no row = still running — ok
+		t.Fatalf("read pause: %v", err)
+	}
+
+	send("/pause all")
+	send("1357")
+	if err := sqlDB.QueryRow(`SELECT value FROM settings WHERE key='pause:all'`).Scan(&pauseVal); err != nil {
+		t.Fatalf("read pause after good PIN: %v", err)
+	}
+	if pauseVal != "1" {
+		t.Fatalf("correct PIN should pause, got %q", pauseVal)
+	}
+}
+
+func TestTokenRedactedInTransportErrors(t *testing.T) {
+	const token = "123456:SECRET-BOT-TOKEN-xyz"
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		// Mimic net/http embedding the full URL (token in path) in the error.
+		return nil, fmt.Errorf("Get %q: connection refused", req.URL.String())
+	})
+	cl := NewClient(token, WithHTTPClient(&http.Client{Transport: transport}))
+	_, err := cl.GetUpdates(context.Background(), 0, 0)
+	if err == nil {
+		t.Fatal("expected transport error")
+	}
+	msg := err.Error()
+	if strings.Contains(msg, token) {
+		t.Fatalf("error leaked bot token: %q", msg)
+	}
+	if !strings.Contains(msg, "[REDACTED]") {
+		t.Fatalf("expected [REDACTED] placeholder, got %q", msg)
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestPreviewPathOutsideDataRootFallsBackToText(t *testing.T) {
+	sqlDB := testDB(t)
+	api := &fakeAPI{}
+	dataRoot := t.TempDir()
+	srv := httptest.NewServer(api.handler(t))
+	t.Cleanup(srv.Close)
+	q := queue.New(sqlDB, queue.WithWorkerName("tg-test"))
+	bot, err := New(Config{
+		Token:    testToken,
+		UserID:   testUserID,
+		ChatID:   testChatID,
+		DataRoot: dataRoot,
+		DB:       sqlDB,
+		Queue:    q,
+		ClientOpts: []ClientOption{
+			WithBaseURL(srv.URL),
+			WithHTTPClient(srv.Client()),
+		},
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	bot.RegisterHandlers(q)
+
+	// File exists but outside dataRoot — must not be uploaded.
+	outside := filepath.Join(t.TempDir(), "escape.png")
+	if err := os.WriteFile(outside, []byte("fake-png"), 0o644); err != nil {
+		t.Fatalf("write outside: %v", err)
+	}
+	seedChannel(t, sqlDB, "yt-ai-en")
+	seedContent(t, sqlDB, "c-esc", "yt-ai-en")
+	_, err = sqlDB.Exec(`
+INSERT INTO approvals (id, content_id, kind, summary, preview_path, status, nonce)
+VALUES ('a-esc', 'c-esc', 'short', 'Outside preview', ?, 'pending', 'n-esc')`, outside)
+	if err != nil {
+		t.Fatalf("seed approval: %v", err)
+	}
+
+	_, err = bot.handleApprovalRequest(context.Background(), queue.Job{
+		ID:      "j-esc",
+		Type:    "approval.request",
+		Payload: json.RawMessage(`{"approval_id":"a-esc"}`),
+	})
+	if err != nil {
+		t.Fatalf("handleApprovalRequest: %v", err)
+	}
+	api.mu.Lock()
+	defer api.mu.Unlock()
+	if len(api.messages) != 1 {
+		t.Fatalf("want 1 text sendMessage, got %d", len(api.messages))
+	}
+	// sendPhoto would be a different method; fakeAPI only records sendMessage in messages.
+	if msgText(api.messages[0]) != "Outside preview" {
+		t.Fatalf("want text fallback caption, got %q", msgText(api.messages[0]))
+	}
+}
+
+func TestConfineUnderRootRejectsTraversal(t *testing.T) {
+	root := t.TempDir()
+	if err := confineUnderRoot(root, filepath.Join(root, "..", "outside.png")); err == nil {
+		t.Fatal("expected rejection for .. escape")
+	}
+	if err := confineUnderRoot("", filepath.Join(root, "ok.png")); err == nil {
+		t.Fatal("expected rejection when data root empty")
+	}
+	inside := filepath.Join(root, "ok.png")
+	if err := os.WriteFile(inside, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := confineUnderRoot(root, inside); err != nil {
+		t.Fatalf("inside path should be allowed: %v", err)
 	}
 }
 

@@ -57,10 +57,12 @@ func (b *Bot) handleApprovalRequest(ctx context.Context, job queue.Job) (json.Ra
 	if row.PreviewPath.Valid {
 		preview = row.PreviewPath.String
 	}
+	// Only upload previews that exist and stay under dataRoot (fall back to text).
+	usePreview := preview != "" && fileExists(preview) && underDataRoot(b.dataRoot, preview)
 	switch {
-	case preview != "" && fileExists(preview) && isVideo(preview):
+	case usePreview && isVideo(preview):
 		msgID, err = b.client.SendVideo(ctx, b.chatID, preview, caption, markup)
-	case preview != "" && fileExists(preview) && isImage(preview):
+	case usePreview && isImage(preview):
 		msgID, err = b.client.SendPhoto(ctx, b.chatID, preview, caption, markup)
 	default:
 		msgID, err = b.client.SendMessage(ctx, b.chatID, caption, markup)
@@ -299,6 +301,47 @@ func parseCallback(data string) (action, id, nonce string, ok bool) {
 func fileExists(path string) bool {
 	st, err := os.Stat(path)
 	return err == nil && !st.IsDir()
+}
+
+// underDataRoot reports whether path resolves inside root (config data_dir).
+func underDataRoot(root, path string) bool {
+	return confineUnderRoot(root, path) == nil
+}
+
+// confineUnderRoot refuses empty roots and any path that escapes root
+// (including via .. or symlink-equivalent absolute paths outside).
+func confineUnderRoot(root, path string) error {
+	if strings.TrimSpace(root) == "" {
+		return fmt.Errorf("data root not configured; refusing file upload")
+	}
+	if strings.TrimSpace(path) == "" {
+		return fmt.Errorf("empty preview path")
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("resolve data root: %w", err)
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("resolve preview path: %w", err)
+	}
+	// EvalSymlinks so a symlink under data/ pointing outside is caught.
+	if resolved, err := filepath.EvalSymlinks(absRoot); err == nil {
+		absRoot = resolved
+	}
+	// File may not exist yet for the root check on the parent; EvalSymlinks
+	// on the file itself fails if missing — fall back to cleaned abs path.
+	if resolved, err := filepath.EvalSymlinks(absPath); err == nil {
+		absPath = resolved
+	}
+	rel, err := filepath.Rel(absRoot, absPath)
+	if err != nil {
+		return fmt.Errorf("preview path not under data root")
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("preview path %s escapes data root", filepath.Base(path))
+	}
+	return nil
 }
 
 func isVideo(path string) bool {
