@@ -29,6 +29,7 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | — | — | Clear review blocker in audit docs | lead | `f1ed852` | (direct to phase branch) | housekeeping, not a ticket |
 | M2-103 | `m2/M2-103` | Durable job queue and worker pool | be | `55c4c53`, `41108ee`, `d547f6b`, `3aaa20d`, `5e87c8a`, `7240e91`, `ee8876e`, `9eb1800`, `82df3c6` | `18c7910` | merged, done |
 | M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | `370ea1d`, `daeaa1b`, `1f5517a`, `d314dd0`, `fe93dd4`, `5403142` | `e520b9e` | merged, done |
+| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `51bb8e3`, `b0002d2`, `580f837`, `6627e86`, `8bcd623`, `3def108`, `13bc7b2` | `7d0c3fa` | merged, done |
 
 **Not a ticket branch:** `phase/p1-foundation` itself — one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -37,12 +38,14 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 
 | Ticket | Branch | Feature | Role | Commits so far | State |
 |---|---|---|---|---|---|
-| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | `5c0c958`, `033b33e`, `c361776`, `6525b28`, `f4d213a` | in-review, awaiting ship |
-| M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` | in-review, awaiting ship |
-| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `540e194`, `b52b5c0`, `0bba43e`, `d14a96e`, `e0971c2`, `1291cd7` | in-review, awaiting ship (needs-sec: yes) |
+| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | `5c0c958`, `033b33e`, `c361776`, `6525b28`, `f4d213a`, `5d126ae` | QA pass · SEC pass · awaiting ship |
+| M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` (+ uncommitted QA) | QA pass · SEC n/a · awaiting ship |
 
-Update this table's "Commits so far" / "State" as each finishes; move the row up into a new "P1 batch 2"
-section under Phase P1 Foundation once merged, same format as batch 1.
+## In progress (branched from `phase/p1-foundation`)
+
+| Ticket | Branch | Feature | Role | Commits so far | State |
+|---|---|---|---|---|---|
+| M2-105 | `m2/M2-105` | Telegram bot: allowlist, commands, approvals, PIN | be | — | in-progress |
 
 ## How to regenerate/verify this file
 
