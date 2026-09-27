@@ -1,0 +1,12 @@
+---
+description: Go daemon conventions
+globs: ["**/*.go", "migrations/**"]
+alwaysApply: false
+---
+- Go 1.24+, packages under `internal/`, entrypoint `cmd/mayank2`.
+- `ctx context.Context` is the first parameter of anything that does I/O; wrap errors with `%w`; log with `log/slog`.
+- SQLite via `modernc.org/sqlite`; migrations are append-only `migrations/NNN_name.sql`.
+- Queue handlers are idempotent; return `queue.Permanent(err)` for errors that must not retry.
+- Publishers must check `publications.idempotency_key` before calling a platform.
+- External tools: `exec.CommandContext` with fixed args and a timeout; JSON in/out files per `docs/ARCHITECTURE.md` §2.
+- Table-driven tests in `_test.go` next to the code; no network in unit tests (use `httptest`).

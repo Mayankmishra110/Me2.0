@@ -1,0 +1,10 @@
+id: yt-money-hi
+platform: youtube
+handle: TBD
+language: hi
+niche: money_side_hustles
+brand: { primary: "#F59E0B", secondary: "#111827", font_heading: "Poppins", font_body: "Noto Sans Devanagari", caption_style: block }
+voice: { engine: kokoro, voice_id: TBD, speed: 1.0 }
+formats: [explained_60s, myth_vs_fact, top_n, case_study, mistakes_to_avoid, how_to]
+windows: { tz: Asia/Kolkata, slots: ["18:30", "21:00"] }
+disclaimer: "यह केवल शैक्षिक जानकारी है, निवेश सलाह नहीं।"

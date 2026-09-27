@@ -1,0 +1,11 @@
+---
+description: Content pipeline, compliance, media tools, Remotion
+globs: ["internal/content/**", "internal/compliance/**", "internal/publish/**", "media-tools/**", "remotion/**", "config/channels/**"]
+alwaysApply: false
+---
+- Follow `docs/COMPLIANCE.md` exactly: allowed inputs, gates G1–G7 and F1–F7, cadence caps, disclosures.
+- Other creators' videos are research input only — never download or reuse their footage/audio.
+- Every stock asset stores its license URL; music only from licensed sources.
+- Hindi scripts are written natively, not translated word-for-word.
+- Formats and brand kits come from config (`config/channels/*.yaml`), not hard-coded.
+- Finance content is educational only: no tips, buy/sell calls, or return promises; include the disclaimer.

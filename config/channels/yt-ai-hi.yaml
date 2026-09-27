@@ -1,0 +1,10 @@
+id: yt-ai-hi
+platform: youtube
+handle: TBD
+language: hi
+niche: ai_tools_tech
+brand: { primary: "#A78BFA", secondary: "#0F0A1F", font_heading: "Poppins", font_body: "Noto Sans Devanagari", caption_style: karaoke }
+voice: { engine: kokoro, voice_id: TBD, speed: 1.0 }
+formats: [explained_60s, myth_vs_fact, top_n, comparison, how_to, news_breakdown]
+windows: { tz: Asia/Kolkata, slots: ["19:00", "21:30"] }
+disclaimer: null

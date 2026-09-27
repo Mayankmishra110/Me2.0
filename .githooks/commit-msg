@@ -1,0 +1,15 @@
+#!/bin/sh
+# Enforces CLAUDE.md commit format: type(M2-xxx): summary
+# Non-ticket scopes: crew (crew/ bookkeeping), docs (doc-only), repo (repo tooling).
+msg=$(head -n 1 "$1")
+case "$msg" in
+Merge\ * | Revert\ * | fixup!\ * | squash!\ *) exit 0 ;;
+esac
+if printf '%s' "$msg" | grep -Eq '^(feat|fix|chore|docs|test|refactor)\((M2-[0-9]{3}|crew|docs|repo)\): .+'; then
+	exit 0
+fi
+echo "commit-msg: expected 'type(M2-xxx): summary'"
+echo "  types: feat fix chore docs test refactor"
+echo "  scope: a ticket id (M2-101) or crew | docs | repo"
+echo "  got:   $msg"
+exit 1

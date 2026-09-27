@@ -1,0 +1,77 @@
+#!/bin/sh
+# Mayank 2.0 pre-commit: blocks secrets and forbidden paths, then runs the SPEC §7
+# checks for the parts of the repo that changed. Enable once per clone:
+#   git config core.hooksPath .githooks
+# Run by hand over everything:  sh .githooks/pre-commit --all
+set -u
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+if [ "${1:-}" = "--all" ]; then
+	files=$(git ls-files)
+	diff_added=""
+else
+	files=$(git diff --cached --name-only --diff-filter=ACMR)
+	diff_added=$(git diff --cached -U0 --diff-filter=ACMR -- . ':(exclude).githooks/*' | grep '^+' | grep -v '^+++')
+fi
+
+fail=0
+step() { printf '\n== %s\n' "$1"; }
+bad() { printf 'FAIL: %s\n' "$1"; fail=1; }
+changed() { printf '%s\n' "$files" | grep -Eq "$1"; }
+
+# 1. Paths that must never be committed.
+step "forbidden paths"
+blocked=$(printf '%s\n' "$files" | grep -E '^(\.env$|\.env\.|config/config\.yaml$|data/)' | grep -v '^\.env\.example$')
+if [ -n "$blocked" ]; then bad "never commit these: $(echo $blocked)"; else echo ok; fi
+
+# 2. Token-shaped strings (patterns maintained by the sec role).
+step "secret scan"
+secret_re='sk-ant-[A-Za-z0-9_-]{20,}|sk-or-v1-[A-Za-z0-9]{20,}|gsk_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{40,}|AIza[0-9A-Za-z_-]{35}|AKIA[0-9A-Z]{16}|xox[abprs]-[A-Za-z0-9-]{10,}|[0-9]{8,10}:AA[0-9A-Za-z_-]{33}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+if [ "${1:-}" = "--all" ]; then
+	hits=$(git ls-files -z -- . ':(exclude).githooks/*' | xargs -0 grep -EnI "$secret_re" 2>/dev/null)
+else
+	hits=$(printf '%s\n' "$diff_added" | grep -En "$secret_re")
+fi
+if [ -n "$hits" ]; then bad "token-shaped strings found (move them to .env):"; printf '%s\n' "$hits" | cut -c1-120; else echo ok; fi
+
+# 3. Go: gofmt, vet, tests.
+if changed '(\.go$|^go\.(mod|sum)$|^migrations/)' && [ -f go.mod ]; then
+	step "gofmt"
+	unformatted=$(gofmt -l $(printf '%s\n' "$files" | grep '\.go$' | while read -r f; do [ -f "$f" ] && echo "$f"; done) 2>&1)
+	if [ -n "$unformatted" ]; then bad "run gofmt -w on: $(echo $unformatted)"; else echo ok; fi
+	step "go vet"
+	go vet ./... || bad "go vet"
+	step "go test"
+	go test -short ./... || bad "go test"
+fi
+
+# 4. Node projects: prettier, eslint, tsc, tests (scripts are optional until the project defines them).
+for dir in web remotion; do
+	if changed "^$dir/" && [ -f "$dir/package.json" ]; then
+		if [ ! -d "$dir/node_modules" ]; then bad "$dir: run npm install first"; continue; fi
+		for script in format:check lint typecheck test; do
+			step "$dir: npm run $script"
+			npm --prefix "$dir" run --if-present --silent "$script" || bad "$dir $script"
+		done
+	fi
+done
+
+# 5. Python media-tools: ruff + pytest.
+if changed '^media-tools/' && [ -f media-tools/pyproject.toml ]; then
+	if command -v uv >/dev/null 2>&1; then
+		step "media-tools: ruff"
+		(cd media-tools && uv run ruff check .) || bad "ruff"
+		step "media-tools: pytest"
+		(cd media-tools && uv run pytest -q) || bad "pytest"
+	else
+		bad "media-tools changed but uv is not installed"
+	fi
+fi
+
+if [ "$fail" -ne 0 ]; then
+	printf '\npre-commit: FAILED. Fix the items above (do not use --no-verify).\n'
+	exit 1
+fi
+printf '\npre-commit: all checks passed\n'

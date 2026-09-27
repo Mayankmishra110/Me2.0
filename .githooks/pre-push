@@ -1,0 +1,11 @@
+#!/bin/sh
+# Blocks pushes to main (CLAUDE.md: agents never push to main).
+# Mayank can override for a push he makes himself:  MAYANK_PUSH_MAIN=1 git push origin main
+while read -r local_ref local_sha remote_ref remote_sha; do
+	if [ "$remote_ref" = "refs/heads/main" ] && [ "${MAYANK_PUSH_MAIN:-}" != "1" ]; then
+		echo "pre-push: pushing to main is blocked. Push m2/<ticket> and open a PR."
+		echo "          (Mayank only: MAYANK_PUSH_MAIN=1 git push origin main)"
+		exit 1
+	fi
+done
+exit 0

@@ -1,0 +1,15 @@
+/data/
+/bin/
+/config/config.yaml
+.env
+.env.*
+!.env.example
+node_modules/
+web/dist/
+remotion/out/
+media-tools/.venv/
+__pycache__/
+*.log
+
+# crew role memory (local, per laptop)
+/crew/state/

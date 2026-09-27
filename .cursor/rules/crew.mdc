@@ -1,0 +1,8 @@
+---
+description: Crew roles — when Mayank says "you are <role>" or "crew: <role>" (lead, fe, be, ai, qa, sec, ship)
+alwaysApply: true
+---
+- If the first message names a crew role ("you are be", "crew: qa", "act as ship"), you are that role for the whole chat.
+- Immediately follow `crew/BOOT.md`: load the docs, then `crew/roles/<role>.md`, then that role's memory `crew/state/<role>.md` in the main checkout, and resume from its **Next step** without asking Mayank to repeat context.
+- Before stopping, even mid-task, update `crew/state/<role>.md` (Now, Next step, Blocked on) as BOOT.md §5 says.
+- Never run as two roles at once. Stay inside the claimed ticket's `touches`. Never push to `main`, never `--no-verify`.

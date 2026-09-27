@@ -1,0 +1,45 @@
+# Copy to config/config.yaml (gitignored). Secrets go in .env, not here.
+data_dir: ../data
+timezone: Asia/Kolkata          # Mayank's time zone for summaries
+
+queue:
+  heavy_workers: 1              # render, TTS, STT, local LLM (16 GB RAM)
+  light_workers: 4
+  net_workers: 2
+  heavy_window: "00:00-08:00"   # preferred render window (IST); heavy jobs still run outside it if the queue is idle
+
+telegram:
+  daily_summary_at: "22:30"
+
+dashboard:
+  listen: ["127.0.0.1:7070", "tailscale:7070"]   # "tailscale" resolves to this machine's tailnet IP
+
+llm:
+  providers:
+    ollama:     { kind: ollama, base_url: "http://127.0.0.1:11434", model: "TBD-8b-instruct-q4", embed_model: "nomic-embed-text" }
+    groq:       { kind: openai_compat, base_url: "https://api.groq.com/openai/v1", key_env: GROQ_API_KEY, model: "TBD" }
+    cerebras:   { kind: openai_compat, base_url: "https://api.cerebras.ai/v1", key_env: CEREBRAS_API_KEY, model: "TBD" }
+    openrouter: { kind: openai_compat, base_url: "https://openrouter.ai/api/v1", key_env: OPENROUTER_API_KEY, model: "TBD:free" }
+    gemini:     { kind: openai_compat, base_url: "https://generativelanguage.googleapis.com/v1beta/openai", key_env: GEMINI_API_KEY, model: "TBD" }
+    claude:     { kind: claude_cli, bin: "claude" }
+  routes:
+    research:          [groq, cerebras, openrouter, gemini, ollama]
+    script:            [groq, cerebras, openrouter, gemini, ollama]
+    metadata:          [ollama, groq]
+    classify:          [ollama, groq]
+    translate_cleanup: [ollama, gemini]
+    blog:              [claude]
+
+content:
+  channels_dir: channels        # config/channels/*.yaml
+  ramp_up: true                 # COMPLIANCE.md §4
+  retention_days: 7
+
+builder:
+  enabled: false                # turned on in P5
+  implementer_model: claude-opus-5-5
+  auditor_model: claude-sonnet-5
+  max_fix_attempts: 3
+  run_timeout: 60m
+  limit_pause: 30m
+  repos: []                     # filled once Mayank answers CONTEXT.md open question 1

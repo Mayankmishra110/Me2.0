@@ -1,0 +1,10 @@
+---
+description: Dashboard (React) conventions
+globs: ["web/**"]
+alwaysApply: false
+---
+- React 19 + Vite + TypeScript strict; Tailwind + shadcn/ui; TanStack Query for server state; React Router.
+- Mobile-first: bottom tab bar ≤ 640px, touch targets ≥ 44px, no horizontal scroll.
+- Colors only from the tokens in `docs/DESIGN.md` §1.3; status always has icon + label, never color alone.
+- API contract is `docs/SPEC.md` §4; live updates via SSE `/api/events/stream`.
+- Tests with Vitest + Testing Library; e2e with Playwright.

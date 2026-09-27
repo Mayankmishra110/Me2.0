@@ -1,0 +1,10 @@
+id: yt-money-en
+platform: youtube
+handle: TBD
+language: en
+niche: money_side_hustles
+brand: { primary: "#16A34A", secondary: "#0B1220", font_heading: "Montserrat", font_body: "Inter", caption_style: word-highlight }
+voice: { engine: kokoro, voice_id: TBD, speed: 1.0 }
+formats: [explained_60s, myth_vs_fact, top_n, case_study, comparison, mistakes_to_avoid, how_to]
+windows: { tz: America/New_York, slots: ["12:30", "19:30"] }
+disclaimer: "Educational content only, not financial advice."

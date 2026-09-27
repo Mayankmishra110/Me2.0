@@ -1,0 +1,10 @@
+---
+description: Mayank 2.0 project rules for every file
+alwaysApply: true
+---
+- Read `docs/CONTEXT.md` first; follow `CLAUDE.md` (same rules apply in Cursor).
+- Work from one ticket in `tickets/`, claimed per `docs/SPEC.md` §2. Only edit the ticket's `touches` paths.
+- Official platform APIs only; nothing publishes without an approved `approvals` row; never weaken compliance gates (`docs/COMPLIANCE.md`).
+- Content agents never call Claude; they go through `internal/llm`.
+- Secrets only in `.env` / DPAPI vault; never log tokens.
+- Heavy work (render, TTS, STT, local LLM) uses the `heavy` queue resource class (16 GB RAM laptop).

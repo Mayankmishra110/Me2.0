@@ -1,0 +1,10 @@
+id: yt-ai-en
+platform: youtube
+handle: TBD
+language: en
+niche: ai_tools_tech
+brand: { primary: "#22D3EE", secondary: "#0F172A", font_heading: "Montserrat", font_body: "Inter", caption_style: word-highlight }
+voice: { engine: kokoro, voice_id: TBD, speed: 1.05 }
+formats: [explained_60s, myth_vs_fact, top_n, comparison, how_to, news_breakdown, timeline]
+windows: { tz: America/New_York, slots: ["12:00", "19:00"] }
+disclaimer: null
