@@ -3,12 +3,13 @@
 Which branches need a PR, where each one stands, and the PR text. Newest at the top.
 Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://github.com/Mayankmishra110/Me2.0/compare/main...<branch>`
 
-**Merge order (when push allowed):** merge **M2-101 first** (critical path / foundation for later Go tickets). **M2-206**, **M2-107**, and **M2-208** do not depend on each other or on M2-101 — open in any order; prefer landing 101 before other Go work that touches `internal/config` / `cmd/mayank2`.
+**Merge order (when push allowed):** merge **M2-101 first**, then **M2-102** (102’s branch still carries rebased M2-101 commits until 101 lands). **M2-206**, **M2-107**, and **M2-208** do not depend on each other or on M2-101 — open in any order; prefer landing 101 before other Go work that touches `internal/config` / `cmd/mayank2`.
 
 **Push held:** do not `git push` / `gh pr create` until Mayank decides whether `Mayankmishra110/Me2.0` stays public. Remote verified: `https://github.com/Mayankmishra110/Me2.0.git`
 
 | Ticket | Branch | QA | SEC | Rebased on main | Checks | PR | State |
 |---|---|---|---|---|---|---|---|
+| M2-102 | m2/M2-102 | pass | n/a | yes → `cd68e03` on main `9e32c62` (includes rewritten M2-101 commits; ticket conflict resolved) | gofmt clean; vet pass; db/cmd packages pass; `go test ./...` FAIL: UTF-8 BOM on `tickets/M2-111.md` (main; hands-off) | held — public-repo decision | ready-for-pr |
 | M2-208 | m2/M2-208 | pass | n/a | yes → `4c95713` on main `b7b5f5c` | remotion lint/typecheck/format/test/build pass (no full mp4 re-render) | held — public-repo decision | ready-for-pr |
 | M2-101 | m2/M2-101 | pass | pass | yes → `75397aa` on main `bd8f6d8` | go vet + go test pass; gofmt -l lists CRLF-only (autocrlf; content clean — no commit) | held — public-repo decision | ready-for-pr |
 | M2-107 | m2/M2-107 | pass | n/a | yes → `96c5b4d` on main `bd8f6d8` | lint/typecheck/test/build pass; format:check fails on CRLF (autocrlf; ignore-cr clean — no commit) | held — public-repo decision | ready-for-pr |
@@ -36,6 +37,70 @@ Branch: m2/M2-xxx · Compare: https://github.com/Mayankmishra110/Me2.0/compare/m
 -->
 
 ## PR bodies
+
+### M2-102 — SQLite open, embedded migrations, initial schema
+Branch: `m2/M2-102` @ `cd68e03` (rebased; was `12c2ee9`) · Worktree: `data/worktrees/m2-102` · Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...m2/M2-102  
+**Push held** · **Depends on M2-101** (`depends: [M2-101]`). Branch still includes full rebased M2-101 commit stack (hashes rewritten) because main does not contain M2-101 yet. **Merge M2-101 before or with this**, not after later Go tickets.
+
+**Goal** `internal/db` opens SQLite in WAL mode and applies embedded, append-only migrations for the full ARCHITECTURE §4 schema; `mayank2 migrate` is idempotent.
+
+**Acceptance**
+- [x] `modernc.org/sqlite`; WAL, `busy_timeout=5000`, `foreign_keys=ON`.
+- [x] `migrations/001_init.sql` creates §4 tables + required indexes / UNIQUE idempotency_key.
+- [x] `schema_migrations`; migrate idempotent.
+- [x] Tests on temp DB assert tables exist.
+
+**Checks** (real output, worktree `data/worktrees/m2-102`, 2026-09-28)
+
+```
+gofmt -l ./cmd/mayank2 ./internal/db
+(no output)
+GOFMT_EXIT=0
+
+go vet ./...
+VET_EXIT=0
+
+go test ./cmd/mayank2 ./internal/config ./internal/db ./migrations -count=1
+ok  	mayank2/cmd/mayank2	0.348s
+ok  	mayank2/internal/config	0.215s
+ok  	mayank2/internal/db	0.328s
+?   	mayank2/migrations	[no test files]
+PKG_TEST=0
+
+go test ./... -count=1
+ok  	mayank2/cmd/mayank2
+ok  	mayank2/internal/config
+ok  	mayank2/internal/db
+--- FAIL: TestRepoTicketsParse (0.01s)
+    tickets_test.go:86: ..\..\tickets\M2-111.md: no frontmatter
+FAIL	mayank2/internal/tickets
+FAIL
+ALL_TEST=1
+```
+
+**Root cause (not M2-102):** `tickets/M2-111.md` on main starts with UTF-8 BOM `EF BB BF`, so `splitFrontmatter` rejects it. File is outside M2-102 `touches` and m2-111 worktree is hands-off — ship did not strip the BOM. Fix on main or via crew-ai/m2-111, then re-run `go test ./...`.
+
+**Rebase notes:** `git rebase main` replayed 13 commits. Conflict in `tickets/M2-102.md` at handoff commit — kept `status: in-review` + Notes from incoming. Schema/feat commits for 101+102 present after rebase.
+
+**Review** QA: pass — 2026-09-28 — WAL sqlite + 001_init §4; migrate idempotent; needs-sec unset · SEC: n/a
+
+**Risks / follow-ups**
+- Until M2-101 merges, this PR contains duplicate M2-101 history (expected). Merge 101 first to shrink the diff, or merge 101 then rebase 102.
+- Unblock `TestRepoTicketsParse` by removing BOM from `tickets/M2-111.md`.
+
+**How to test**
+1. `cd data/worktrees/m2-102`
+2. `go test ./internal/db ./cmd/mayank2`
+3. `go run ./cmd/mayank2 migrate -db <temp.db>` twice (apply then already up to date).
+
+**Open PR (after push allowed):**
+```
+git -C data/worktrees/m2-102 push -u origin m2/M2-102
+gh pr create --repo Mayankmishra110/Me2.0 --base main --head m2/M2-102 --title "SQLite open, embedded migrations, initial schema (M2-102)"
+```
+(Paste this PR body section into `--body`. Prefer merging M2-101 first.)
+
+---
 
 ### M2-208 — Remotion compositions: explained_60s, myth_vs_fact, top_n
 Branch: `m2/M2-208` @ `4c95713` (rebased; was `b978271`) · Worktree: `data/worktrees/m2-208` · Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...m2/M2-208  
