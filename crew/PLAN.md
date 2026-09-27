@@ -1,15 +1,16 @@
 ﻿# Plan — owned by lead
 
-Updated: 2026-09-28 · phase/p1-foundation @ 6ebe4c2
+Updated: 2026-09-28 · phase/p1-foundation pushed (105 merged; tip may include 106/110)
+
+## Done recently
+M2-105 Telegram merged+pushed (`d7c2558`). M2-108 → ready then claimed.
 
 ## Now
-| Ticket | State | Action |
-|---|---|---|
-| M2-105 | in-progress (SEC fixes dirty; be finishing) | be agent |
-| M2-106 | in-review no QA | qa/sec |
-| M2-110 | in-review no QA | qa/sec |
-| M2-202 | in-review no QA | qa/sec |
-| M2-108 | todo | after 105 merges |
+| Ticket | State |
+|---|---|
+| M2-108 | in-progress (building) |
+| M2-106 / M2-110 | may be merging via parallel ship |
+| M2-202 | in-review / qa |
 
-## Pushed
-103–104, 213, 114, 201 @ 6ebe4c2
+## Next
+Finish P1 (108 + any remaining) → phase/p2-content for rest of P2.

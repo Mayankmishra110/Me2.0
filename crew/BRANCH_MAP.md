@@ -47,6 +47,7 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 
 | Ticket | Branch | Feature | Role | Commits so far | State |
 |---|---|---|---|---|---|
+| M2-108 | `m2/M2-108` | Scheduler and daily summary | be | — | in-progress |
 | M2-105 | `m2/M2-105` | Telegram bot | be | SEC fixes in flight | in-progress (QA changes)
 | M2-106 | `m2/M2-106` | HTTP API | be-2 | tip in-review | in-review awaiting qa/sec
 | M2-110 | `m2/M2-110` | DPAPI/OAuth | be-3 | tip in-review | in-review awaiting qa/sec
