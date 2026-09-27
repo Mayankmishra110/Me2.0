@@ -1,16 +1,16 @@
 ﻿# Plan — owned by lead
 
-Updated: 2026-09-28 · phase/p1-foundation @ **99e9026** (pushed)
+Updated: 2026-09-28 · phase @ 99e9026
 
-## P1 closer
-M2-108 scheduler merged+pushed (`a485988` / audit `99e9026`). Remaining P1 core (105/106/108/110) are on phase with earlier batch. Phase ready for Mayank PR when full suite green.
+## P1
+Core on origin. Continue merging P2 into phase/p1-foundation until phase/p2-content is cut.
 
 ## Now
 | Ticket | State |
 |---|---|
-| M2-204 | building script writer |
-| M2-205 | next after 204 |
-| M2-209 | deps mostly met (206/207/208/103 done) — can ready soon |
+| M2-204 | building (script.go + formats/) |
+| M2-209 | claimed — render (deps met; no touch overlap with 204) |
+| M2-205 | after 204 merges |
 
 ## Next
-204 → qa → ship · claim 205 · ready 209 if free capacity
+204→qa→ship→205 · 209→qa→ship · then 210 (needs 205+209+105)
