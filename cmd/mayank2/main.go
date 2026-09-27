@@ -20,14 +20,21 @@ Commands:
   status    Show daemon / queue status (not implemented yet)
   doctor    Check tools, secrets presence, disk, RAM, channels
   migrate   Apply database migrations (idempotent)
+  llm ask   Run one prompt through the model router (internal/llm)
   set-pin   Set the Telegram / dashboard PIN (not implemented yet)
   auth      OAuth sign-in for a platform account (not implemented yet)
 
-Global flags (doctor / migrate):
+Global flags (doctor / migrate / llm ask):
   -config path   config YAML (default: config/config.yaml)
   -env path      .env file (default: .env)
-  -env-example   .env.example for key-name checks (default: .env.example)
+  -env-example   .env.example for key-name checks (default: .env.example; doctor only)
   -db path       sqlite file for migrate (default: <data_dir>/mayank2.db)
+
+llm ask flags:
+  -task name     route from config llm.routes (default: script)
+
+Example:
+  mayank2 llm ask --task script "Write a 3-beat hook about compound interest"
 `
 
 func main() {
@@ -54,6 +61,8 @@ func run(args []string) int {
 		return cmdDoctor(ctx, rest)
 	case "migrate":
 		return cmdMigrate(ctx, rest)
+	case "llm":
+		return cmdLLM(ctx, rest)
 	case "run", "status", "set-pin", "auth":
 		return cmdStub(cmd, rest)
 	default:
