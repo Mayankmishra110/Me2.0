@@ -39,7 +39,7 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 | M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | `915d170`, `5e47c99`, `151967e`, `82ee5ac`, `c1034e2` | in-review, awaiting qa/sec |
 | M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | none yet | in-progress |
 | M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` | in-review, awaiting qa/sec |
-| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `540e194` (plan) | in-progress |
+| M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `540e194`, `b52b5c0`, `0bba43e`, `d14a96e`, `e0971c2`, `1291cd7` | in-review, awaiting qa/sec (needs-sec: yes) |
 
 Update this table's "Commits so far" / "State" as each finishes; move the row up into a new "P1 batch 2"
 section under Phase P1 Foundation once merged, same format as batch 1.
