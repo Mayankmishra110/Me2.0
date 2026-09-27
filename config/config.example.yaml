@@ -20,7 +20,15 @@ llm:
     groq:       { kind: openai_compat, base_url: "https://api.groq.com/openai/v1", key_env: GROQ_API_KEY, model: "TBD" }
     cerebras:   { kind: openai_compat, base_url: "https://api.cerebras.ai/v1", key_env: CEREBRAS_API_KEY, model: "TBD" }
     openrouter: { kind: openai_compat, base_url: "https://openrouter.ai/api/v1", key_env: OPENROUTER_API_KEY, model: "TBD:free" }
-    gemini:     { kind: openai_compat, base_url: "https://generativelanguage.googleapis.com/v1beta/openai", key_env: GEMINI_API_KEY, model: "TBD" }
+    # Gemini free tier (M2-114, CONTEXT D24 — "one free key must work end to end").
+    # base_url is Google's documented OpenAI-compatibility endpoint. model id verified
+    # 2026-09-28 against ai.google.dev/gemini-api/docs/openai (the OpenAI-compat quickstart's
+    # own example model) and ai.google.dev/gemini-api/docs/pricing (listed "free of charge"
+    # up to the free-tier rate limit; billing must stay disabled on the Google Cloud project
+    # for the key to actually be free). Re-check these pages before bumping this id — Google
+    # ships new Gemini point releases often and retires old ones (e.g. 2.0 Flash retired
+    # 2026-03-03).
+    gemini:     { kind: openai_compat, base_url: "https://generativelanguage.googleapis.com/v1beta/openai", key_env: GEMINI_API_KEY, model: "gemini-3.8-flash" }
     claude:     { kind: claude_cli, bin: "claude" }
   routes:
     research:          [groq, cerebras, openrouter, gemini, ollama]
