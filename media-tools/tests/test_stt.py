@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -78,3 +79,22 @@ def test_rejects_non_int8() -> None:
             },
             model_factory=_factory([], SimpleNamespace(language="en", duration=0)),
         )
+
+
+def test_offline_sets_hub_env_and_labels_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MEDIATOOLS_OFFLINE", "1")
+    monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
+    monkeypatch.delenv("TRANSFORMERS_OFFLINE", raising=False)
+
+    def boom(size: str, ctype: str):
+        raise RuntimeError("hub unreachable")
+
+    with pytest.raises(ContractError, match="offline"):
+        transcribe(
+            {"audio_path": str(FIXTURE_WAV), "model_size": "tiny"},
+            model_factory=boom,
+        )
+    assert os.environ.get("HF_HUB_OFFLINE") == "1"
+    assert os.environ.get("TRANSFORMERS_OFFLINE") == "1"

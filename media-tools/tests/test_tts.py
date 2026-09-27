@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -130,3 +131,22 @@ def test_default_voice(tmp_path: Path) -> None:
         pipeline_factory=_factory_with([FakeResult("x", audio, None)]),
     )
     assert out["voice"] == "af_heart"
+
+
+def test_offline_sets_hub_env_and_labels_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MEDIATOOLS_OFFLINE", "1")
+    monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
+    monkeypatch.delenv("TRANSFORMERS_OFFLINE", raising=False)
+
+    def boom(_lang: str):
+        raise RuntimeError("hub unreachable")
+
+    with pytest.raises(ContractError, match="offline"):
+        synthesize(
+            {"text": "x", "lang": "en", "out_wav": str(tmp_path / "a.wav")},
+            pipeline_factory=boom,
+        )
+    assert os.environ.get("HF_HUB_OFFLINE") == "1"
+    assert os.environ.get("TRANSFORMERS_OFFLINE") == "1"
