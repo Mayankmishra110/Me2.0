@@ -1,0 +1,11 @@
+{
+  "brandKit": {
+    "primary": "#22D3EE",
+    "secondary": "#0F172A",
+    "fontHeading": "Montserrat, sans-serif",
+    "fontBody": "Inter, sans-serif",
+    "captionStyle": "word-highlight"
+  },
+  "title": "AI Screen Myth",
+  "focalClipPath": "samples/beat-a.svg"
+}

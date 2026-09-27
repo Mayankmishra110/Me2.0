@@ -1,0 +1,36 @@
+{
+  "brandKit": {
+    "primary": "#FBBF24",
+    "secondary": "#111827",
+    "fontHeading": "Montserrat, sans-serif",
+    "fontBody": "Inter, sans-serif",
+    "captionStyle": "karaoke"
+  },
+  "beats": [
+    {
+      "text": "AI can read your screen secretly",
+      "clipPath": "samples/beat-a.svg",
+      "durationInSeconds": 2.5
+    },
+    {
+      "text": "Only if you grant screen access",
+      "clipPath": "samples/beat-b.svg",
+      "durationInSeconds": 2.5
+    }
+  ],
+  "audioSrc": "",
+  "captions": {
+    "words": [
+      { "word": "AI", "startMs": 0, "endMs": 400 },
+      { "word": "cannot", "startMs": 400, "endMs": 900 },
+      { "word": "spy", "startMs": 900, "endMs": 1300 },
+      { "word": "by", "startMs": 1300, "endMs": 1500 },
+      { "word": "default", "startMs": 1500, "endMs": 2200 },
+      { "word": "You", "startMs": 2500, "endMs": 2800 },
+      { "word": "must", "startMs": 2800, "endMs": 3100 },
+      { "word": "grant", "startMs": 3100, "endMs": 3500 },
+      { "word": "access", "startMs": 3500, "endMs": 4200 }
+    ]
+  },
+  "orientation": "9:16"
+}
