@@ -65,9 +65,44 @@ copy .env.example .env                               # then fill secrets
 go run ./cmd/mayank2 doctor                          # checks tools, keys, disk, RAM
 go run ./cmd/mayank2 run                             # start the daemon in this console
 cd web; npm install; npm run dev                     # dashboard dev server (proxies /api)
-scripts\build.ps1                                    # builds web + bin\mayank2.exe
-scripts\install-task.ps1                             # start at logon + power settings (run as you, once)
 ```
+
+## Build and start at logon (Windows)
+
+Run from the main checkout (the task points at the folder you run it from). If PowerShell blocks
+scripts, keep the `-ExecutionPolicy Bypass` shown here; it applies to that one process only.
+
+```powershell
+# 1. Build: web\dist (npm ci only if web\node_modules is missing, then npm run build),
+#    then go build -ldflags "-H windowsgui" -o bin\mayank2.exe ./cmd/mayank2
+powershell -ExecutionPolicy Bypass -File scripts\build.ps1
+powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -SkipWeb     # Go only
+
+# 2. Preview the install: prints every action, changes nothing
+powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1 -WhatIf
+
+# 3. Install (as yourself; safe to re-run, it replaces the task in place)
+powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1
+
+# Remove the task (power settings are left as they are)
+powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1 -Uninstall
+
+# Script tests (mocked; never touch the real Task Scheduler or power plan)
+powershell -ExecutionPolicy Bypass -File scripts\tests\install-task.tests.ps1
+```
+
+`install-task.ps1` does exactly this:
+
+- Task Scheduler task **Mayank2** for the current user: at logon → `bin\mayank2.exe run`, working
+  directory = repo root; restart on failure 3× every 5 minutes; no execution time limit; a second start
+  while it runs is ignored; not elevated; also runs on battery.
+- Current power plan, on AC only: sleep = never, hibernate = never, lid close = do nothing
+  (`powercfg /change standby-timeout-ac 0`, `/change hibernate-timeout-ac 0`,
+  `/setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0`, `/setactive SCHEME_CURRENT`).
+- Prints a reminder to set the **80% battery charge limit** in the laptop vendor app (Windows can't set it).
+
+If registering fails with "access denied", run it again from an elevated PowerShell. `bin\mayank2.exe`
+is a windowless build, so it prints nothing in a console; use `go run ./cmd/mayank2 doctor` for output.
 
 ## Repository layout
 
