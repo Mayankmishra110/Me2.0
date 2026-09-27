@@ -17,10 +17,10 @@ for these unless Mayank asks for that instead of the phase flow.
 PR body: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) (everything below its `---`).
 Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation
 
-**Before merging:** M2-109 and M2-207 were built by background sub-agents and audited directly by ship
-against their tickets/docs, not through a separate qa/sec crew-role pass like the other six. Both are flagged
-`needs-sec: yes` (M2-109 registers a scheduled task; M2-207 makes outbound calls with API keys) — recommend a
-sec pass on those two before merging.
+**No open blockers.** M2-109 and M2-207 were initially only audited by ship, but a dedicated qa+sec crew
+review (2026-09-28, `cd5590a`, pushed) independently re-verified both — read the code itself, re-ran the
+checks itself, found nothing. All 8 tickets now carry a real QA pass, and every `needs-sec: yes` ticket has
+a real SEC pass.
 
 States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank opens it) → `merged`.
 

@@ -11,8 +11,8 @@ published through the API, with metrics at +24h. Everything in P1 exists to make
 
 M2-101, M2-102, M2-107, M2-109, M2-111, M2-206, M2-207, M2-208 are **done**, merged into
 `phase/p1-foundation`, and pushed. PR ready to open: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md).
-M2-109 and M2-207 still need a qa/sec crew-role pass (flagged `needs-sec: yes`, built by background
-sub-agents and only audited directly by ship so far).
+M2-109 and M2-207 have now had their independent qa+sec pass too (2026-09-28, `cd5590a`) — both pass, no
+findings. **No open blockers on the P1 batch 1 PR.**
 
 ## Now (P1 batch 2 — all `ready`, no overlapping paths)
 
@@ -24,8 +24,8 @@ sub-agents and only audited directly by ship so far).
 | be | **M2-110** DPAPI secrets vault | Needed before any real OAuth (YouTube etc.) |
 | be | **M2-201** channel + format config | Unblocks the P2 content pipeline (202→205) |
 | be | **M2-213** storage retention + R2 | Independent, small |
-| qa | pass on M2-109 and M2-207 (not yet reviewed by a qa role) | |
-| sec | pass on M2-109 and M2-207 (both flagged `needs-sec: yes`) | |
+| qa | done — M2-109 and M2-207 both pass (2026-09-28) | |
+| sec | done — M2-109 and M2-207 both pass (2026-09-28) | |
 | ship | idle until Mayank opens/merges the P1 PR, then rebase phase-p1 onto main and clean up merged `m2/*` branches | |
 
 ## Next

@@ -22,9 +22,11 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-102 | `m2/M2-102` | SQLite open, embedded migrations, initial schema | be (Cursor) | `280939d`, `189b6cb`, `52eea9a`, +2 review commits | `de659ed` | merged, done |
 | M2-111 | `m2/M2-111` | LLM router and providers | ai (Cursor) | `2b22821`, `386483e`, `e912fb4`, `4e0d0b0`, +2 review commits | `a45a85b` | merged, done |
 | M2-208 | `m2/M2-208` | Remotion compositions (explained_60s, myth_vs_fact, top_n) | fe (Cursor) | `2756610`, `05b390a` | `42e1133` | merged, done |
-| M2-109 | `m2/M2-109` | Windows build, start at logon, power settings | be-2 | `1523560`, `d745de1`, `af140e7`, `584fc56` | `9886b06` | merged, done — qa/sec independent review in progress |
-| M2-207 | `m2/M2-207` | Stock visuals with license records | be-3 | `5feae4b`, `e1da2b5`, `6e9cf35`, `138a845` | `ba50300` | merged, done — qa/sec independent review in progress |
+| M2-109 | `m2/M2-109` | Windows build, start at logon, power settings | be-2 | `1523560`, `d745de1`, `af140e7`, `584fc56` | `9886b06` | merged, done, QA+SEC pass (`cd5590a`) |
+| M2-207 | `m2/M2-207` | Stock visuals with license records | be-3 | `5feae4b`, `e1da2b5`, `6e9cf35`, `138a845` | `ba50300` | merged, done, QA+SEC pass (`cd5590a`) |
 | — | — | Sync `main` into the phase branch (BOM fix, claims) | ship | — | `3575a49` | housekeeping, not a ticket |
+| — | — | Independent qa+sec review of M2-109 + M2-207 | qa/sec | `cd5590a` | (direct to phase branch) | housekeeping, not a ticket |
+| — | — | Clear review blocker in audit docs | lead | `f1ed852` | (direct to phase branch) | housekeeping, not a ticket |
 
 **Not a ticket branch:** `phase/p1-foundation` itself — one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
