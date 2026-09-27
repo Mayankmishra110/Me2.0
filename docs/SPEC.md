@@ -57,6 +57,17 @@ M2-206 media-tools ─┐  M2-207 stock visuals ─┐  M2-208 remotion formats 
 
 **Can start immediately in parallel:** M2-101, M2-206 (Python), M2-207, M2-208 (Remotion), M2-107 (dashboard against mock API).
 
+### Dependency graph (P3)
+
+```
+M2-210 final gates + approval ─┬─► M2-301 instagram ─┐
+M2-213 storage/R2 ─────────────┼─► M2-302 facebook   ├─► one item published to all 4 (P3 exit check)
+                                ├─► M2-303 x business │
+                                └─► M2-304 pinterest ─┘
+```
+
+All four are independent of each other once 210 and 213 are done — safe to run in parallel across threads.
+
 ### Ticket index
 
 | ID | Title | Depends |
@@ -85,7 +96,10 @@ M2-206 media-tools ─┐  M2-207 stock visuals ─┐  M2-208 remotion formats 
 | M2-211 | YouTube OAuth + uploader for 4 channels + quota tracking | 110, 210 |
 | M2-212 | Analytics pull + scores | 211 |
 | M2-213 | Storage retention + R2 presigned URLs | 102 |
-| M2-301…304 | Instagram, Facebook, X business, Pinterest publishers | 210, 213 |
+| M2-301 | Instagram Reels publisher | 210, 213 |
+| M2-302 | Facebook Page publisher | 210, 213 |
+| M2-303 | X (business) publisher | 210, 213 |
+| M2-304 | Pinterest publisher | 210, 213 |
 | M2-401…404 | Blog draft → Mayankbuilt, LinkedIn, X personal, Medium import link | 105, 111 |
 | M2-501…505 | Builder planner, implementer, auditor, phase gate, Builder screen | 103, 105 |
 | M2-601…604 | Revenue, micro-SaaS flow, agency leads + drafts, Pinterest affiliate | P2–P5 |
