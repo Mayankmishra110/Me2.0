@@ -17,7 +17,7 @@ Windows start-at-logon. Batch 2 so far: durable job queue and worker pool (**M2-
 Channel + format config (**M2-201**, merged `3f1293e`). Telegram bot (**M2-105**, merged `d7c2558`).
 HTTP API + auth + embedded dashboard (**M2-106**, merged `96adf6a`). DPAPI token vault + OAuth helper
 (**M2-110**, merged `880b852`). Niche Scout (**M2-202**, merged `560e002`). Research brief
-(**M2-203**, merged `1491844`).
+(**M2-203**, merged `1491844`). Scheduler + daily summary (**M2-108**, merged `a485988`).
 
 ## Features in this PR
 | Ticket | Role | Branch | Merge commit | Audit doc | Reviews |
@@ -40,11 +40,12 @@ HTTP API + auth + embedded dashboard (**M2-106**, merged `96adf6a`). DPAPI token
 | M2-110 DPAPI token vault and OAuth helper | be-3 | `m2/M2-110` | `880b852` | [M2-110.md](M2-110.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-202 Niche Scout | ai | `m2/M2-202` | `560e002` | [M2-202.md](M2-202.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-203 Research brief with sources | ai | `m2/M2-203` | `1491844` | [M2-203.md](M2-203.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
+| M2-108 Scheduler and daily summary | be | `m2/M2-108` | `a485988` | [M2-108.md](M2-108.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 
 Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
-merge wave **103 / 104 / 213 / 114 / 201 / 105 / 106 / 110 / 202 / 203** is on the phase branch. Remaining P1
-build: **M2-108** (in progress). **M2-204** flipped `ready` (depends on 203). Do not treat the
-phase branch as the final P1 PR until 108 lands or is explicitly deferred.
+merge wave **103 / 104 / 213 / 114 / 201 / 105 / 106 / 110 / 202 / 203 / 108** is on the phase branch.
+P1 foundation tickets for this phase are merged. **M2-204** (phase 2, depends on 203) is `ready`.
+Phase→main PR can open when Mayank is ready (compare URL above).
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
 task on this laptop, self-detected and removed within the same session; AC power settings were never
@@ -136,7 +137,8 @@ Tickets flipped to `ready` when batch 1 merged: **M2-103**, **M2-104**, **M2-110
 **M2-110** unblocked for build (`cmd/mayank2` free). After **M2-201** merged (`3f1293e`): **M2-202**
 (Niche Scout) → `ready` (deps M2-111 + M2-201 + M2-103 all done). After **M2-105** merged (`d7c2558`):
 **M2-108** (scheduler / daily summary) → `ready` (deps M2-103 + M2-105 all done). After **M2-202**
-merged (`560e002`): **M2-203** (Research brief) → `ready` (deps M2-111 + M2-202 all done).
+merged (`560e002`): **M2-203** (Research brief) → `ready` (deps M2-111 + M2-202 all done). After
+**M2-108** merged (`a485988`): P1 scheduler landed; **M2-204** already `ready` from the M2-203 merge.
 
 ## How to test
 ```
