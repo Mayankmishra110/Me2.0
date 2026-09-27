@@ -41,6 +41,7 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-204 | `m2/M2-204` | Script writer (native EN and HI) | ai | `ba40b2e`, `b12417d`, `e5c3849` | `d69dcae` | merged, done, QA+SEC pass |
 | M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | `efd68a4`, `8e5ba45`, `4040c67`, `f109dbd`, `1b9eebd`, `755f696`, `21804f1` | `878ccb7` | merged, done, QA+SEC pass |
 | M2-205 | `m2/M2-205` | Compliance script gates G1?G7 | be | `52f0fa3`, `3add33a`, `64d05a9`, `6d7eef1`, `c0f8eb5`, `4d5f7f8`, `f84318e` | `a76a141` | merged, done, QA+SEC pass |
+| M2-210 | `m2/M2-210` | Final gates and approval flow | be | `a997223`, `7417577`, `406ac54` | `9646b4b` + `d283fb4` | merged, done, QA+SEC pass |
 
 **Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -49,10 +50,10 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 
 Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Scheduler **M2-108**. **M2-204**
 (phase 2 script writer) merged `d69dcae`. **M2-209** (render) merged `878ccb7`. **M2-205**
-(compliance G1?G7) merged `a76a141`. **M2-210** flipped `ready` (deps 205+209+105 all done).
+(compliance G1?G7) merged `a76a141`. **M2-210** (final gates + approval) merged `9646b4b` /
+`d283fb4` (QA+SEC). **M2-211** flipped `ready` (deps 110+210).
 
 ## In progress (branched from `phase/p1-foundation`)
-| M2-211 | `m2/M2-211` | YouTube uploader | be | — | in-progress |
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
@@ -72,5 +73,3 @@ git show phase/p1-foundation:tickets/M2-xxx.md | grep touches:   # confirm branc
 `m2/*` branches for done tickets are kept (not deleted) after merging, in case another session still has
 context on one - see `crew/SHIP_QUEUE.md` Notes. Safe to delete once Mayank confirms `phase/p1-foundation`
 is merged into `main`: `git branch -d m2/M2-101 m2/M2-102 m2/M2-107 m2/M2-109 m2/M2-111 m2/M2-206 m2/M2-207 m2/M2-208`.
-
-| M2-210 | `m2/M2-210` | Final gates and approval flow | be | — | in-progress |
