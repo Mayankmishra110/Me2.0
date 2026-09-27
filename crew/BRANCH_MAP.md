@@ -1,12 +1,12 @@
-# Branch map — owned by ship, overlooked by lead
+# Branch map ? owned by ship, overlooked by lead
 
 Every branch that has existed in this repo, which ticket/feature it maps to, and what happened to it.
-**Ship updates this file in the same commit as every merge** (into a phase branch or into `main`) — see
+**Ship updates this file in the same commit as every merge** (into a phase branch or into `main`) ? see
 `crew/roles/ship.md` step 5. Lead spot-checks it against `git branch -a` / `git log --merges` when picking
 up work, per `crew/roles/lead.md`.
 
 Rule enforced by `.githooks/commit-msg`: every commit is `type(M2-xxx): summary` (or scope `crew`/`docs`/
-`repo` for non-ticket work) — so a commit with no ticket in its message cannot exist on a ticket branch, and
+`repo` for non-ticket work) ? so a commit with no ticket in its message cannot exist on a ticket branch, and
 `git log --oneline m2/M2-xxx` always tells you what that commit was for even without this file. This file is
 the fast index so you don't have to read commit messages to get the map.
 
@@ -24,9 +24,9 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-208 | `m2/M2-208` | Remotion compositions (explained_60s, myth_vs_fact, top_n) | fe (Cursor) | `2756610`, `05b390a` | `42e1133` | merged, done |
 | M2-109 | `m2/M2-109` | Windows build, start at logon, power settings | be-2 | `1523560`, `d745de1`, `af140e7`, `584fc56` | `9886b06` | merged, done, QA+SEC pass (`cd5590a`) |
 | M2-207 | `m2/M2-207` | Stock visuals with license records | be-3 | `5feae4b`, `e1da2b5`, `6e9cf35`, `138a845` | `ba50300` | merged, done, QA+SEC pass (`cd5590a`) |
-| — | — | Sync `main` into the phase branch (BOM fix, claims) | ship | — | `3575a49` | housekeeping, not a ticket |
-| — | — | Independent qa+sec review of M2-109 + M2-207 | qa/sec | `cd5590a` | (direct to phase branch) | housekeeping, not a ticket |
-| — | — | Clear review blocker in audit docs | lead | `f1ed852` | (direct to phase branch) | housekeeping, not a ticket |
+| ? | ? | Sync `main` into the phase branch (BOM fix, claims) | ship | ? | `3575a49` | housekeeping, not a ticket |
+| ? | ? | Independent qa+sec review of M2-109 + M2-207 | qa/sec | `cd5590a` | (direct to phase branch) | housekeeping, not a ticket |
+| ? | ? | Clear review blocker in audit docs | lead | `f1ed852` | (direct to phase branch) | housekeeping, not a ticket |
 | M2-103 | `m2/M2-103` | Durable job queue and worker pool | be | `55c4c53`, `41108ee`, `d547f6b`, `3aaa20d`, `5e87c8a`, `7240e91`, `ee8876e`, `9eb1800`, `82df3c6` | `18c7910` | merged, done |
 | M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | `370ea1d`, `daeaa1b`, `1f5517a`, `d314dd0`, `fe93dd4`, `5403142` | `e520b9e` | merged, done |
 | M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `51bb8e3`, `b0002d2`, `580f837`, `6627e86`, `8bcd623`, `3def108`, `13bc7b2` | `7d0c3fa` | merged, done |
@@ -38,19 +38,21 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-202 | `m2/M2-202` | Niche Scout | ai | `613d633`, `033687a`, `4818e97`, `065c928`, `c530123`, `a1216f8`, `ded5522`, `cbca048`, `7581bb0`, `54f5cde` | `560e002` | merged, done, QA+SEC pass |
 | M2-203 | `m2/M2-203` | Research brief with sources | ai | `b2a03f4`, `3149cf9`, `8006d66` | `1491844` | merged, done, QA+SEC pass |
 | M2-108 | `m2/M2-108` | Scheduler and daily summary | be | `6f5f09d`, `7978deb`, `b14ddf6`, `4411da0`, `9eb9c00` | `a485988` | merged, done, QA+SEC pass |
+| M2-204 | `m2/M2-204` | Script writer (native EN and HI) | ai | `ba40b2e`, `b12417d`, `e5c3849` | `d69dcae` | merged, done, QA+SEC pass |
 
-**Not a ticket branch:** `phase/p1-foundation` itself — one `--no-ff` merge per ticket, in the order above.
+**Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
 
 ## Phase P1 batch 2 (complete on phase branch)
 
-Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Scheduler **M2-108**. P1 foundation tickets on this branch are done. **M2-204** (phase 2) remains `ready` (depends on 203).
+Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Scheduler **M2-108**. **M2-204**
+(phase 2 script writer) merged `d69dcae`; **M2-205** flipped `todo` -> `ready`.
 
 ## In progress (branched from `phase/p1-foundation`)
 
-_(none — M2-108 merged `a485988`)_
-
-**Deps unblocked by M2-203:** M2-204 → `ready` on phase (and synced to main).
+| Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
+|---|---|---|---|---|---|---|
+| M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | - | - | in-progress |
 
 ## How to regenerate/verify this file
 
@@ -64,7 +66,5 @@ git show phase/p1-foundation:tickets/M2-xxx.md | grep touches:   # confirm branc
 ## Stale / to clean up
 
 `m2/*` branches for done tickets are kept (not deleted) after merging, in case another session still has
-context on one — see `crew/SHIP_QUEUE.md` Notes. Safe to delete once Mayank confirms `phase/p1-foundation`
+context on one - see `crew/SHIP_QUEUE.md` Notes. Safe to delete once Mayank confirms `phase/p1-foundation`
 is merged into `main`: `git branch -d m2/M2-101 m2/M2-102 m2/M2-107 m2/M2-109 m2/M2-111 m2/M2-206 m2/M2-207 m2/M2-208`.
-
-| M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | � | in-progress |
