@@ -32,6 +32,12 @@ def test_load_invalid_json(tmp_path: Path) -> None:
         load_json(p)
 
 
+def test_load_strips_utf8_bom(tmp_path: Path) -> None:
+    p = tmp_path / "bom.json"
+    p.write_bytes(b'\xef\xbb\xbf{"ok": true}')
+    assert load_json(p) == {"ok": True}
+
+
 def test_require_str() -> None:
     assert require_str({"text": " hi "}, "text") == "hi"
     with pytest.raises(ContractError, match="missing"):
