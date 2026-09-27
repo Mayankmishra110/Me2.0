@@ -13,9 +13,15 @@ import (
 	"sync"
 	"time"
 
+	"mayank2/internal/content"
 	"mayank2/internal/events"
 	"mayank2/internal/queue"
 )
+
+// ApprovalDecider applies human approve/reject/redo (content.ApprovalService).
+type ApprovalDecider interface {
+	Decide(ctx context.Context, req content.DecideRequest) error
+}
 
 // Pauser is the pause/resume surface used by POST /api/pause and /api/resume.
 // *queue.Queue satisfies it.
@@ -38,6 +44,9 @@ type Options struct {
 	Events *events.Bus
 	// Queue backs pause/resume for resource-class scopes. Optional.
 	Queue Pauser
+	// Approvals applies decisions (schedules publications on approve).
+	// Required for POST .../decision; nil fails closed.
+	Approvals ApprovalDecider
 	// Version reported by GET /api/health.
 	Version string
 	// Logger defaults to slog.Default().
@@ -51,6 +60,7 @@ type Server struct {
 	db        *sql.DB
 	events    *events.Bus
 	queue     Pauser
+	approvals ApprovalDecider
 	version   string
 	log       *slog.Logger
 	tokenHash [32]byte
@@ -92,6 +102,7 @@ func New(opts Options) (*Server, error) {
 		db:        opts.DB,
 		events:    opts.Events,
 		queue:     opts.Queue,
+		approvals: opts.Approvals,
 		version:   version,
 		log:       log,
 		tokenHash: hashToken(opts.DashboardToken),

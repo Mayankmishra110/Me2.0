@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"mayank2/internal/content"
 	"mayank2/internal/queue"
 )
 
@@ -25,10 +26,11 @@ var ErrDisabled = errors.New("telegram: disabled (TELEGRAM_BOT_TOKEN empty)")
 
 // Bot is the Telegram control surface for Mayank.
 type Bot struct {
-	client *Client
-	db     *sql.DB
-	q      *queue.Queue
-	log    *slog.Logger
+	client    *Client
+	db        *sql.DB
+	q         *queue.Queue
+	approvals *content.ApprovalService
+	log       *slog.Logger
 
 	userID int64
 	chatID int64
@@ -41,12 +43,15 @@ type Bot struct {
 
 // Config holds construction inputs. Token/IDs normally come from env.
 type Config struct {
-	Token      string
-	UserID     int64
-	ChatID     int64
-	DataRoot   string // media/preview confinement root (config data_dir); empty → refuse file uploads
-	DB         *sql.DB
-	Queue      *queue.Queue
+	Token    string
+	UserID   int64
+	ChatID   int64
+	DataRoot string // media/preview confinement root (config data_dir); empty → refuse file uploads
+	DB       *sql.DB
+	Queue    *queue.Queue
+	// Approvals applies approve/reject/redo (schedules publications on approve).
+	// Required for decisions; nil fails closed.
+	Approvals  *content.ApprovalService
 	Log        *slog.Logger
 	ClientOpts []ClientOption
 }
@@ -106,6 +111,7 @@ func New(cfg Config) (*Bot, error) {
 		client:       NewClient(cfg.Token, opts...),
 		db:           cfg.DB,
 		q:            cfg.Queue,
+		approvals:    cfg.Approvals,
 		log:          cfg.Log,
 		userID:       cfg.UserID,
 		chatID:       cfg.ChatID,

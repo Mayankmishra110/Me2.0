@@ -65,6 +65,13 @@ func TestApprovals_decisionFlow(t *testing.T) {
 	if st != "approved" {
 		t.Fatalf("status=%q want approved", st)
 	}
+	var pubs int
+	if err := sqlDB.QueryRow(`SELECT COUNT(*) FROM publications WHERE content_id='c1' AND status='scheduled'`).Scan(&pubs); err != nil {
+		t.Fatalf("pubs: %v", err)
+	}
+	if pubs < 1 {
+		t.Fatalf("approve must schedule publications, got %d", pubs)
+	}
 
 	// Second decision → 409.
 	req = httptest.NewRequest(http.MethodPost, "/api/approvals/ap1/decision", strings.NewReader(`{"decision":"reject"}`))

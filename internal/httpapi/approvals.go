@@ -7,8 +7,8 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
+	"mayank2/internal/content"
 	"mayank2/internal/events"
 )
 
@@ -120,6 +120,10 @@ func (s *Server) handleApprovalDecision(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "decision must be approve, reject, or redo")
 		return
 	}
+	if s.approvals == nil {
+		writeError(w, http.StatusServiceUnavailable, "approval service not configured")
+		return
+	}
 
 	var current string
 	err := s.db.QueryRowContext(r.Context(), `SELECT status FROM approvals WHERE id=?`, id).Scan(&current)
@@ -136,46 +140,41 @@ func (s *Server) handleApprovalDecision(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
 	note := strings.TrimSpace(body.Note)
-	var noteArg any
-	if note != "" {
-		noteArg = note
-	}
 	if len(body.Edits) > 0 && !json.Valid(body.Edits) {
 		writeError(w, http.StatusBadRequest, "edits must be valid json")
 		return
 	}
 
-	res, err := s.db.ExecContext(r.Context(), `
-UPDATE approvals
-SET status=?, note=COALESCE(?, note), decided_at=?
-WHERE id=? AND status='pending'`,
-		status, noteArg, now, id,
-	)
+	dec := content.Decision(strings.ToLower(strings.TrimSpace(body.Decision)))
+	err = s.approvals.Decide(r.Context(), content.DecideRequest{
+		ApprovalID: id,
+		Decision:   dec,
+		Note:       note,
+	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "decision failed")
-		return
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		writeError(w, http.StatusConflict, "already decided")
+		msg := err.Error()
+		switch {
+		case strings.Contains(msg, "not found"):
+			writeError(w, http.StatusNotFound, "not found")
+		case strings.Contains(msg, "already"):
+			writeError(w, http.StatusConflict, "already decided")
+		case strings.Contains(msg, "redo requires"), strings.Contains(msg, "cap"):
+			writeError(w, http.StatusConflict, msg)
+		default:
+			writeError(w, http.StatusInternalServerError, "decision failed")
+		}
 		return
 	}
 
-	payload := map[string]any{
-		"id":       id,
-		"decision": body.Decision,
-		"status":   status,
-	}
-	if note != "" {
-		payload["note"] = note
-	}
-	if len(body.Edits) > 0 {
-		payload["edits"] = body.Edits
-	}
-	if s.events != nil {
-		_, _ = s.events.Emit(r.Context(), events.ActorUser, events.KindApprovalDecided, id, "approval decided", payload)
+	// Extra dashboard-only fields (edits) on a secondary event; Decide already
+	// emitted approval.decided with decision + content_id.
+	if len(body.Edits) > 0 && s.events != nil {
+		_, _ = s.events.Emit(r.Context(), events.ActorUser, events.KindApprovalDecided, id, "approval edits", map[string]any{
+			"id":     id,
+			"edits":  body.Edits,
+			"status": status,
+		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{

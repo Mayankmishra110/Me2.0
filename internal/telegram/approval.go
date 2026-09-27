@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"mayank2/internal/content"
 	"mayank2/internal/queue"
 )
 
@@ -173,24 +174,32 @@ func (b *Bot) completeRedoNote(ctx context.Context, chatID int64, approvalID, no
 }
 
 func (b *Bot) decideApproval(ctx context.Context, row approvalRow, decision, note string) error {
-	at := time.Now().UTC().Format(time.RFC3339Nano)
-	res, err := b.db.ExecContext(ctx, `
-UPDATE approvals
-SET status=?, note=?, decided_at=?, nonce=''
-WHERE id=? AND status='pending' AND nonce=?`,
-		decision+"d", nullIfEmpty(note), at, row.ID, row.Nonce,
-	)
-	// status values: approved | rejected (decision + "d" → approved/rejected). Wait:
-	// "approve"+"d" = "approved" ✓, "reject"+"d" = "rejected" ✓
+	if b.approvals == nil {
+		return fmt.Errorf("telegram: approval service not configured")
+	}
+	var d content.Decision
+	switch decision {
+	case "approve":
+		d = content.DecisionApprove
+	case "reject":
+		d = content.DecisionReject
+	case "redo":
+		d = content.DecisionRedo
+	default:
+		return fmt.Errorf("telegram: unknown decision %q", decision)
+	}
+	err := b.approvals.Decide(ctx, content.DecideRequest{
+		ApprovalID: row.ID,
+		Decision:   d,
+		Note:       note,
+	})
 	if err != nil {
+		// Lost race / double-tap after status flip — treat as success/no-op.
+		if strings.Contains(err.Error(), "already") {
+			return nil
+		}
 		return fmt.Errorf("telegram: decide %s: %w", row.ID, err)
 	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return nil // lost race = double tap; treat as success/no-op
-	}
-	status := decision + "d"
-	_ = b.emitEvent(ctx, "user", "approval.decided", row.ID, status, "")
 	return nil
 }
 
@@ -216,17 +225,7 @@ UPDATE approvals SET nonce=? WHERE id=? AND status='pending' AND nonce=?`,
 }
 
 func (b *Bot) finalizeRedo(ctx context.Context, row approvalRow, note string) error {
-	at := time.Now().UTC().Format(time.RFC3339Nano)
-	_, err := b.db.ExecContext(ctx, `
-UPDATE approvals SET status='redo', note=?, decided_at=?, nonce=''
-WHERE id=? AND status='pending'`,
-		note, at, row.ID,
-	)
-	if err != nil {
-		return fmt.Errorf("telegram: finalize redo %s: %w", row.ID, err)
-	}
-	_ = b.emitEvent(ctx, "user", "approval.decided", row.ID, "redo", "")
-	return nil
+	return b.decideApproval(ctx, row, "redo", note)
 }
 
 func (b *Bot) editDecisionMessage(ctx context.Context, cq *CallbackQuery, row approvalRow, action, extra string) error {
