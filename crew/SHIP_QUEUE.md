@@ -3,9 +3,15 @@
 Which branches need a PR, where each one stands, and the PR text. Newest at the top.
 Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://github.com/Mayankmishra110/Me2.0/compare/main...<branch>`
 
+**Merge order (when push allowed):** merge **M2-101 first** (critical path / foundation for later Go tickets). **M2-206** and **M2-107** do not depend on each other (or on M2-101) and can open in any order after 101 is merged or in parallel as separate PRs — prefer landing 101 before other Go work that touches `internal/config` / `cmd/mayank2`.
+
+**Push held:** do not `git push` / `gh pr create` until Mayank decides whether `Mayankmishra110/Me2.0` stays public. Remote verified: `https://github.com/Mayankmishra110/Me2.0.git`
+
 | Ticket | Branch | QA | SEC | Rebased on main | Checks | PR | State |
 |---|---|---|---|---|---|---|---|
-| M2-206 | m2/M2-206 | pass | pass | yes (already on main tip f972837; `git rebase main` no-op) | ruff+pytest pass; pre-commit --all pass (see body) | held — do not push until public-repo decision | ready-for-pr |
+| M2-101 | m2/M2-101 | pass | pass | yes → `75397aa` on main `bd8f6d8` | go vet + go test pass; gofmt -l lists CRLF-only (autocrlf; content clean — no commit) | held — public-repo decision | ready-for-pr |
+| M2-107 | m2/M2-107 | pass | n/a | yes → `96c5b4d` on main `bd8f6d8` | lint/typecheck/test/build pass; format:check fails on CRLF (autocrlf; ignore-cr clean — no commit) | held — public-repo decision | ready-for-pr |
+| M2-206 | m2/M2-206 | pass | pass | yes (on prior main tip; re-rebase before push if main moved) | ruff+pytest pass; pre-commit --all pass (see body) | held — public-repo decision | ready-for-pr |
 
 States: `waiting-review` → `ready-for-pr` → `pr-open` → `merged` (or `sent-back`).
 
@@ -29,6 +35,133 @@ Branch: m2/M2-xxx · Compare: https://github.com/Mayankmishra110/Me2.0/compare/m
 -->
 
 ## PR bodies
+
+### M2-101 — Repo skeleton, config loader, doctor command
+Branch: `m2/M2-101` @ `75397aa` (rebased; was `246b6a3`) · Worktree: `data/worktrees/m2-101` · Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...m2/M2-101  
+**Push held** · **Merge first** among Go tickets (critical path).
+
+**Goal** `mayank2` binary with subcommands, full-schema config loader, and `doctor` that reports whether this laptop is ready.
+
+**Acceptance**
+- [x] Go 1.24+; `cmd/mayank2` subcommands `run`, `status`, `doctor`, `migrate`, `set-pin`, `auth` (stubs OK except doctor).
+- [x] `internal/config` loads `config/config.yaml` (+ channels + `.env`); relative paths; clear errors; replaces early Builder-only config.
+- [x] `doctor` ✅/❌ probes (ffmpeg, node, uv/python, ollama loopback + models, claude, git, disk, RAM, `.env` key *names* only).
+- [x] Table-driven config tests.
+
+**Checks** (real output, worktree `data/worktrees/m2-101`, 2026-09-28)
+
+```
+gofmt -l ./cmd/mayank2 ./internal/config
+cmd\mayank2\doctor.go
+cmd\mayank2\doctor_test.go
+cmd\mayank2\main.go
+cmd\mayank2\sys_other.go
+cmd\mayank2\sys_windows.go
+internal\config\channels.go
+internal\config\config.go
+internal\config\config_test.go
+internal\config\envfile.go
+GOFMT_EXIT=0
+# Note: core.autocrlf=true → working tree CRLF; gofmt -l lists them. Sample
+# main.go was CRLF-only (150 CRLF, 0 LF). Did NOT commit gofmt -w (drive-by EOL).
+# Ticket paths are content-clean for review purposes; go vet / go test are green.
+
+go vet ./...
+VET_EXIT=0
+
+go test ./...
+ok  	mayank2/cmd/mayank2	(cached)
+ok  	mayank2/internal/config	0.428s
+ok  	mayank2/internal/tickets	0.358s
+TEST_EXIT=0
+```
+
+**Review** QA: pass — 2026-09-28 — re-pass after loopback lock · SEC: pass — 2026-09-28 — loopback lock holds
+
+**Risks / follow-ups**
+- Doctor uses `exec.CommandContext` + HTTP to Ollama (loopback-locked).
+- Later Go tickets that edit the same packages should rebase after this merges.
+- Windows autocrlf vs gofmt -l noise until hooks/EOL policy is fixed.
+
+**How to test**
+1. `cd data/worktrees/m2-101`
+2. `go test ./...` and `go run ./cmd/mayank2 doctor` (with local tools / Ollama as available)
+3. Load path: copy `config/config.example.yaml` → `config/config.yaml` for doctor.
+
+**Open PR (after push allowed):**
+```
+git -C data/worktrees/m2-101 push -u origin m2/M2-101
+gh pr create --repo Mayankmishra110/Me2.0 --base main --head m2/M2-101 --title "Repo skeleton, config loader, doctor command (M2-101)"
+```
+(Paste this PR body section into `--body`.)
+
+---
+
+### M2-107 — Dashboard shell: Home, Approvals, Logs
+Branch: `m2/M2-107` @ `96c5b4d` (rebased; was `774a5e3`) · Worktree: `data/worktrees/m2-107` · Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...m2/M2-107  
+**Push held** · Independent of M2-206; does not depend on M2-101.
+
+**Goal** React dashboard skeleton (mobile-first) against MSW mock API; real API later via M2-106.
+
+**Acceptance**
+- [x] Vite + React 19 + TS strict + Tailwind + shadcn + TanStack Query + Router; DESIGN §1.3 tokens; dark default.
+- [x] Layout: sidebar / bottom tabs ≤640px; top bar status, Pause all, pending count.
+- [x] Screens: Home, Approvals, Logs (+ More).
+- [x] MSW matching SPEC §4; SSE client with reconnect.
+- [x] Vitest Approvals decision flow; builds to `web/dist`.
+
+**Checks** (real output, worktree `data/worktrees/m2-107/web`, 2026-09-28)
+
+```
+npm run lint
+> oxlint src
+LINT=0
+
+npm run typecheck
+> tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json
+TYPE=0
+
+npm run format:check
+Checking formatting...
+[warn] ... 37 files ...
+Code style issues found in 37 files. Run Prettier with --write to fix.
+FMT=1
+# Diagnosed: core.autocrlf=true CRLF working copies. Ephemeral prettier --write
+# then format:check passed; git diff --ignore-cr-at-eol was empty (EOL only).
+# Restored working tree; did NOT commit prettier drive-by.
+
+npm test
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+TEST=0
+
+npm run build
+✓ 2202 modules transformed.
+dist/assets/index-BOYIXygY.js    361.57 kB │ gzip: 113.22 kB
+✓ built in 506ms
+BUILD=0
+```
+
+**Review** QA: pass — 2026-09-28 — web shell MSW §4, Approvals tests, DESIGN tokens; needs-sec unset (mock-only) · SEC: n/a — mock dashboard, no secrets/auth/OAuth
+
+**Risks / follow-ups**
+- Mock-only until M2-106; SSE/client paths must stay aligned with SPEC §4.
+- format:check on Windows with autocrlf is noisy until EOL/`endOfLine` policy is set.
+- Independent of M2-206; merge order vs 101 unconstrained by deps (101 first only matters for Go stack).
+
+**How to test**
+1. `cd data/worktrees/m2-107/web && npm install`
+2. `npm run lint && npm run typecheck && npm test && npm run build`
+3. `npm run dev` — exercise Home / Approvals / Logs against MSW.
+
+**Open PR (after push allowed):**
+```
+git -C data/worktrees/m2-107 push -u origin m2/M2-107
+gh pr create --repo Mayankmishra110/Me2.0 --base main --head m2/M2-107 --title "Dashboard shell: Home, Approvals, Logs (M2-107)"
+```
+(Paste this PR body section into `--body`.)
+
+---
 
 ### M2-206 — media-tools: Kokoro TTS and faster-whisper STT
 Branch: `m2/M2-206` @ `973fae1` · Worktree: `data/worktrees/m2-206` · Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...m2/M2-206  
