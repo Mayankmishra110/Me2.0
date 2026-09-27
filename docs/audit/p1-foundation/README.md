@@ -49,7 +49,7 @@ Script writer native EN/HI (**M2-204**, merged `d69dcae`). Render long/short/thu
 
 Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
 merge wave **103 / 104 / 213 / 114 / 201 / 105 / 106 / 110 / 202 / 203 / 108** is on the phase branch.
-**M2-204**, **M2-209**, and **M2-205** are merged; **M2-210** is `ready`. Phase→main PR can
+**M2-204**, **M2-209**, **M2-205**, and **M2-210** are merged; **M2-211** is `ready`. Phase→main PR can
 open when Mayank is ready (compare URL above).
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
