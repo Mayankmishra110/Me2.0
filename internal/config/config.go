@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -243,6 +244,9 @@ func (c *Config) validateLLM() error {
 			if p.BaseURL == "" {
 				return fmt.Errorf("llm.providers.%s: base_url is required for ollama", name)
 			}
+			if err := RequireLoopbackURL(p.BaseURL); err != nil {
+				return fmt.Errorf("llm.providers.%s.base_url: %w", name, err)
+			}
 		case "openai_compat":
 			if p.BaseURL == "" {
 				return fmt.Errorf("llm.providers.%s: base_url is required for openai_compat", name)
@@ -285,6 +289,28 @@ func (c *Config) OllamaBaseURL() string {
 		return strings.TrimRight(p.BaseURL, "/")
 	}
 	return "http://127.0.0.1:11434"
+}
+
+// RequireLoopbackURL reports whether raw is an http(s) URL whose host is
+// loopback only: 127.0.0.1, ::1, or localhost. Used for Ollama (local-only).
+// The error names the host only — never secret values.
+func RequireLoopbackURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("parse url: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("scheme %q: want http or https", u.Scheme)
+	}
+	host := strings.ToLower(u.Hostname())
+	switch host {
+	case "127.0.0.1", "::1", "localhost":
+		return nil
+	case "":
+		return fmt.Errorf("missing host")
+	default:
+		return fmt.Errorf("host %q is not loopback (want 127.0.0.1, ::1, or localhost)", host)
+	}
 }
 
 func parseDuration(s, def string) (time.Duration, error) {

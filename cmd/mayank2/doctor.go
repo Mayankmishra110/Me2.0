@@ -153,13 +153,16 @@ func checkPythonUV(ctx context.Context) checkResult {
 
 func checkOllama(ctx context.Context, cfg *config.Config) checkResult {
 	base := cfg.OllamaBaseURL()
+	if err := config.RequireLoopbackURL(base); err != nil {
+		return checkResult{Name: "ollama", OK: false, Detail: err.Error()}
+	}
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(cctx, http.MethodGet, base+"/api/tags", nil)
 	if err != nil {
 		return checkResult{Name: "ollama", OK: false, Detail: err.Error()}
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := ollamaHTTPClient().Do(req)
 	if err != nil {
 		return checkResult{Name: "ollama", OK: false, Detail: fmt.Sprintf("unreachable at %s: %v", base, err)}
 	}
@@ -204,6 +207,23 @@ func checkOllama(ctx context.Context, cfg *config.Config) checkResult {
 		}
 	}
 	return checkResult{Name: "ollama", OK: true, Detail: fmt.Sprintf("reachable; %s and %s present", model, embed)}
+}
+
+// ollamaHTTPClient refuses redirects whose target host is not loopback.
+func ollamaHTTPClient() *http.Client {
+	return &http.Client{
+		CheckRedirect: ollamaCheckRedirect,
+	}
+}
+
+func ollamaCheckRedirect(req *http.Request, via []*http.Request) error {
+	if err := config.RequireLoopbackURL(req.URL.String()); err != nil {
+		return fmt.Errorf("redirect refused: %w", err)
+	}
+	if len(via) >= 10 {
+		return fmt.Errorf("stopped after 10 redirects")
+	}
+	return nil
 }
 
 func modelPulled(pulled map[string]bool, want string) bool {
