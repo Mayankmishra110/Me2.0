@@ -47,10 +47,10 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 
 | Ticket | Branch | Feature | Role | Commits so far | State |
 |---|---|---|---|---|---|
-| M2-105 | `m2/M2-105` | Telegram bot: allowlist, commands, approvals, PIN | be | `2d86848` plan | in-progress |
-| M2-106 | `m2/M2-106` | HTTP API, auth, embedded dashboard | be-2 | â€” | in-progress |
-| M2-110 | `m2/M2-110` | DPAPI token vault and OAuth helper | be-3 | — | in-progress |
-| M2-202 | `m2/M2-202` | Niche Scout | ai | `8ae8fa2`?`8b9f367` | in-review |
+| M2-105 | `m2/M2-105` | Telegram bot | be | SEC fixes in flight | in-progress (QA changes)
+| M2-106 | `m2/M2-106` | HTTP API | be-2 | tip in-review | in-review awaiting qa/sec
+| M2-110 | `m2/M2-110` | DPAPI/OAuth | be-3 | tip in-review | in-review awaiting qa/sec
+| M2-202 | `m2/M2-202` | Niche Scout | ai | tip in-review | in-review awaiting qa/sec
 
 ## How to regenerate/verify this file
 
