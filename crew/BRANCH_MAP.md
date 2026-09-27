@@ -32,19 +32,24 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `51bb8e3`, `b0002d2`, `580f837`, `6627e86`, `8bcd623`, `3def108`, `13bc7b2` | `7d0c3fa` | merged, done |
 | M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | `71d973e`, `d9a8f4e`, `b2666c2`, `0410a86`, `fadc7ad`, `a780106` | `9c0b970` | merged, done |
 | M2-201 | `m2/M2-201` | Channel and format config | be-3 | `983be38`, `6ba672b`, `5b40258`, `2ae7005` | `3f1293e` | merged, done |
+| M2-105 | `m2/M2-105` | Telegram bot: allowlist, commands, approvals, PIN | be | `60ee164`, `4538c2c`, `d79f039`, `67229fd`, `c5008a4`, `a34657e`, `9db5f4b`, `22f5c37`, `e4c5d6d` | `d7c2558` | merged, done, QA+SEC pass |
 
 **Not a ticket branch:** `phase/p1-foundation` itself — one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
 
 ## Phase P1 batch 2 (in progress, all branched from `phase/p1-foundation`)
 
-Batch-2 merge wave complete for 103/104/213/114/201. Remaining P1 build tickets below.
+Batch-2 merge wave complete for 103/104/213/114/201/105. Remaining P1 builds: 106/108/110 (+ 202).
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits so far | State |
 |---|---|---|---|---|---|
-| M2-105 | `m2/M2-105` | Telegram bot: allowlist, commands, approvals, PIN | be | — | in-progress |
+| M2-106 | `m2/M2-106` | HTTP API | be-2 | tip in-review | in-review |
+| M2-110 | `m2/M2-110` | DPAPI/OAuth | be-3 | tip in-review | in-review |
+| M2-202 | `m2/M2-202` | Niche Scout | ai | tip in-review | in-review |
+
+**Ready (no branch yet):** M2-108 scheduler — deps M2-103 + M2-105 done after `d7c2558`.
 
 ## How to regenerate/verify this file
 
