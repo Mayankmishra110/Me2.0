@@ -1,9 +1,0 @@
-{
-  "kind": "youtube#searchListResponse",
-  "items": [
-    {"id": {"kind": "youtube#video", "videoId": "vidHighViews"}},
-    {"id": {"kind": "youtube#video", "videoId": "vidMidViews"}},
-    {"id": {"kind": "youtube#video", "videoId": "vidLowViews"}},
-    {"id": {"kind": "youtube#video", "videoId": "vidOldViews"}}
-  ]
-}
