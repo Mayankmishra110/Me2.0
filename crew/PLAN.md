@@ -1,17 +1,15 @@
 ﻿# Plan — owned by lead
 
-Updated: 2026-09-28 · **phase/p1-foundation @ 6ebe4c2 (origin in sync)**
+Updated: 2026-09-28 · phase/p1-foundation @ 6ebe4c2 (origin)
+
+## Building / review
+| Ticket | State |
+|---|---|
+| M2-105 | QA/SEC **changes** (77122bc) — be fixing PIN/pause, token redact, preview path |
+| M2-106 | building |
+| M2-110 | building |
+| M2-202 | building (scout.go only) |
+| M2-108 | waiting on 105 merge |
 
 ## Pushed
-Batch1 + 103, 104, 213, 114, 201 (tip includes audit + M2-202 ready note).
-
-## Building now (respawned wave)
-| Ticket | Role | Worktree | Notes |
-|---|---|---|---|
-| M2-105 | be | m2-105 | telegram package drafted, needs commit+tests+in-review |
-| M2-106 | be-2 | m2-106 | httpapi drafted, needs commit+tests+in-review |
-| M2-110 | be-3 | m2-110 | just starting secrets/OAuth |
-| M2-202 | ai | m2-202 | Niche Scout — touches only scout.go |
-
-## Next
-qa/sec → ship+push as each hits in-review · M2-108 after 105 merges · then phase/p2-content for rest of P2.
+103,104,213,114,201 on phase tip 6ebe4c2.
