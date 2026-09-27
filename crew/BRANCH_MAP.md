@@ -38,7 +38,7 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 | M2-103 | `m2/M2-103` | Durable job queue and worker pool | be | `384fb05` (plan) | in-progress |
 | M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | `915d170` (plan) | in-progress |
 | M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | none yet | in-progress |
-| M2-201 | `m2/M2-201` | Channel and format config | be-3 | none yet | in-progress |
+| M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` | in-review, awaiting qa/sec |
 | M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `540e194` (plan) | in-progress |
 
 Update this table's "Commits so far" / "State" as each finishes; move the row up into a new "P1 batch 2"
