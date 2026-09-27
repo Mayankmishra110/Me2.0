@@ -14,7 +14,8 @@ class ContractError(ValueError):
 def load_json(path: str | Path) -> dict[str, Any]:
     p = Path(path)
     try:
-        raw = p.read_text(encoding="utf-8")
+        # utf-8-sig strips a BOM that PowerShell Set-Content -Encoding utf8 often writes.
+        raw = p.read_text(encoding="utf-8-sig")
     except OSError as e:
         raise ContractError(f"cannot read --in {p}: {e}") from e
     try:
