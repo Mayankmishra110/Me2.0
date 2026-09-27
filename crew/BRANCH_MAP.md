@@ -38,20 +38,21 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-202 | `m2/M2-202` | Niche Scout | ai | `613d633`, `033687a`, `4818e97`, `065c928`, `c530123`, `a1216f8`, `ded5522`, `cbca048`, `7581bb0`, `54f5cde` | `560e002` | merged, done, QA+SEC pass |
 | M2-203 | `m2/M2-203` | Research brief with sources | ai | `b2a03f4`, `3149cf9`, `8006d66` | `1491844` | merged, done, QA+SEC pass |
 | M2-108 | `m2/M2-108` | Scheduler and daily summary | be | `6f5f09d`, `7978deb`, `b14ddf6`, `4411da0`, `9eb9c00` | `a485988` | merged, done, QA+SEC pass |
+| M2-204 | `m2/M2-204` | Script writer (native EN and HI) | ai | `ba40b2e`, `b12417d`, `e5c3849` | `d69dcae` | merged, done, QA+SEC pass |
 
-**Not a ticket branch:** `phase/p1-foundation` itself ? one `--no-ff` merge per ticket, in the order above.
+**Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
 
 ## Phase P1 batch 2 (complete on phase branch)
 
-Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Scheduler **M2-108**. P1 foundation tickets on this branch are done. **M2-204** (phase 2) remains `ready` (depends on 203).
+Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Scheduler **M2-108**. **M2-204**
+(phase 2 script writer) merged `d69dcae`; **M2-205** flipped `todo` -> `ready`.
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-204 | `m2/M2-204` | Script writer (native EN and HI) | ai | — | — | in-progress (about to merge) |
-| M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | — | — | in-progress |
+| M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | - | - | in-progress |
 
 ## How to regenerate/verify this file
 
@@ -65,5 +66,5 @@ git show phase/p1-foundation:tickets/M2-xxx.md | grep touches:   # confirm branc
 ## Stale / to clean up
 
 `m2/*` branches for done tickets are kept (not deleted) after merging, in case another session still has
-context on one — see `crew/SHIP_QUEUE.md` Notes. Safe to delete once Mayank confirms `phase/p1-foundation`
+context on one - see `crew/SHIP_QUEUE.md` Notes. Safe to delete once Mayank confirms `phase/p1-foundation`
 is merged into `main`: `git branch -d m2/M2-101 m2/M2-102 m2/M2-107 m2/M2-109 m2/M2-111 m2/M2-206 m2/M2-207 m2/M2-208`.
