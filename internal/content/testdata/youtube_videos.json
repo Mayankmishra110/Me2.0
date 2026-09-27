@@ -1,0 +1,37 @@
+{
+  "kind": "youtube#videoListResponse",
+  "items": [
+    {
+      "id": "vidHighViews",
+      "snippet": {
+        "title": "Side Hustle With Real Numbers 2026",
+        "publishedAt": "2026-09-20T12:00:00Z"
+      },
+      "statistics": {"viewCount": "2500000"}
+    },
+    {
+      "id": "vidMidViews",
+      "snippet": {
+        "title": "Budgeting System For Beginners",
+        "publishedAt": "2026-09-01T08:00:00Z"
+      },
+      "statistics": {"viewCount": "180000"}
+    },
+    {
+      "id": "vidLowViews",
+      "snippet": {
+        "title": "Quiet Money Tip",
+        "publishedAt": "2026-08-15T08:00:00Z"
+      },
+      "statistics": {"viewCount": "1200"}
+    },
+    {
+      "id": "vidOldViews",
+      "snippet": {
+        "title": "Old Finance Lecture",
+        "publishedAt": "2020-01-01T00:00:00Z"
+      },
+      "statistics": {"viewCount": "900000"}
+    }
+  ]
+}

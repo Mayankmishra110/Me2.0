@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "id": { "videoId": "vidAAA111" },
+      "snippet": {
+        "title": "Best Side Hustles in 2026 That Actually Pay",
+        "publishedAt": "2026-09-20T12:00:00Z",
+        "channelTitle": "MoneyChannel"
+      }
+    },
+    {
+      "id": { "videoId": "vidBBB222" },
+      "snippet": {
+        "title": "Budgeting System for Beginners",
+        "publishedAt": "2026-08-01T08:00:00Z",
+        "channelTitle": "FinanceFacts"
+      }
+    }
+  ]
+}
