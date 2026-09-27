@@ -23,14 +23,14 @@ records; Remotion compositions for the first three formats; and the Windows buil
 | M2-102 SQLite open, embedded migrations, initial schema | be (Cursor) | `m2/M2-102` | `de659ed` | [M2-102.md](M2-102.md) | QA pass · SEC n/a (`needs-sec: no`) |
 | M2-111 LLM router and providers | ai (Cursor) | `m2/M2-111` | `a45a85b` | [M2-111.md](M2-111.md) | QA pass · SEC pass |
 | M2-208 Remotion compositions | fe (Cursor) | `m2/M2-208` | `42e1133` | [M2-208.md](M2-208.md) | QA pass · SEC n/a (`needs-sec: no`) |
-| M2-109 Windows build, start at logon, power settings | be-2 | `m2/M2-109` | `9886b06` | [M2-109.md](M2-109.md) | not yet QA/SEC-reviewed by the crew roles — audited directly by ship, see doc |
-| M2-207 Stock visuals with license records | be-3 | `m2/M2-207` | `ba50300` | [M2-207.md](M2-207.md) | not yet QA/SEC-reviewed by the crew roles — audited directly by ship, see doc |
+| M2-109 Windows build, start at logon, power settings | be-2 | `m2/M2-109` | `9886b06` | [M2-109.md](M2-109.md) | QA pass · SEC pass — 2026-09-28, independent crew review (`cd5590a`) |
+| M2-207 Stock visuals with license records | be-3 | `m2/M2-207` | `ba50300` | [M2-207.md](M2-207.md) | QA pass · SEC pass — 2026-09-28, independent crew review (`cd5590a`) |
 
-M2-109 and M2-207 were built and self-verified by background sub-agents in this session and audited by ship
-against their ticket acceptance criteria and the linked docs, but have not been through a separate qa/sec
-role pass as M2-101/102/107/111/206/208 were. Flagged `needs-sec: yes` on both (see their audit docs' "Known
-gaps"). Recommend a sec pass on both before this merges, given M2-109 registers a scheduled task and M2-207
-makes outbound calls with API keys.
+All 8 tickets now have a QA pass, and every `needs-sec: yes` ticket (M2-101, M2-111, M2-206, M2-109, M2-207)
+has a SEC pass. **No open blockers.** M2-109 and M2-207 were initially built by background sub-agents and
+only self-audited by ship; a dedicated qa+sec review (`cd5590a`) then independently re-read the code, re-ran
+the checks itself (not just re-trusted the claims), and found no issues on either ticket — full verdicts are
+in [M2-109.md](M2-109.md) and [M2-207.md](M2-207.md) `## Review`.
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
 task on this laptop, self-detected and removed within the same session; AC power settings were never
@@ -103,7 +103,6 @@ exits non-zero — this predates D24 and is exactly what **M2-114** (now `ready`
 M2-111) is scoped to fix, alongside adding `mayank2 llm ask` for a real one-key smoke test.
 
 ## Risks and follow-ups
-- M2-109 and M2-207 need a sec-role review (see above).
 - LLM quota tracking is in-memory; wire to the `quotas` table now that M2-102 has shipped it.
 - Stock-clip reuse tracking is in-memory; wire to a SQLite-backed `UsageStore` now that M2-102 has shipped.
 - `assets` table (ARCHITECTURE §4) has `license_url` but no `source_url`/`provider`/`provider_asset_id`
