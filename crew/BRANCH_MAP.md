@@ -30,6 +30,7 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-103 | `m2/M2-103` | Durable job queue and worker pool | be | `55c4c53`, `41108ee`, `d547f6b`, `3aaa20d`, `5e87c8a`, `7240e91`, `ee8876e`, `9eb1800`, `82df3c6` | `18c7910` | merged, done |
 | M2-104 | `m2/M2-104` | Events log and SSE broadcaster | be-2 | `370ea1d`, `daeaa1b`, `1f5517a`, `d314dd0`, `fe93dd4`, `5403142` | `e520b9e` | merged, done |
 | M2-213 | `m2/M2-213` | Storage retention and R2 | be-4 | `51bb8e3`, `b0002d2`, `580f837`, `6627e86`, `8bcd623`, `3def108`, `13bc7b2` | `7d0c3fa` | merged, done |
+| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | `71d973e`, `d9a8f4e`, `b2666c2`, `0410a86`, `fadc7ad`, `a780106` | `9c0b970` | merged, done |
 
 **Not a ticket branch:** `phase/p1-foundation` itself — one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -38,7 +39,6 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 
 | Ticket | Branch | Feature | Role | Commits so far | State |
 |---|---|---|---|---|---|
-| M2-114 | `m2/M2-114` | Run with only the keys you have (single-key LLM) | ai | `5c0c958`, `033b33e`, `c361776`, `6525b28`, `f4d213a`, `5d126ae` | QA pass · SEC pass · awaiting ship |
 | M2-201 | `m2/M2-201` | Channel and format config | be-3 | `5817bad`, `e15b720`, `45d536c` (+ uncommitted QA) | QA pass · SEC n/a · awaiting ship |
 
 ## In progress (branched from `phase/p1-foundation`)
