@@ -9,10 +9,10 @@ Audit docs sit next to this file, one per ticket.
 ---
 
 ## Phase / feature
-`phase/p1-foundation` → `main`: 8 P1 tickets. The Go CLI with config, `doctor` and SQLite (WAL, migrations);
-the durable-storage-backed LLM router (Ollama, Groq/Cerebras/OpenRouter/Gemini, `claude -p`); the web
-dashboard shell on a mock API; the media-tools TTS/STT CLIs; Pexels/Pixabay stock-clip fetching with license
-records; Remotion compositions for the first three formats; and the Windows build + start-at-logon scripts.
+`phase/p1-foundation` → `main`: batch 1 (8 tickets) plus batch 2 as tickets merge. Batch 1: Go CLI with
+config, `doctor` and SQLite; LLM router; dashboard shell; media-tools TTS/STT; stock visuals; Remotion;
+Windows start-at-logon. Batch 2 so far: durable job queue and worker pool (**M2-103**, merged
+`18c7910`).
 
 ## Features in this PR
 | Ticket | Role | Branch | Merge commit | Audit doc | Reviews |
@@ -25,12 +25,12 @@ records; Remotion compositions for the first three formats; and the Windows buil
 | M2-208 Remotion compositions | fe (Cursor) | `m2/M2-208` | `42e1133` | [M2-208.md](M2-208.md) | QA pass · SEC n/a (`needs-sec: no`) |
 | M2-109 Windows build, start at logon, power settings | be-2 | `m2/M2-109` | `9886b06` | [M2-109.md](M2-109.md) | QA pass · SEC pass — 2026-09-28, independent crew review (`cd5590a`) |
 | M2-207 Stock visuals with license records | be-3 | `m2/M2-207` | `ba50300` | [M2-207.md](M2-207.md) | QA pass · SEC pass — 2026-09-28, independent crew review (`cd5590a`) |
+| M2-103 Durable job queue and worker pool | be | `m2/M2-103` | `18c7910` | [M2-103.md](M2-103.md) | QA pass · SEC n/a (`needs-sec: no`) — 2026-09-28 |
 
-All 8 tickets now have a QA pass, and every `needs-sec: yes` ticket (M2-101, M2-111, M2-206, M2-109, M2-207)
-has a SEC pass. **No open blockers.** M2-109 and M2-207 were initially built by background sub-agents and
-only self-audited by ship; a dedicated qa+sec review (`cd5590a`) then independently re-read the code, re-ran
-the checks itself (not just re-trusted the claims), and found no issues on either ticket — full verdicts are
-in [M2-109.md](M2-109.md) and [M2-207.md](M2-207.md) `## Review`.
+Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. **M2-103**
+is the first batch-2 merge (QA pass, SEC n/a). Remaining in-review (not merged yet): M2-104, M2-114,
+M2-201, M2-213 — do not treat the phase branch as ready for the final PR push until those land or are
+explicitly deferred.
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
 task on this laptop, self-detected and removed within the same session; AC power settings were never
@@ -57,6 +57,7 @@ ok  	mayank2/internal/config
 ok  	mayank2/internal/db
 ok  	mayank2/internal/llm
 ok  	mayank2/internal/media
+ok  	mayank2/internal/queue
 ok  	mayank2/internal/tickets
 ?   	mayank2/migrations	[no test files]
 
@@ -112,9 +113,9 @@ M2-111) is scoped to fix, alongside adding `mayank2 llm ask` for a real one-key 
 - Exact model IDs aside, **M2-114 is now ready** and is the direct path to "put in a free Gemini key and it
   works end to end."
 
-Tickets flipped to `ready` on this branch (all `depends` now satisfied): **M2-103** (queue), **M2-104**
-(events/SSE), **M2-110** (secrets vault), **M2-114** (single-key LLM path), **M2-201** (channel config),
-**M2-213** (storage/R2). Not flipped: M2-202/M2-209 still wait on M2-103/M2-201.
+Tickets flipped to `ready` when batch 1 merged: **M2-103**, **M2-104**, **M2-110**, **M2-114**,
+**M2-201**, **M2-213**. After **M2-103** merged (`18c7910`): **M2-105** (Telegram) → `ready` (depends
+only on M2-103). Left `todo`: **M2-108** (still needs M2-105), **M2-202** (still needs M2-201 + M2-103).
 
 ## How to test
 ```
