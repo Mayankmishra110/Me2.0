@@ -18,7 +18,8 @@ Channel + format config (**M2-201**, merged `3f1293e`). Telegram bot (**M2-105**
 HTTP API + auth + embedded dashboard (**M2-106**, merged `96adf6a`). DPAPI token vault + OAuth helper
 (**M2-110**, merged `880b852`). Niche Scout (**M2-202**, merged `560e002`). Research brief
 (**M2-203**, merged `1491844`). Scheduler + daily summary (**M2-108**, merged `a485988`).
-Script writer native EN/HI (**M2-204**, merged `d69dcae`).
+Script writer native EN/HI (**M2-204**, merged `d69dcae`). Render long/short/thumb/subs
+(**M2-209**, merged `878ccb7`).
 
 ## Features in this PR
 | Ticket | Role | Branch | Merge commit | Audit doc | Reviews |
@@ -43,11 +44,12 @@ Script writer native EN/HI (**M2-204**, merged `d69dcae`).
 | M2-203 Research brief with sources | ai | `m2/M2-203` | `1491844` | [M2-203.md](M2-203.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-108 Scheduler and daily summary | be | `m2/M2-108` | `a485988` | [M2-108.md](M2-108.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-204 Script writer (native EN and HI) | ai | `m2/M2-204` | `d69dcae` | [M2-204.md](M2-204.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
+| M2-209 Render long, short, thumbnail, subtitles | be | `m2/M2-209` | `878ccb7` | [M2-209.md](M2-209.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 
 Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
 merge wave **103 / 104 / 213 / 114 / 201 / 105 / 106 / 110 / 202 / 203 / 108** is on the phase branch.
-**M2-204** (phase 2 script writer) is merged; **M2-205** is `ready`. Phase→main PR can open when Mayank
-is ready (compare URL above).
+**M2-204** and **M2-209** are merged; **M2-205** remains in-progress (not shipped). Phase→main PR can
+open when Mayank is ready (compare URL above).
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
 task on this laptop, self-detected and removed within the same session; AC power settings were never

@@ -39,6 +39,7 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-203 | `m2/M2-203` | Research brief with sources | ai | `b2a03f4`, `3149cf9`, `8006d66` | `1491844` | merged, done, QA+SEC pass |
 | M2-108 | `m2/M2-108` | Scheduler and daily summary | be | `6f5f09d`, `7978deb`, `b14ddf6`, `4411da0`, `9eb9c00` | `a485988` | merged, done, QA+SEC pass |
 | M2-204 | `m2/M2-204` | Script writer (native EN and HI) | ai | `ba40b2e`, `b12417d`, `e5c3849` | `d69dcae` | merged, done, QA+SEC pass |
+| M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | `efd68a4`, `8e5ba45`, `4040c67`, `f109dbd`, `1b9eebd`, `755f696`, `21804f1` | `878ccb7` | merged, done, QA+SEC pass |
 
 **Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -46,13 +47,13 @@ Full graph: `git log --oneline --graph phase/p1-foundation`.
 ## Phase P1 batch 2 (complete on phase branch)
 
 Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Scheduler **M2-108**. **M2-204**
-(phase 2 script writer) merged `d69dcae`; **M2-205** flipped `todo` -> `ready`.
+(phase 2 script writer) merged `d69dcae`. **M2-209** (render) merged `878ccb7`. **M2-205** still
+in-progress (not merged). **M2-210** stays `todo` until 205+209 are both done.
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | - | - | in-progress |
 | M2-205 | `m2/M2-205` | Compliance script gates G1–G7 | be | — | — | in-progress |
 
 ## How to regenerate/verify this file
