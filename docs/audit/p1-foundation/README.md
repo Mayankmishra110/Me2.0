@@ -48,10 +48,11 @@ Final gates F1–F6 + approval flow (**M2-210**, code `9646b4b`, QA/SEC `d283fb4
 | M2-209 Render long, short, thumbnail, subtitles | be | `m2/M2-209` | `878ccb7` | [M2-209.md](M2-209.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-205 Compliance script gates G1–G7 | be | `m2/M2-205` | `a76a141` | [M2-205.md](M2-205.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-210 Final gates and approval flow | be | `m2/M2-210` | `d283fb4` | [M2-210.md](M2-210.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
+| M2-211 YouTube uploader for 4 channels | be | `m2/M2-211` | `e88f6f8` | [M2-211.md](M2-211.md) | QA pass � SEC pass (`needs-sec: yes`) � 2026-09-28 |
 
 Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
 merge wave **103 / 104 / 213 / 114 / 201 / 105 / 106 / 110 / 202 / 203 / 108** is on the phase branch.
-**M2-204**, **M2-209**, **M2-205**, and **M2-210** are merged; **M2-211** is `ready`. Phase→main PR can
+**M2-204**, **M2-209**, **M2-205**, and **M2-210** are merged; **M2-211** is merged; **M2-212** is `ready`. Phase→main PR can
 open when Mayank is ready (compare URL above).
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
