@@ -10,7 +10,9 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
+	"mayank2/internal/content"
 	"mayank2/internal/db"
 	"mayank2/internal/events"
 )
@@ -41,6 +43,7 @@ func testServer(t *testing.T, sqlDB *sql.DB, bus *events.Bus) *Server {
 		DashboardToken: testToken,
 		DB:             sqlDB,
 		Events:         bus,
+		Approvals:      &content.ApprovalService{DB: sqlDB},
 		Version:        "test",
 		WebFS:          fs.FS(web),
 	})
@@ -71,9 +74,10 @@ func login(t *testing.T, h http.Handler) *http.Cookie {
 func seedApproval(t *testing.T, sqlDB *sql.DB, id, status string) {
 	t.Helper()
 	ctx := context.Background()
+	warmup := time.Now().UTC().Add(-48 * time.Hour).Format(time.RFC3339Nano)
 	_, err := sqlDB.ExecContext(ctx, `
-INSERT INTO channels (id, platform, handle, language, niche, status)
-VALUES ('ch1', 'youtube', 'test', 'en', 'money', 'active')`)
+INSERT INTO channels (id, platform, handle, language, niche, status, warmup_started_at)
+VALUES ('ch1', 'youtube', 'test', 'en', 'money', 'active', ?)`, warmup)
 	if err != nil {
 		t.Fatalf("seed channel: %v", err)
 	}
@@ -85,7 +89,7 @@ VALUES ('c1', 'ch1', 'short', 'en', 'approval', '{"ok":true}', ?)`, "2026-01-01T
 	}
 	_, err = sqlDB.ExecContext(ctx, `
 INSERT INTO approvals (id, content_id, kind, summary, status, nonce)
-VALUES (?, 'c1', 'final', 'preview ready', ?, 'nonce1')`, id, status)
+VALUES (?, 'c1', 'short', 'preview ready', ?, 'nonce1')`, id, status)
 	if err != nil {
 		t.Fatalf("seed approval: %v", err)
 	}

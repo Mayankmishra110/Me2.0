@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"mayank2/internal/content"
 	"mayank2/internal/db"
 	"mayank2/internal/queue"
 )
@@ -110,13 +111,18 @@ func newTestBot(t *testing.T, sqlDB *sql.DB, api *fakeAPI) (*Bot, *queue.Queue) 
 	srv := httptest.NewServer(api.handler(t))
 	t.Cleanup(srv.Close)
 	q := queue.New(sqlDB, queue.WithWorkerName("tg-test"))
+	// ApprovalService.Decide redo enqueues script.write — register a no-op so enqueue succeeds.
+	q.Register(content.JobScriptWrite, queue.ResourceLight, 3, func(ctx context.Context, job queue.Job) (json.RawMessage, error) {
+		return json.RawMessage(`{}`), nil
+	})
 	bot, err := New(Config{
-		Token:    testToken,
-		UserID:   testUserID,
-		ChatID:   testChatID,
-		DataRoot: t.TempDir(),
-		DB:       sqlDB,
-		Queue:    q,
+		Token:     testToken,
+		UserID:    testUserID,
+		ChatID:    testChatID,
+		DataRoot:  t.TempDir(),
+		DB:        sqlDB,
+		Queue:     q,
+		Approvals: &content.ApprovalService{DB: sqlDB, Enqueue: q},
 		ClientOpts: []ClientOption{
 			WithBaseURL(srv.URL),
 			WithHTTPClient(srv.Client()),
@@ -130,7 +136,10 @@ func newTestBot(t *testing.T, sqlDB *sql.DB, api *fakeAPI) (*Bot, *queue.Queue) 
 
 func seedChannel(t *testing.T, sqlDB *sql.DB, id string) {
 	t.Helper()
-	_, err := sqlDB.Exec(`INSERT INTO channels (id, platform, language, niche, status) VALUES (?, 'youtube', 'en', 'ai', 'active')`, id)
+	warmup := time.Now().UTC().Add(-48 * time.Hour).Format(time.RFC3339Nano)
+	_, err := sqlDB.Exec(`
+INSERT INTO channels (id, platform, language, niche, status, warmup_started_at)
+VALUES (?, 'youtube', 'en', 'ai', 'active', ?)`, id, warmup)
 	if err != nil {
 		t.Fatalf("seed channel: %v", err)
 	}
@@ -276,6 +285,11 @@ func TestDoubleTapIgnored(t *testing.T) {
 	_ = sqlDB.QueryRow(`SELECT status, nonce FROM approvals WHERE id='a1'`).Scan(&status, &nonce)
 	if status != "approved" || nonce != "" {
 		t.Fatalf("after first tap: status=%q nonce=%q", status, nonce)
+	}
+	var pubs int
+	_ = sqlDB.QueryRow(`SELECT COUNT(*) FROM publications WHERE content_id='c1' AND status='scheduled'`).Scan(&pubs)
+	if pubs < 1 {
+		t.Fatalf("approve must schedule publications, got %d", pubs)
 	}
 
 	api.mu.Lock()
@@ -480,6 +494,12 @@ func TestRedoAsksForNote(t *testing.T) {
 	if status != "redo" || note != "hook is weak, try myth-vs-fact" {
 		t.Fatalf("got status=%q note=%q", status, note)
 	}
+	// ApprovalService.Decide enqueues script.write on redo.
+	var scriptJobs int
+	_ = sqlDB.QueryRow(`SELECT COUNT(*) FROM jobs WHERE type='script.write'`).Scan(&scriptJobs)
+	if scriptJobs < 1 {
+		t.Fatalf("redo must enqueue script.write, got %d jobs", scriptJobs)
+	}
 }
 
 func TestOffsetStored(t *testing.T) {
@@ -616,12 +636,13 @@ func TestPreviewPathOutsideDataRootFallsBackToText(t *testing.T) {
 	t.Cleanup(srv.Close)
 	q := queue.New(sqlDB, queue.WithWorkerName("tg-test"))
 	bot, err := New(Config{
-		Token:    testToken,
-		UserID:   testUserID,
-		ChatID:   testChatID,
-		DataRoot: dataRoot,
-		DB:       sqlDB,
-		Queue:    q,
+		Token:     testToken,
+		UserID:    testUserID,
+		ChatID:    testChatID,
+		DataRoot:  dataRoot,
+		DB:        sqlDB,
+		Queue:     q,
+		Approvals: &content.ApprovalService{DB: sqlDB, Enqueue: q},
 		ClientOpts: []ClientOption{
 			WithBaseURL(srv.URL),
 			WithHTTPClient(srv.Client()),
