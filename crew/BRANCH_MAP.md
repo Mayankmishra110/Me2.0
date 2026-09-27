@@ -53,6 +53,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
 | M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | - | - | in-progress |
+| M2-205 | `m2/M2-205` | Compliance script gates G1–G7 | be | — | — | in-progress |
 
 ## How to regenerate/verify this file
 
