@@ -57,6 +57,31 @@ npm install -g @anthropic-ai/claude-code   # already installed
 
 Go is currently 1.23.4 on this laptop; upgrade to 1.24+ for the SQLite driver.
 
+## Quick start with one free key
+
+Everything runs with only the keys you have (CONTEXT D24, M2-114): every integration is enabled
+by its own `.env` key, and `doctor` reports a missing one as ⚪ "not configured," never a failure.
+One free [Gemini API key](https://aistudio.google.com/apikey) is enough to run the LLM path end
+to end — nothing else needs to be signed up for first.
+
+```powershell
+copy config\config.example.yaml config\config.yaml   # defaults already point at Gemini's free tier
+copy .env.example .env
+# edit .env: paste your key into GEMINI_API_KEY=
+go run ./cmd/mayank2 doctor                           # ✅ ok · ⚪ not configured · ❌ broken
+go run ./cmd/mayank2 llm ask "Say hello in one sentence."
+go run ./cmd/mayank2 llm ask --task script "Write a 3-beat hook about compound interest."
+```
+
+`doctor` exits non-zero only on ❌ (a core tool missing, or a key that's set but rejected by its
+provider) — a ⚪ for every other provider, Pexels/Pixabay, publish platform, R2, or Telegram is
+expected and does not fail the run. Add more keys to `.env` any time; each one flips its own row
+from ⚪ to ✅ (or ❌ if the provider rejects it) the next time you run `doctor`.
+
+Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey); keep Google
+Cloud billing **off** on that project so usage stays on the free tier. `config.example.yaml`'s
+`llm.providers.gemini.model` comment records which model id is current and where it was checked.
+
 ## Run (available after M2-101 … M2-109)
 
 ```powershell
