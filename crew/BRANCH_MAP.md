@@ -113,11 +113,17 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | M2-603 | `m2/M2-603` | Agency lead list + proposal drafts | be | `f6d192a`, `a5ec68e`, `bddfa67`, `4693b8d`, `bdfdab1` (pre-rebase `d7ee871`/`fcb0801`/`755bc78`) | `6c2f61f` | merged, done, QA+SEC pass |
 | M2-604 | `m2/M2-604` | Pinterest affiliate pin selection and copy | be | `38558ac`, `bc6f728` (pre-rebase `87acc8c`/`5707ad0`) | `77313c2` | merged, done, QA+SEC pass |
 
+## Merged (D25 model — per-feature branch off `dev`/`main`)
+
+| Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
+|---|---|---|---|---|---|---|
+| M2-116 | `m2/M2-116` (worktree `data/worktrees/m2-116`, based on `dev` at `ad545bd`) | Wire the daemon: `cmd/mayank2 run` starts everything (queue+handlers+scheduler+telegram+http under one context) | be | `76c11fe`, `85d1581` | `85e3f21` (merged into `dev`) | merged into `dev`, done, QA+SEC pass (independent qa/sec re-review, re-derived from real code + real go vet/gofmt/go test output). Post-merge on `dev`: `gofmt -l .` clean, `go vet ./...` exit 0, `go test ./... -count=1` all green (2026-09-29). Not yet in `main` — see Open questions in CONTEXT.md re: how the accumulated `dev` branch (built under the old phase-branch model, now spanning P1-P6) reconciles with D25's per-ticket-off-`main` auto-merge model before it lands on `main`. |
+
 ## In progress (D25 model — per-feature branch off `dev`/`main`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-116 | `m2/M2-116` (worktree `data/worktrees/m2-116`, based on `dev` at `ad545bd`) | Wire the daemon: `cmd/mayank2 run` starts everything (queue+handlers+scheduler+telegram+http under one context) | be | (pending commit) | — | done, QA+SEC pass (independent qa/sec re-review, re-derived from real code + real go vet/gofmt/go test output) |
+| — | — | — | — | — | — | (none) |
 
 ## How to regenerate/verify this file
 
