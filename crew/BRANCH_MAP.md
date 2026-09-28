@@ -97,11 +97,24 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | M2-504 | `m2/M2-504` | Builder phase gate (pass/fix-retry decision, timeout, limit pause) | be | `79762bb`, +1 review commit (`cd19fde`) | `8729db2` | merged, done, QA+SEC pass (independent qa/sec re-review, re-derived every AC claim from real code + real go test/vet/gofmt output); reconciled one stale `defaultGitRunner(opts.LookPath)` call in `gate.go` (line 191, built before/without seeing M2-502's rename) onto phase's `defaultImplementerGitRunner`; also added the missing CONTEXT.md D25 row (ship auto-merge decision, commit `400e674`, present on `main` but never in the phase-branch lineage — a pre-existing docs-integrity gap flagged by M2-504's own reviewer, fixed here as a documentation fix, not a product decision), keeping M2-504's own D26 row intact; post-merge `gofmt -l .` / `go vet ./...` / `go test ./... -count=1` all green |
 | M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | `c10146a` | merged, done, QA+SEC pass (QA+SEC @ `c7d1fc8`; re-verified fresh 2026-09-29 against final M2-504 `gate.go` — full Go + web check suite green, no `defaultGitRunner`/`defaultImplementerGitRunner` bit rot in `pr.go`) |
 
+## Phase P6 revenue / income (on phase branch)
+
+| Ticket | Status | Depends | Touches |
+|---|---|---|---|
+| M2-601 | **done** · merge `6fac776` | 212, 106 (done) | `internal/revenue/`, `/api/revenue`, Revenue dashboard |
+| M2-602 | **ready** (claimable) | 501 (done), 601 (done) | `internal/micro_saas/` |
+| M2-603 | **ready** (claimable) | 111 (done), 601 (done) | `internal/agency/` |
+| M2-604 | **ready** (claimable) | 304 (done), 601 (done) | `internal/content/`, `config/channels/` |
+
+| Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
+|---|---|---|---|---|---|---|
+| M2-601 | `m2/M2-601` | Revenue tracking: store, API, pull, Revenue dashboard | be | `47bc03f`, `aa4fe3b` | `6fac776` | merged, done, QA+SEC pass |
+
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-601 | `m2/M2-601` | Revenue tracking: manual + semi-automated entries, revenue API | be | (see branch tip) | — | in-review |
+| - | - | (none open) | - | - | - | - |
 
 ## How to regenerate/verify this file
 
