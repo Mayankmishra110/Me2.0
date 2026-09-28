@@ -168,6 +168,31 @@ export interface BuilderResponse {
   audits: BuilderAudit[]
 }
 
+export type RevenueLine = 'ads' | 'affiliate' | 'agency' | 'saas' | 'sponsor'
+
+export interface RevenueEntry {
+  id: string
+  line: RevenueLine
+  source: string
+  amount: number
+  currency: string
+  date: string
+  note?: string
+}
+
+export interface RevenueResponse {
+  entries: RevenueEntry[]
+}
+
+export interface RevenueCreateRequest {
+  line: RevenueLine
+  source: string
+  amount: number
+  currency?: string
+  date: string
+  note?: string
+}
+
 export interface PauseRequest {
   scope: 'all' | string
 }

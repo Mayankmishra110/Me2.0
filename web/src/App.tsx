@@ -9,6 +9,7 @@ import { BuilderPage } from '@/pages/BuilderPage'
 import { HomePage } from '@/pages/HomePage'
 import { LogsPage } from '@/pages/LogsPage'
 import { MorePage } from '@/pages/MorePage'
+import { RevenuePage } from '@/pages/RevenuePage'
 
 function createQueryClient() {
   return new QueryClient({
@@ -38,6 +39,7 @@ export function App() {
             <Route path="approvals" element={<ApprovalsPage />} />
             <Route path="approvals/:id" element={<ApprovalDetailPage />} />
             <Route path="builder" element={<BuilderPage />} />
+            <Route path="revenue" element={<RevenuePage />} />
             <Route path="logs" element={<LogsPage events={events} />} />
             <Route path="more" element={<MorePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

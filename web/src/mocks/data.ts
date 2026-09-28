@@ -5,6 +5,7 @@
   ContentItem,
   HealthResponse,
   Job,
+  RevenueEntry,
   StreamEvent,
 } from '@/api/types'
 
@@ -18,6 +19,7 @@ export const db: {
   approvals: ApprovalDetail[]
   events: StreamEvent[]
   builder: BuilderResponse
+  revenue: RevenueEntry[]
 } = {
   health: {
     ok: true,
@@ -247,6 +249,7 @@ export const db: {
   // Default empty — matches live GET /api/builder stub until builder jobs land.
   // Tests override with server.use(...) for populated fixtures.
   builder: { plans: [], threads: [], audits: [] },
+  revenue: [],
 }
 
 export function pushEvent(kind: StreamEvent['kind'], payload: Record<string, unknown>) {

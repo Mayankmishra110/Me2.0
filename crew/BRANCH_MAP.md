@@ -101,7 +101,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| — | — | (none open) | — | — | — | — |
+| M2-601 | `m2/M2-601` | Revenue tracking: manual + semi-automated entries, revenue API | be | (see branch tip) | — | in-review |
 
 ## How to regenerate/verify this file
 

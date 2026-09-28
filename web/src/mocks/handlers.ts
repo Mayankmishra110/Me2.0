@@ -89,10 +89,27 @@ export const handlers = [
     return HttpResponse.json({ ok: true, topic: body }, { status: 201 })
   }),
   http.get('/api/builder', () => HttpResponse.json(db.builder)),
-  http.get('/api/revenue', () => HttpResponse.json({ entries: [] })),
+  http.get('/api/revenue', () => HttpResponse.json({ entries: db.revenue })),
   http.post('/api/revenue', async ({ request }) => {
-    const body = await request.json()
-    return HttpResponse.json({ ok: true, entry: body }, { status: 201 })
+    const body = (await request.json()) as {
+      line: string
+      source: string
+      amount: number
+      currency?: string
+      date: string
+      note?: string
+    }
+    const entry = {
+      id: `rev-${db.revenue.length + 1}`,
+      line: body.line,
+      source: body.source,
+      amount: body.amount,
+      currency: body.currency ?? 'USD',
+      date: body.date,
+      note: body.note,
+    }
+    db.revenue = [entry as (typeof db.revenue)[number], ...db.revenue]
+    return HttpResponse.json({ ok: true, entry }, { status: 201 })
   }),
 
   http.post('/api/pause', async ({ request }) => {

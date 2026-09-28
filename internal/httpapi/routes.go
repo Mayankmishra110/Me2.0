@@ -13,6 +13,7 @@ import (
 
 	"mayank2/internal/events"
 	"mayank2/internal/queue"
+	"mayank2/internal/revenue"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -217,17 +218,79 @@ func (s *Server) handleBuilder(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-func (s *Server) handleRevenueList(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"entries": []any{}})
+func (s *Server) handleRevenueList(w http.ResponseWriter, r *http.Request) {
+	if s.db == nil {
+		writeError(w, http.StatusServiceUnavailable, "database not configured")
+		return
+	}
+	q := r.URL.Query()
+	f := revenue.Filter{
+		From: q.Get("from"),
+		To:   q.Get("to"),
+	}
+	if line := strings.TrimSpace(q.Get("line")); line != "" {
+		f.Line = revenue.Line(line)
+	}
+	entries, err := revenue.List(r.Context(), s.db, f)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if entries == nil {
+		entries = []revenue.Entry{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"entries": entries})
+}
+
+type revenueCreateBody struct {
+	Line     string   `json:"line"`
+	Source   string   `json:"source"`
+	Amount   *float64 `json:"amount"`
+	Currency string   `json:"currency"`
+	Date     string   `json:"date"`
+	Note     string   `json:"note"`
 }
 
 func (s *Server) handleRevenueCreate(w http.ResponseWriter, r *http.Request) {
-	var body json.RawMessage
+	if s.db == nil {
+		writeError(w, http.StatusServiceUnavailable, "database not configured")
+		return
+	}
+	var body revenueCreateBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "entry": json.RawMessage(body)})
+	if body.Amount == nil {
+		writeError(w, http.StatusBadRequest, "revenue: amount required")
+		return
+	}
+	entry := revenue.Entry{
+		Line:     revenue.Line(strings.TrimSpace(body.Line)),
+		Source:   body.Source,
+		Amount:   *body.Amount,
+		Currency: body.Currency,
+		Date:     body.Date,
+		Note:     body.Note,
+	}
+	id, err := revenue.Record(r.Context(), s.db, entry)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	entry.ID = id
+	if entry.Currency == "" {
+		entry.Currency = "USD"
+	}
+	if s.events != nil {
+		_, _ = s.events.Emit(r.Context(), events.ActorUser, "revenue.recorded", id,
+			fmt.Sprintf("%s %s %.2f", entry.Line, entry.Source, entry.Amount),
+			map[string]any{
+				"id": id, "line": string(entry.Line), "source": entry.Source,
+				"amount": entry.Amount, "currency": entry.Currency, "date": entry.Date,
+			})
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "entry": entry})
 }
 
 type pauseRequest struct {
