@@ -100,7 +100,10 @@ All four are independent of each other once 210 and 213 are done — safe to run
 | M2-302 | Facebook Page publisher | 210, 213 |
 | M2-303 | X (business) publisher | 210, 213 |
 | M2-304 | Pinterest publisher | 210, 213 |
-| M2-401…404 | Blog draft → Mayankbuilt, LinkedIn, X personal, Medium import link | 105, 111 |
+| M2-401 | Blog draft → Mayankbuilt (canonical post) | 105, 111 |
+| M2-402 | Repurpose blog post to LinkedIn | 401 |
+| M2-403 | Repurpose blog post to X (personal account) | 401 |
+| M2-404 | Medium import-story link prep | 401 |
 | M2-501…505 | Builder planner, implementer, auditor, phase gate, Builder screen | 103, 105 |
 | M2-601…604 | Revenue, micro-SaaS flow, agency leads + drafts, Pinterest affiliate | P2–P5 |
 
