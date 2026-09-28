@@ -394,30 +394,33 @@ func igCaption(desc string, paid, synthetic bool) string {
 }
 
 func igRedact(s string) string {
+	// Single forward pass — never re-scan a replacement (avoids infinite loops when
+	// the secret is empty or the redaction marker would re-match a needle).
+	needles := []string{"access_token=", "bearer ", "oauth "}
+	var b strings.Builder
+	b.Grow(len(s))
 	lower := strings.ToLower(s)
-	for _, needle := range []string{"access_token=", "bearer ", "oauth "} {
-		searchFrom := 0
-		for {
-			idx := strings.Index(lower[searchFrom:], needle)
-			if idx < 0 {
+	i := 0
+	for i < len(s) {
+		matched := false
+		for _, needle := range needles {
+			if i+len(needle) <= len(lower) && lower[i:i+len(needle)] == needle {
+				b.WriteString(s[i : i+len(needle)])
+				b.WriteString("[redacted]")
+				i += len(needle)
+				for i < len(s) && s[i] != ' ' && s[i] != '&' && s[i] != '"' && s[i] != '\n' {
+					i++
+				}
+				matched = true
 				break
 			}
-			i := searchFrom + idx
-			start := i + len(needle)
-			if start <= len(s) && strings.HasPrefix(s[start:], "[redacted]") {
-				searchFrom = start + len("[redacted]")
-				continue
-			}
-			end := start
-			for end < len(s) && s[end] != ' ' && s[end] != '&' && s[end] != '"' {
-				end++
-			}
-			s = s[:start] + "[redacted]" + s[end:]
-			lower = strings.ToLower(s)
-			searchFrom = start + len("[redacted]")
+		}
+		if !matched {
+			b.WriteByte(s[i])
+			i++
 		}
 	}
-	return s
+	return b.String()
 }
 
 func igWrapGraph(code int, message string) error {
