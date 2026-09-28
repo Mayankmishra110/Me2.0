@@ -62,9 +62,9 @@ done
 if changed '^media-tools/' && [ -f media-tools/pyproject.toml ]; then
 	if command -v uv >/dev/null 2>&1; then
 		step "media-tools: ruff"
-		(cd media-tools && uv run --extra dev ruff check .) || bad "ruff"
+		(cd media-tools && uv run ruff check .) || bad "ruff"
 		step "media-tools: pytest"
-		(cd media-tools && uv run --extra dev pytest -q) || bad "pytest"
+		(cd media-tools && uv run pytest -q) || bad "pytest"
 	else
 		bad "media-tools changed but uv is not installed"
 	fi

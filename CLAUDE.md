@@ -12,7 +12,12 @@
 - **Never weaken or bypass a compliance gate** ([docs/COMPLIANCE.md](docs/COMPLIANCE.md)). Never add code whose purpose is to hide automation from a platform.
 - **Claude is for Builder and blog only.** Content agents use `internal/llm` routing (local/free tiers).
 - **Secrets:** only in `.env` or the DPAPI vault. Never log tokens. Never commit `config/config.yaml`, `.env`, or `data/`.
-- **Builder never pushes to `main`.**
+- **Builder never pushes to `main`.** (Builder = the product's own coding-agent module, M2-501+.)
+- **The crew's `ship` role may merge a ticket into `main` via `gh pr merge`** (never a raw `git push origin main`
+  — that stays blocked for everyone but Mayank, `MAYANK_PUSH_MAIN=1`) once, and only once: it rebased cleanly
+  onto current `main`, full checks are green, and the ticket has `QA: pass` plus `SEC: pass` when
+  `needs-sec: yes`. A real conflict (not just a rebase mechanic — two branches disagreeing on product
+  behavior) stops and asks Mayank, never auto-resolved. Decided 2026-09-28, see CONTEXT §4 D25.
 - **16 GB RAM:** anything that renders, runs TTS/STT, or loads a local model registers as the `heavy` resource class.
 - Child processes use fixed argument lists and timeouts — never build a shell string from AI output.
 

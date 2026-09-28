@@ -57,6 +57,17 @@ M2-206 media-tools ─┐  M2-207 stock visuals ─┐  M2-208 remotion formats 
 
 **Can start immediately in parallel:** M2-101, M2-206 (Python), M2-207, M2-208 (Remotion), M2-107 (dashboard against mock API).
 
+### Dependency graph (P3)
+
+```
+M2-210 final gates + approval ─┬─► M2-301 instagram ─┐
+M2-213 storage/R2 ─────────────┼─► M2-302 facebook   ├─► one item published to all 4 (P3 exit check)
+                                ├─► M2-303 x business │
+                                └─► M2-304 pinterest ─┘
+```
+
+All four are independent of each other once 210 and 213 are done — safe to run in parallel across threads.
+
 ### Ticket index
 
 | ID | Title | Depends |
@@ -85,12 +96,25 @@ M2-206 media-tools ─┐  M2-207 stock visuals ─┐  M2-208 remotion formats 
 | M2-211 | YouTube OAuth + uploader for 4 channels + quota tracking | 110, 210 |
 | M2-212 | Analytics pull + scores | 211 |
 | M2-213 | Storage retention + R2 presigned URLs | 102 |
-| M2-301…304 | Instagram, Facebook, X business, Pinterest publishers | 210, 213 |
-| M2-401…404 | Blog draft → Mayankbuilt, LinkedIn, X personal, Medium import link | 105, 111 |
-| M2-501…505 | Builder planner, implementer, auditor, phase gate, Builder screen | 103, 105 |
-| M2-601…604 | Revenue, micro-SaaS flow, agency leads + drafts, Pinterest affiliate | P2–P5 |
+| M2-301 | Instagram Reels publisher | 210, 213 |
+| M2-302 | Facebook Page publisher | 210, 213 |
+| M2-303 | X (business) publisher | 210, 213 |
+| M2-304 | Pinterest publisher | 210, 213 |
+| M2-401 | Blog draft → Mayankbuilt (canonical post) | 105, 111 |
+| M2-402 | Repurpose blog post to LinkedIn | 401 |
+| M2-403 | Repurpose blog post to X (personal account) | 401 |
+| M2-404 | Medium import-story link prep | 401 |
+| M2-501 | Builder planner: spec/architecture → ordered subphase plan | 103, 105 |
+| M2-502 | Builder implementer: worktree + headless Opus, never main | 501 |
+| M2-503 | Builder auditor: parallel audit against architecture/design | 502 |
+| M2-504 | Builder phase gate: pass/fix-retry decision, timeout, limit pause | 503 |
+| M2-505 | Builder dashboard screen + PR link | 504, 106 |
+| M2-601 | Revenue tracking: manual + semi-automated entries, revenue API | 212, 106 |
+| M2-602 | Micro-SaaS idea → spec → Builder flow | 501, 601 |
+| M2-603 | Agency lead list + proposal drafts | 111, 601 |
+| M2-604 | Pinterest affiliate boards | 304, 601 |
 
-Ticket files exist for P1 and P2. P3+ tickets are written when P2 reaches M2-210.
+Ticket files exist for P1 and P2. P3+ tickets are written when P2 reaches M2-210. P1–P6 all have real ticket files now (M2-601…604 was the last placeholder row).
 
 ## 3. Core interfaces (Go)
 

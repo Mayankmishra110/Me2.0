@@ -45,8 +45,8 @@ If there is no current work, pick new work with your role card's **Pick-up** rul
 
 ```
 todo → ready → in-progress (fe/be/ai) → in-review → qa pass (+ sec pass when flagged)
-  → ship merges into the phase branch (--no-ff, keeps each role's commits), writes docs/audit/<phase>/M2-xxx.md → done
-  → phase branch pushed, kept in sync with main → Mayank opens ONE PR phase → main using .github/pull_request_template.md
+  → ship rebases onto current main, pushes, opens a PR, auto-merges via `gh pr merge` (D25) → done
+  (D23's phase-branch model is superseded but still has a backlog to migrate — see crew/roles/ship.md)
                     ▲                                    │
                     └────────── changes requested ◄──────┘
 ```

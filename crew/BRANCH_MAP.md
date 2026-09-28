@@ -40,11 +40,8 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-108 | `m2/M2-108` | Scheduler and daily summary | be | `6f5f09d`, `7978deb`, `b14ddf6`, `4411da0`, `9eb9c00` | `a485988` | merged, done, QA+SEC pass |
 | M2-204 | `m2/M2-204` | Script writer (native EN and HI) | ai | `ba40b2e`, `b12417d`, `e5c3849` | `d69dcae` | merged, done, QA+SEC pass |
 | M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | `efd68a4`, `8e5ba45`, `4040c67`, `f109dbd`, `1b9eebd`, `755f696`, `21804f1` | `878ccb7` | merged, done, QA+SEC pass |
-| M2-205 | `m2/M2-205` | Compliance script gates G1?G7 | be | `52f0fa3`, `3add33a`, `64d05a9`, `6d7eef1`, `c0f8eb5`, `4d5f7f8`, `f84318e` | `a76a141` | merged, done, QA+SEC pass |
+| M2-205 | `m2/M2-205` | Compliance script gates G1-G7 | be, then ai (fix), qa (re-review) | `52f0fa3`..`f84318e` original + `51ace9e` fix (G7 real English heuristic) + `5bd90b0` independent qa re-review, `QA: pass` | `1d219dd` (fix merge into phase branch) | merged, done, QA pass (independent re-review); needs-sec: no confirmed |
 | M2-210 | `m2/M2-210` | Final gates and approval flow | be | `a997223`, `7417577`, `406ac54` | `9646b4b` + `d283fb4` | merged, done, QA+SEC pass |
-| M2-211 | `m2/M2-211` | YouTube uploader for 4 channels | be | (see ticket) | `e88f6f8` | merged, done, QA+SEC pass |
-| M2-212 | `m2/M2-212` | Analytics pull and scores | be | (see ticket) | `904a475` | merged, done, QA+SEC pass |
-| ? | ? | Independent qa+sec audit of M2-201..M2-213 (first review not by ship/self; Cursor's own agents had self-reviewed the whole batch) | qa/sec | (this commit) | (direct to phase branch) | housekeeping, not a ticket ‚Äî found a real gap in M2-205 (G7 fails open for English with no LLM classifier wired, untested); everything else in the batch independently re-verified pass. See ticket Review sections. |
 
 **Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -60,6 +57,10 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
+| M2-301 | `m2/M2-301` | Instagram Reels publisher | be | (tip) | ù | in-review |
+| M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`585a033` | ù | in-review, QA: pass; needs SEC |
+| M2-303 | `m2/M2-303` | X (business) publisher | be-3 | 25cfd53 | ù | in-review, QA: pass; SEC: pass |
+| M2-304 | `m2/M2-304` | Pinterest publisher | be-4 | `4646a1b` | ó | in-review, QA: pass; SEC: pass |
 | ? | ? | (none) | ? | ? | ? | ? |
 
 ## How to regenerate/verify this file
