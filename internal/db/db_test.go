@@ -28,6 +28,8 @@ var wantTables = []string{
 	"revenue",
 	"events",
 	"settings",
+	"agency_leads",
+	"agency_proposals",
 }
 
 func TestOpenAndMigrate_emptyAndIdempotent(t *testing.T) {
@@ -46,8 +48,15 @@ func TestOpenAndMigrate_emptyAndIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Migrate #1: %v", err)
 	}
-	if len(first) != 1 || first[0] != "001_init" {
-		t.Fatalf("first applied=%v want [001_init]", first)
+	if len(first) < 1 || first[0] != "001_init" {
+		t.Fatalf("first applied=%v want leading 001_init", first)
+	}
+	seen := map[string]bool{}
+	for _, v := range first {
+		seen[v] = true
+	}
+	if !seen["002_agency_leads"] {
+		t.Fatalf("first applied=%v missing 002_agency_leads", first)
 	}
 	assertTables(t, ctx, sqlDB)
 	assertIndex(t, ctx, sqlDB, "jobs_status_resource_run_at")
