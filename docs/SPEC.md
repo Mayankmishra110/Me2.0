@@ -109,9 +109,12 @@ All four are independent of each other once 210 and 213 are done — safe to run
 | M2-503 | Builder auditor: parallel audit against architecture/design | 502 |
 | M2-504 | Builder phase gate: pass/fix-retry decision, timeout, limit pause | 503 |
 | M2-505 | Builder dashboard screen + PR link | 504, 106 |
-| M2-601…604 | Revenue, micro-SaaS flow, agency leads + drafts, Pinterest affiliate | P2–P5 |
+| M2-601 | Revenue tracking: manual + semi-automated entries, revenue API | 212, 106 |
+| M2-602 | Micro-SaaS idea → spec → Builder flow | 501, 601 |
+| M2-603 | Agency lead list + proposal drafts | 111, 601 |
+| M2-604 | Pinterest affiliate boards | 304, 601 |
 
-Ticket files exist for P1 and P2. P3+ tickets are written when P2 reaches M2-210.
+Ticket files exist for P1 and P2. P3+ tickets are written when P2 reaches M2-210. P1–P6 all have real ticket files now (M2-601…604 was the last placeholder row).
 
 ## 3. Core interfaces (Go)
 
