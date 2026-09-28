@@ -50,6 +50,7 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-304 | `m2/M2-304` | Pinterest video pin publisher | be-4 | `b5c541b`..`9947ace` | `d40a796` | merged, done, QA+SEC pass |
 | M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`8eb3de4` | `e28652a` | merged, done, QA+SEC pass (UploadHosted redact `a6e50d6`) |
 | M2-401 | `m2/M2-401` | Blog draft + merge for Mayankbuilt | be | `9dbb996`, `9f01826` (phase cherry-pick `1b0a9e0`) | `4aec99f` | merged, done, QA+SEC pass |
+| M2-403 | `m2/M2-403` | X personal thread repurpose + publisher | be-3 | `ebb2a77`, `fe4bede`, `710e35c`, `465693b` | `0e48987` | merged, done, QA+SEC pass (notes+stamp folded from `5fe3733`/`a8ce2d3`) |
 
 **Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -65,7 +66,13 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 **M2-301** merge `636baff`. **M2-303** merge `53a8b60`. **M2-304** merge `d40a796`.
 **M2-302** merge `e28652a` (SEC fix `a6e50d6`, tip `8eb3de4`).
+
+## Phase P4 blog (on phase branch; awaiting D25 main PRs)
+
 **M2-401** merge `4aec99f` (QA+SEC stamp `1b0a9e0`, feat `9dbb996`).
+**M2-403** merge `0e48987` + dedupe `fe4bede`; notes `710e35c` / Review stamp `465693b`
+(from tip `5fe3733` / `a8ce2d3`). **M2-402** still blocked on package-level symbol collisions
+with M2-401. **M2-404** merge `bd09d1c` (landed separately).
 
 ## In progress (branched from `phase/p1-foundation`)
 
