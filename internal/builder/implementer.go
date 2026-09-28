@@ -6,6 +6,7 @@
 // Claude CLI (verified via `claude -p --help`, 2026-09-28):
 //   - Multi-turn coding uses -p/--print with tools enabled (not llm.Complete).
 //   - Tool denial: --disallowed-tools with Bash(git push*), Bash(git reset --hard*),
+//     Bash(git update-ref*), Bash(git branch -f*), Bash(git branch -M*),
 //     Edit(.env*), Write(.env*) — Claude Code's own permission layer.
 //   - Headless: --permission-mode acceptEdits + --permission-prompts none.
 //   - Cwd: child process Dir = worktree (no CLI workdir flag required).
@@ -334,9 +335,19 @@ func (im *Implementer) Run(ctx context.Context, payload ImplementPayload) (*Impl
 	}
 
 	// Hard guarantee: main ref must be byte-identical to before this run.
+	// If Claude Bash moved it (update-ref / branch -f), restore then Permanent-fail.
 	mainAfter, _ := im.readRef(ctx, repo.Path, "refs/heads/main")
 	if mainBefore != mainAfter {
-		return nil, queue.Permanent(fmt.Errorf("builder: implement: main ref changed during run (before=%q after=%q)", mainBefore, mainAfter))
+		if rerr := im.restoreMainRef(ctx, repo.Path, mainBefore); rerr != nil {
+			return nil, queue.Permanent(fmt.Errorf(
+				"builder: implement: main ref changed during run (before=%q after=%q) and restore failed: %v",
+				mainBefore, mainAfter, rerr,
+			))
+		}
+		return nil, queue.Permanent(fmt.Errorf(
+			"builder: implement: main ref changed during run (before=%q after=%q); restored",
+			mainBefore, mainAfter,
+		))
 	}
 
 	buildID := strings.TrimSpace(payload.BuildID)
@@ -403,23 +414,33 @@ func (im *Implementer) requireApprovedPlan(ctx context.Context, contentID, appro
 	if contentID == "" && approvalID == "" {
 		return queue.Permanent(fmt.Errorf("builder: implement: content_id or approval_id required (plan must be approved)"))
 	}
-	var status string
+	var status, kind, rowContentID string
 	var err error
 	if approvalID != "" {
 		err = im.opts.DB.QueryRowContext(ctx, `
-SELECT status FROM approvals WHERE id = ?`, approvalID).Scan(&status)
+SELECT status, kind, content_id FROM approvals WHERE id = ?`, approvalID).
+			Scan(&status, &kind, &rowContentID)
 	} else {
 		err = im.opts.DB.QueryRowContext(ctx, `
-SELECT status FROM approvals
+SELECT status, kind, content_id FROM approvals
 WHERE content_id = ? AND kind = ?
 ORDER BY CASE status WHEN 'approved' THEN 0 ELSE 1 END, decided_at DESC
-LIMIT 1`, contentID, approvalKindPlan).Scan(&status)
+LIMIT 1`, contentID, approvalKindPlan).Scan(&status, &kind, &rowContentID)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return queue.Permanent(fmt.Errorf("builder: implement: no plan approval found"))
 		}
 		return fmt.Errorf("builder: implement: load approval: %w", err)
+	}
+	if kind != approvalKindPlan {
+		return queue.Permanent(fmt.Errorf("builder: implement: approval kind %q (want %q)", kind, approvalKindPlan))
+	}
+	if contentID != "" && rowContentID != contentID {
+		return queue.Permanent(fmt.Errorf(
+			"builder: implement: approval content_id %q does not match payload content_id %q",
+			rowContentID, contentID,
+		))
 	}
 	if status != "approved" {
 		return queue.Permanent(fmt.Errorf("builder: implement: plan approval status %q (want approved)", status))
@@ -472,6 +493,7 @@ func (im *Implementer) loadPlanFile(repo config.RepoConfig, planFile, phase, sub
 	if strings.TrimSpace(repo.Subdir) != "" {
 		root = filepath.Join(root, repo.Subdir)
 	}
+	root = filepath.Clean(root)
 	rel = strings.TrimSpace(planFile)
 	if rel == "" {
 		// Discover plans/phase-N/N.M-*.md
@@ -495,15 +517,65 @@ func (im *Implementer) loadPlanFile(repo config.RepoConfig, planFile, phase, sub
 			return "", "", queue.Permanent(fmt.Errorf("builder: implement: no plan file for subphase %s in %s", subphase, dir))
 		}
 	}
-	abs := rel
-	if !filepath.IsAbs(abs) {
-		abs = filepath.Join(root, filepath.FromSlash(rel))
+	abs, confinedRel, cerr := confineUnderRoot(root, rel)
+	if cerr != nil {
+		return "", "", queue.Permanent(fmt.Errorf("builder: implement: plan_file: %w", cerr))
 	}
 	raw, err := im.opts.ReadFile(abs)
 	if err != nil {
-		return "", "", fmt.Errorf("builder: implement: read plan %s: %w", rel, err)
+		return "", "", fmt.Errorf("builder: implement: read plan %s: %w", confinedRel, err)
 	}
-	return string(raw), filepath.ToSlash(rel), nil
+	return string(raw), confinedRel, nil
+}
+
+// confineUnderRoot resolves path (relative or absolute) and requires the result
+// to stay under root. Rejects ".." escapes and absolute paths outside the repo.
+func confineUnderRoot(root, path string) (abs, relSlash string, err error) {
+	root = filepath.Clean(root)
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", "", fmt.Errorf("empty path")
+	}
+	var candidate string
+	if filepath.IsAbs(path) {
+		candidate = filepath.Clean(path)
+	} else {
+		candidate = filepath.Clean(filepath.Join(root, filepath.FromSlash(path)))
+	}
+	rel, rerr := filepath.Rel(root, candidate)
+	if rerr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", "", fmt.Errorf("%q escapes repo root %q", path, root)
+	}
+	return candidate, filepath.ToSlash(rel), nil
+}
+
+// restoreMainRef writes refs/heads/main back to sha with fixed argv.
+// Bypasses rejectForbiddenGitArgs because update-ref of main is otherwise
+// denied — this is the only path allowed to touch that ref (undo drift).
+func (im *Implementer) restoreMainRef(ctx context.Context, repoPath, sha string) error {
+	if strings.TrimSpace(sha) == "" {
+		// No main existed before the run; leave whatever Claude created alone
+		// only if we cannot name the prior tip — still refuse to invent a SHA.
+		return fmt.Errorf("no prior main SHA to restore")
+	}
+	look := im.opts.LookPath
+	if look == nil {
+		look = exec.LookPath
+	}
+	bin, err := look("git")
+	if err != nil {
+		return fmt.Errorf("git lookPath: %w", err)
+	}
+	args := []string{"update-ref", "refs/heads/main", sha}
+	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.Dir = repoPath
+	cmd.Env = scrubGitEnv(os.Environ())
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("git %v: %w (%s)", args, err, truncateRunes(stderr.String(), 200))
+	}
+	return nil
 }
 
 func (im *Implementer) commitWorktree(ctx context.Context, worktreePath, commitMsg string) error {
@@ -575,10 +647,14 @@ func sanitizeCommitSummary(s string) string {
 
 // disallowedTools are passed to claude --disallowed-tools (ARCHITECTURE §7).
 // Enforced by Claude Code's permission layer; this job also rejects forbidden
-// git argv in gitRunner before exec.
+// git argv in gitRunner before exec. Includes update-ref / branch -f so Claude
+// Bash cannot move main even if the post-run restore path is the last defense.
 var disallowedTools = []string{
 	"Bash(git push*)",
 	"Bash(git reset --hard*)",
+	"Bash(git update-ref*)",
+	"Bash(git branch -f*)",
+	"Bash(git branch -M*)",
 	"Edit(.env*)",
 	"Write(.env*)",
 }
@@ -743,9 +819,21 @@ func rejectForbiddenGitArgs(args []string) error {
 	}
 	if args[0] == "branch" {
 		for i := 1; i < len(args)-1; i++ {
-			if (args[i] == "-D" || args[i] == "-d" || args[i] == "-M" || args[i] == "-m") &&
+			if (args[i] == "-D" || args[i] == "-d" || args[i] == "-M" || args[i] == "-m" ||
+				args[i] == "-f" || args[i] == "--force") &&
 				(args[i+1] == "main" || args[i+1] == "master") {
 				return queue.Permanent(fmt.Errorf("builder: implement: modifying main branch ref is denied"))
+			}
+		}
+	}
+	// update-ref of main/master is denied here; restoreMainRef bypasses this
+	// gate with a dedicated fixed-argv path after detecting drift.
+	if args[0] == "update-ref" {
+		for _, a := range args[1:] {
+			lowA := strings.ToLower(a)
+			if lowA == "refs/heads/main" || lowA == "refs/heads/master" ||
+				lowA == "main" || lowA == "master" {
+				return queue.Permanent(fmt.Errorf("builder: implement: git update-ref of main is denied"))
 			}
 		}
 	}

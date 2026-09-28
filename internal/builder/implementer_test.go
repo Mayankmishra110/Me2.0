@@ -365,6 +365,10 @@ func TestRejectForbiddenGitArgs(t *testing.T) {
 		{[]string{"checkout", "main"}, false},
 		{[]string{"reset", "--hard", "HEAD"}, false},
 		{[]string{"merge", "main"}, false},
+		{[]string{"update-ref", "refs/heads/main", "abc"}, false},
+		{[]string{"branch", "-f", "main", "abc"}, false},
+		{[]string{"branch", "-M", "main"}, false},
+		{[]string{"update-ref", "refs/heads/build/phase-1", "abc"}, true},
 	}
 	for _, tc := range cases {
 		err := rejectForbiddenGitArgs(tc.args)
@@ -377,8 +381,204 @@ func TestRejectForbiddenGitArgs(t *testing.T) {
 	}
 }
 
-// --- helpers ---
+func TestRequireApprovedPlanKindAndContentID(t *testing.T) {
+	sqlDB := openBuilderDB(t)
+	now := time.Now().UTC().Format(time.RFC3339)
+	mustExec(t, sqlDB, `
+INSERT INTO content_items (id, channel_id, kind, format, language, stage, created_at)
+VALUES ('plan-c', 'builder', 'post', 'builder_plan', 'en', 'planned', ?)`, now)
+	mustExec(t, sqlDB, `
+INSERT INTO content_items (id, channel_id, kind, format, language, stage, created_at)
+VALUES ('other-c', 'builder', 'post', 'short', 'en', 'ready', ?)`, now)
+	// Wrong kind but approved — must not unlock implement via approval_id.
+	mustExec(t, sqlDB, `
+INSERT INTO approvals (id, content_id, kind, summary, status, nonce, decided_at)
+VALUES ('wrong-kind', 'other-c', 'publish', 'nope', 'approved', 'n1', ?)`, now)
+	// Plan kind, approved, for plan-c.
+	mustExec(t, sqlDB, `
+INSERT INTO approvals (id, content_id, kind, summary, status, nonce, decided_at)
+VALUES ('plan-ok', 'plan-c', 'plan', 'ok', 'approved', 'n2', ?)`, now)
 
+	im, err := NewImplementer(ImplementerOptions{
+		Enabled: false,
+		DataDir: t.TempDir(),
+		DB:      sqlDB,
+		Events:  &fakeEvents{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = im.requireApprovedPlan(context.Background(), "", "wrong-kind")
+	if err == nil || !strings.Contains(err.Error(), "kind") {
+		t.Fatalf("want kind rejection, got %v", err)
+	}
+	if !queue.IsPermanent(err) {
+		t.Fatalf("want permanent, got %v", err)
+	}
+
+	err = im.requireApprovedPlan(context.Background(), "plan-c", "wrong-kind")
+	if err == nil {
+		t.Fatal("want reject wrong kind even with matching-looking content_id on payload")
+	}
+
+	err = im.requireApprovedPlan(context.Background(), "other-c", "plan-ok")
+	if err == nil || !strings.Contains(err.Error(), "content_id") {
+		t.Fatalf("want content_id mismatch, got %v", err)
+	}
+
+	if err := im.requireApprovedPlan(context.Background(), "plan-c", "plan-ok"); err != nil {
+		t.Fatalf("matching plan approval: %v", err)
+	}
+	if err := im.requireApprovedPlan(context.Background(), "", "plan-ok"); err != nil {
+		t.Fatalf("approval_id alone with kind=plan: %v", err)
+	}
+	if err := im.requireApprovedPlan(context.Background(), "plan-c", ""); err != nil {
+		t.Fatalf("content_id alone: %v", err)
+	}
+}
+
+func TestImplementerRestoresMainOnDrift(t *testing.T) {
+	repoDir := initBareishRepo(t)
+	mainBefore := gitRevParse(t, repoDir, "main")
+	dataDir := t.TempDir()
+	planRel := "plans/phase-1/1.1-x.md"
+	mustWrite(t, filepath.Join(repoDir, planRel), "# plan\n")
+	sqlDB := openBuilderDB(t)
+	seedApprovedPlan(t, sqlDB, "c1", "a1")
+
+	im, err := NewImplementer(ImplementerOptions{
+		Enabled:    true,
+		Repos:      []config.RepoConfig{{Name: "demo", Path: repoDir, BaseBranch: "main"}},
+		DataDir:    dataDir,
+		RunTimeout: time.Minute,
+		DB:         sqlDB,
+		Events:     &fakeEvents{},
+		Git:        defaultGitRunner(exec.LookPath),
+		Claude: func(ctx context.Context, opts ClaudeSessionOpts) (ClaudeSessionResult, error) {
+			// Simulate Claude Bash moving main via update-ref (not through our GitRunner).
+			cmd := exec.Command("git", "commit", "--allow-empty", "-m", "drift")
+			cmd.Dir = opts.WorkDir
+			cmd.Env = append(scrubGitEnv(os.Environ()),
+				"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=t@example.com",
+				"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=t@example.com")
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return ClaudeSessionResult{}, fmt.Errorf("empty commit in wt: %v (%s)", err, out)
+			}
+			newTip := gitRevParse(t, opts.WorkDir, "HEAD")
+			cmd = exec.Command("git", "update-ref", "refs/heads/main", newTip)
+			cmd.Dir = repoDir
+			cmd.Env = scrubGitEnv(os.Environ())
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return ClaudeSessionResult{}, fmt.Errorf("drift main: %v (%s)", err, out)
+			}
+			_ = os.WriteFile(filepath.Join(opts.WorkDir, "out.txt"), []byte("x"), 0o644)
+			return ClaudeSessionResult{Outcome: OutcomeOK, Summary: "drifted"}, nil
+		},
+		NewID: seqIDs("b"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = im.Run(context.Background(), ImplementPayload{
+		Repo: "demo", Subphase: "1.1", PlanFile: planRel, ContentID: "c1", ApprovalID: "a1", Summary: "drift",
+	})
+	if err == nil {
+		t.Fatal("want permanent fail when main drifted")
+	}
+	if !queue.IsPermanent(err) {
+		t.Fatalf("want permanent, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "restored") {
+		t.Fatalf("want restored in error, got %v", err)
+	}
+	mainAfter := gitRevParse(t, repoDir, "main")
+	if mainAfter != mainBefore {
+		t.Fatalf("main not restored: before=%s after=%s", mainBefore, mainAfter)
+	}
+}
+
+func TestConfinePlanFileUnderRoot(t *testing.T) {
+	repoDir := initBareishRepo(t)
+	outside := filepath.Join(t.TempDir(), "secret.md")
+	mustWrite(t, outside, "secret\n")
+	mustWrite(t, filepath.Join(repoDir, "plans/phase-1/1.1-ok.md"), "# ok\n")
+
+	im, err := NewImplementer(ImplementerOptions{
+		Enabled: false,
+		DataDir: t.TempDir(),
+		DB:      openBuilderDB(t),
+		Events:  &fakeEvents{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := config.RepoConfig{Name: "demo", Path: repoDir}
+
+	_, _, err = im.loadPlanFile(repo, filepath.ToSlash(filepath.Join("..", "..", "etc", "passwd")), "1", "1.1")
+	if err == nil || !strings.Contains(err.Error(), "escapes") {
+		t.Fatalf("want escape rejection, got %v", err)
+	}
+	_, _, err = im.loadPlanFile(repo, outside, "1", "1.1")
+	if err == nil || !strings.Contains(err.Error(), "escapes") {
+		t.Fatalf("want abs outside rejection, got %v", err)
+	}
+	body, rel, err := im.loadPlanFile(repo, "plans/phase-1/1.1-ok.md", "1", "1.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(body, "# ok") || rel != "plans/phase-1/1.1-ok.md" {
+		t.Fatalf("body/rel=%q %q", body, rel)
+	}
+}
+
+func TestDefaultClaudeRunnerArgv(t *testing.T) {
+	// Use a real binary that digests argv and exits quickly; Argv is recorded
+	// even when the process fails (wrong subcommand).
+	runner := defaultClaudeRunner(exec.LookPath)
+	res, _ := runner(context.Background(), ClaudeSessionOpts{
+		Bin:     "git",
+		Model:   "claude-opus-5-5",
+		WorkDir: t.TempDir(),
+		Prompt:  "hi",
+		Timeout: 5 * time.Second,
+	})
+	if len(res.Argv) < 2 {
+		t.Fatalf("want argv, got %v", res.Argv)
+	}
+	flat := strings.Join(res.Argv, " ")
+	if !strings.Contains(flat, "--disallowed-tools") {
+		t.Fatalf("missing --disallowed-tools in %v", res.Argv)
+	}
+	for _, want := range disallowedTools {
+		found := false
+		for _, a := range res.Argv {
+			if a == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("missing disallowed tool %q in %v", want, res.Argv)
+		}
+	}
+	if !strings.Contains(flat, "--model") || !strings.Contains(flat, "claude-opus-5-5") {
+		t.Fatalf("want model in argv: %v", res.Argv)
+	}
+	if res.Argv[1] != "-p" {
+		t.Fatalf("want -p, got %v", res.Argv)
+	}
+}
+
+func mustExec(t *testing.T, db DB, query string, args ...any) {
+	t.Helper()
+	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+}
+
+// --- helpers ---
 type fakeEvents struct {
 	calls []struct {
 		Actor   events.Actor
