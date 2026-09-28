@@ -37,6 +37,7 @@ llm:
     classify:          [ollama, groq]
     translate_cleanup: [ollama, gemini]
     blog:              [claude]
+    builder:           [claude]
 
 content:
   channels_dir: channels        # config/channels/*.yaml
