@@ -57,6 +57,10 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
+| M2-301 | `m2/M2-301` | Instagram Reels publisher | be | — | — | in-progress |
+| M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | — | — | in-progress |
+| M2-303 | `m2/M2-303` | X (business) publisher | be-3 | — | — | in-progress |
+| M2-304 | `m2/M2-304` | Pinterest publisher | be-4 | — | — | in-progress |
 | ? | ? | (none) | ? | ? | ? | ? |
 
 ## How to regenerate/verify this file
