@@ -5,39 +5,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"mayank2/internal/db"
 	"mayank2/internal/llm"
 )
 
-func openBlogDB(t *testing.T) *sql.DB {
-	t.Helper()
-	ctx := context.Background()
-	sqlDB, err := db.Open(ctx, filepath.Join(t.TempDir(), "b.db"))
-	if err != nil {
-		t.Fatalf("db.Open: %v", err)
-	}
-	t.Cleanup(func() { _ = sqlDB.Close() })
-	if _, err := db.Migrate(ctx, sqlDB); err != nil {
-		t.Fatalf("db.Migrate: %v", err)
-	}
-	// content_items.channel_id is NOT NULL REFERENCES channels(id); seed the
-	// "blog" pseudo-channel this repurposer uses by default. A real seed for
-	// this row is assumed to land via M2-401 or config/channels; tests own
-	// it here since that seed doesn't exist yet.
-	if _, err := sqlDB.Exec(`
-INSERT INTO channels (id, platform, handle, language, niche, account_ref, status)
-VALUES ('blog', 'blog', '', 'en', 'blog', '', 'active')`); err != nil {
-		t.Fatalf("seed blog channel: %v", err)
-	}
-	return sqlDB
-}
-
-type fakeCompleter struct {
+// seqXCompleter fakes internal/llm for X-thread repurpose tests (multi-call).
+type seqXCompleter struct {
 	responses []llm.Response
 	err       error
 	calls     int
@@ -45,7 +21,7 @@ type fakeCompleter struct {
 	lastTask  llm.Task
 }
 
-func (f *fakeCompleter) Complete(_ context.Context, task llm.Task, req llm.Request) (llm.Response, error) {
+func (f *seqXCompleter) Complete(_ context.Context, task llm.Task, req llm.Request) (llm.Response, error) {
 	f.lastTask = task
 	f.lastReq = req
 	f.calls++
@@ -95,7 +71,7 @@ func sampleSource() SourcePost {
 	}
 }
 
-func newTestRepurposer(sqlDB *sql.DB, completer *fakeCompleter, approval *fakeApprovalStarter) *XRepurposer {
+func newTestRepurposer(sqlDB *sql.DB, completer Completer, approval *fakeApprovalStarter) *XRepurposer {
 	n := 0
 	return &XRepurposer{
 		DB:       sqlDB,
@@ -112,7 +88,7 @@ func newTestRepurposer(sqlDB *sql.DB, completer *fakeCompleter, approval *fakeAp
 func TestXRepurposer_StartHappyPath(t *testing.T) {
 	sqlDB := openBlogDB(t)
 	src := sampleSource()
-	completer := &fakeCompleter{responses: []llm.Response{threadResponse(
+	completer := &seqXCompleter{responses: []llm.Response{threadResponse(
 		"Shipping beats perfect every single time — here's the 3-part deadline trick that finally got my side project out the door.",
 		"1) A real deadline, told to a real person. 2) A landing page before the code. 3) Ship the ugly version first.",
 		"Full breakdown + the exact commitments: https://mayankbuilt.com/blog/why-side-projects-never-ship",
@@ -177,7 +153,7 @@ func TestXRepurposer_RejectsCopyPastedHook(t *testing.T) {
 	// Hook is the source body's opening text, near-verbatim (just
 	// whitespace/case differences) — must be rejected.
 	copyHook := strings.ToUpper(src.Body[:60])
-	completer := &fakeCompleter{responses: []llm.Response{threadResponse(
+	completer := &seqXCompleter{responses: []llm.Response{threadResponse(
 		copyHook,
 		"second tweet",
 	)}}
@@ -196,7 +172,7 @@ func TestXRepurposer_RejectsCopyPastedHook(t *testing.T) {
 func TestXRepurposer_Redo(t *testing.T) {
 	sqlDB := openBlogDB(t)
 	src := sampleSource()
-	completer := &fakeCompleter{responses: []llm.Response{
+	completer := &seqXCompleter{responses: []llm.Response{
 		threadResponse("original hook about deadlines and shipping", "second tweet", "third tweet with link"),
 		threadResponse("redo hook, now mentioning the specific 3-commitment framework directly", "second tweet redo", "third tweet redo with link"),
 	}}
@@ -243,7 +219,7 @@ func TestXRepurposer_Redo(t *testing.T) {
 
 func TestXRepurposer_MissingSourceFields(t *testing.T) {
 	sqlDB := openBlogDB(t)
-	r := newTestRepurposer(sqlDB, &fakeCompleter{}, &fakeApprovalStarter{})
+	r := newTestRepurposer(sqlDB, &seqXCompleter{}, &fakeApprovalStarter{})
 
 	cases := []struct {
 		name string
@@ -266,7 +242,7 @@ func TestXRepurposer_MissingSourceFields(t *testing.T) {
 
 func TestXRepurposer_LLMSchemaError(t *testing.T) {
 	sqlDB := openBlogDB(t)
-	completer := &fakeCompleter{responses: []llm.Response{{Text: `{"not_tweets": []}`}}}
+	completer := &seqXCompleter{responses: []llm.Response{{Text: `{"not_tweets": []}`}}}
 	r := newTestRepurposer(sqlDB, completer, &fakeApprovalStarter{})
 
 	_, _, err := r.Start(context.Background(), sampleSource())
@@ -277,7 +253,7 @@ func TestXRepurposer_LLMSchemaError(t *testing.T) {
 
 func TestXRepurposer_LLMError(t *testing.T) {
 	sqlDB := openBlogDB(t)
-	completer := &fakeCompleter{err: errors.New("provider down")}
+	completer := &seqXCompleter{err: errors.New("provider down")}
 	r := newTestRepurposer(sqlDB, completer, &fakeApprovalStarter{})
 
 	_, _, err := r.Start(context.Background(), sampleSource())

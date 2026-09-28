@@ -66,19 +66,6 @@ const (
 	JobBlogRepurposeXPersonal = "blog.repurpose_x_personal"
 )
 
-// Completer is the internal/llm surface this file needs (mirrors
-// internal/content.Completer), kept narrow so tests can fake it without a
-// real provider/router.
-type Completer interface {
-	Complete(ctx context.Context, task llm.Task, req llm.Request) (llm.Response, error)
-}
-
-// ApprovalStarter creates a pending approval and enqueues approval.request.
-// *internal/content.ApprovalService satisfies this via its Start method.
-type ApprovalStarter interface {
-	Start(ctx context.Context, contentID, kind, summary, previewPath string) (string, error)
-}
-
 // SourcePost is the live, approved Mayankbuilt canonical post this thread
 // repurposes (M2-401's output: a MDX post merged to main, with a
 // publications row platform="mayankbuilt" recording its live URL).
@@ -422,21 +409,6 @@ func normalizeForCompare(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	fields := strings.Fields(s)
 	return strings.Join(fields, " ")
-}
-
-func stripFence(s string) string {
-	s = strings.TrimSpace(s)
-	if !strings.HasPrefix(s, "```") {
-		return s
-	}
-	s = strings.TrimPrefix(s, "```")
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		s = s[i+1:]
-	}
-	if i := strings.LastIndex(s, "```"); i >= 0 {
-		s = s[:i]
-	}
-	return strings.TrimSpace(s)
 }
 
 func summarizeThread(t Thread) string {
