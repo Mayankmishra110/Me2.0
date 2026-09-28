@@ -198,6 +198,38 @@ INSERT INTO quotas (provider, window_start, used, "limit") VALUES (?, ?, ?, ?)`,
 	}
 }
 
+// TestX_AccountRefNamingConvention locks in the account_ref naming convention
+// this business publisher relies on to stay separated from a future personal
+// publisher (M2-403): internal/secrets keys tokens by (platform="x", account),
+// so the account_ref string is the only thing keeping the two accounts apart.
+// Business-style refs (no "personal" substring, e.g. "x-business...") must be
+// accepted; any ref containing "personal" — which M2-403's implementer MUST
+// use for the personal account, e.g. "x-personal" — must be refused here.
+func TestX_AccountRefNamingConvention(t *testing.T) {
+	cases := []struct {
+		account string
+		isPers  bool
+	}{
+		{"x-business", false},
+		{"x-business-money-en", false},
+		{"xb", false},
+		{"x_business", false},
+		{"personal", true},
+		{"x-personal", true},
+		{"x_personal", true},
+		{"X-PERSONAL", true},
+		{"mayank-personal", true},
+		{"x-business-personal-blend", true}, // any "personal" substring is refused, by design
+	}
+	for _, tc := range cases {
+		t.Run(tc.account, func(t *testing.T) {
+			if got := isPersonalXAccount(tc.account); got != tc.isPers {
+				t.Fatalf("isPersonalXAccount(%q) = %v, want %v", tc.account, got, tc.isPers)
+			}
+		})
+	}
+}
+
 func TestX_RefusePersonalAccount(t *testing.T) {
 	x, video := seedX(t, "c-x5", "x-business-5", "pub-x5", "c-x5:x:x-business-5")
 	_, err := x.Publish(context.Background(), PublishRequest{

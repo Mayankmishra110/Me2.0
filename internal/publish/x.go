@@ -1,5 +1,36 @@
 // X (business) publisher (M2-303): chunked media upload + POST /2/tweets.
-// Reads render from local disk (no R2). Business account only — never personal (D12).
+// Reads render from local disk (no R2 — see ticket Notes, this is a real
+// platform difference from the Meta publishers). Business account only —
+// never personal (D12, COMPLIANCE §1 X row).
+//
+// Auth (best guess, NOT verified against live docs — see ticket Notes):
+// this file authenticates every request (INIT/APPEND/FINALIZE/STATUS and
+// POST /2/tweets) with a single OAuth 2.0 user-context bearer token from
+// internal/secrets (same oauth2.Token/TokenSourceFor shape as youtube.go),
+// no OAuth 1.0a HMAC-SHA1 request signing. internal/secrets.Store only
+// stores/refreshes a bearer-style oauth2.Token — it has no consumer
+// key/secret + token/secret fields an OAuth 1.0a signer would need. If
+// current X API v2 docs turn out to still require OAuth 1.0a for the
+// chunked media endpoints, that needs a new secrets shape and signer
+// added before this publisher can go live; the request/response shapes
+// here (JSON in/out) would not need to change, only the Authorization
+// header construction.
+//
+// Account naming convention (for M2-403's personal-account publisher to
+// match against): the "account" / account_ref string passed to Publish is
+// the only thing that separates this business publisher from a future
+// personal one — internal/secrets keys tokens by (platform="x", account),
+// so both accounts share the platform row but must use disjoint account
+// refs. isPersonalXAccount below refuses any account ref containing
+// "personal" (case-insensitive) or equal to "personal"/"x-personal"/
+// "x_personal", or ending "-personal". M2-403 MUST give its account_ref a
+// name containing "personal" (e.g. "x-personal", matching CONTEXT D12's
+// "X personal account" wording) so this guard — and any future guard like
+// it — keeps rejecting cross-account use by construction, not by trusting
+// the caller. This file has no positive "x-business" constant to import;
+// business account refs are supplied by the caller's config (see
+// config/config.example.yaml channel account_ref wiring) and simply must
+// not match isPersonalXAccount.
 package publish
 
 import (
@@ -29,7 +60,13 @@ import (
 const (
 	JobPublishX = "publish.x"
 
-	xDailyCap      = 5 // COMPLIANCE §4: X business ≤ 5/day
+	// xDailyCap enforces COMPLIANCE §4 (X business ≤ 5/day). This is a
+	// product-chosen safety cap, not the platform's own rate limit — the
+	// current free/basic/pro tier's exact posting and chunked-media-upload
+	// rate limits are NOT verified against live X API v2 docs (ticket
+	// Notes); confirm the business account's tier supports video posting
+	// at this cadence before relying on this cap alone.
+	xDailyCap      = 5
 	xMaxTweetRunes = 280
 	xChunkSize     = 4 << 20 // 4 MiB
 
