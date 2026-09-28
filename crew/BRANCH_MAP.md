@@ -104,11 +104,12 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | M2-601 | **done** · merge `6fac776` | 212, 106 (done) | `internal/revenue/`, `/api/revenue`, Revenue dashboard |
 | M2-602 | **ready** (claimable) | 501 (done), 601 (done) | `internal/micro_saas/` |
 | M2-603 | **ready** (claimable) | 111 (done), 601 (done) | `internal/agency/` |
-| M2-604 | **ready** (claimable) | 304 (done), 601 (done) | `internal/content/`, `config/channels/` |
+| M2-604 | **done** · merge `77313c2` | 304 (done), 601 (done) | `internal/content/affiliate.go`, `config/affiliate/` |
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
 | M2-601 | `m2/M2-601` | Revenue tracking: store, API, pull, Revenue dashboard | be | `47bc03f`, `aa4fe3b` | `6fac776` | merged, done, QA+SEC pass |
+| M2-604 | `m2/M2-604` | Pinterest affiliate pin selection and copy | be | `38558ac`, `bc6f728` (pre-rebase `87acc8c`/`5707ad0`) | `77313c2` | merged, done, QA+SEC pass |
 
 ## In progress (branched from `phase/p1-foundation`)
 

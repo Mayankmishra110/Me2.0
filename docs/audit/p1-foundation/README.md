@@ -61,15 +61,16 @@ Final gates F1?F6 + approval flow (**M2-210**, code `9646b4b`, QA/SEC `d283fb4`)
 | M2-503 Builder auditor | be | `m2/M2-503` | `e6e28f6` | [M2-503.md](M2-503.md) | QA pass ? SEC pass ? @ `7e980df` (feat `c997653`) |
 | M2-504 Builder phase gate | be | `m2/M2-504` | `8729db2` | [M2-504.md](M2-504.md) | QA pass ? SEC pass ? @ `cd19fde` (feat `79762bb`) |
 | M2-505 Builder dashboard + PR link | fe | `m2/M2-505` | `c10146a` | [M2-505.md](M2-505.md) | QA pass ? SEC pass ? @ `c7d1fc8` (feat `853f6bb`); **done** |
-| M2-601 Revenue tracking + Revenue dashboard | be | `m2/M2-601` | `6fac776` | [M2-601.md](M2-601.md) | QA pass ? SEC pass ? @ `aa4fe3b` (feat `47bc03f`); **done** · unlocks 602/603/604 |
+| M2-601 Revenue tracking + Revenue dashboard | be | `m2/M2-601` | `6fac776` | [M2-601.md](M2-601.md) | QA pass · SEC pass · @ `aa4fe3b` (feat `47bc03f`); **done** |
+| M2-604 Pinterest affiliate boards | be | `m2/M2-604` | `77313c2` | [M2-604.md](M2-604.md) | QA pass · SEC pass · @ `bc6f728` (feat `38558ac`); **done** |
 
 Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
 merge wave **103 / 104 / 213 / 114 / 201 / 105 / 106 / 110 / 202 / 203 / 108** is on the phase branch.
 **M2-204**, **M2-209**, **M2-205**, and **M2-210** are merged; **M2-211** and **M2-212** are merged.
 P3 publishers **301/302/303/304** and P4 **401/403** are on the phase branch. **P5** core chain
-**M2-501 ? M2-502 ? M2-503 ? M2-504 ? M2-505** is fully merged and **done**. **P6** **M2-601**
-merged (`6fac776`); siblings **M2-602 / M2-603 / M2-604** are `ready` / claimable. Hot path M2-210?212
-complete. Phase?main PR can open when Mayank is ready (compare URL above).
+**M2-501 → M2-502 → M2-503 → M2-504 → M2-505** is fully merged and **done**. **P6** **M2-601**
+merged (`6fac776`); **M2-604** merged (`77313c2`); siblings **M2-602 / M2-603** remain `ready` / claimable. Hot path M2-210–212
+complete. Phase→main PR can open when Mayank is ready (compare URL above).
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
 task on this laptop, self-detected and removed within the same session; AC power settings were never
