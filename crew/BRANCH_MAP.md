@@ -83,7 +83,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 |---|---|---|---|
 | M2-501 | **done** Â· merge `1f20dce` | 103, 105 (done) | `internal/builder/planner.go`, `config/config.example.yaml` |
 | M2-502 | **done** (QA+SEC pass, not yet merged) | 501 (done) | `internal/builder/implementer.go` |
-| M2-503 | todo | 502 | `internal/builder/auditor.go` |
+| M2-503 | in-review | 502 | `internal/builder/auditor.go` |
 | M2-504 | todo | 503 | `internal/builder/gate.go` |
 | M2-505 | in-review on branch (blocked: depends 504) | 504, 106 | `internal/builder/pr.go`, Builder dashboard |
 
@@ -96,6 +96,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
 | M2-502 | `m2/M2-502` | Builder implementer | be (Cursor) | `c0e480e`, `df5b117`, `53f9b40`, `b4d2f34`, `1db9897` | — | in-review branch, QA+SEC independently re-reviewed pass (qa/sec, this session — did not trust Cursor's own prior verification claims, re-derived from code + real `go test`/`vet`/`gofmt` output), ticket `status: done`, ready for ship to merge into `phase/p1-foundation` |
+| M2-503 | `m2/M2-503` | Builder auditor (parallel audit thread) | be | (see ticket / `git log m2/M2-502..m2/M2-503`) | — | in-review, branched from `m2/M2-502` (not `phase/p1-foundation` directly — M2-502 not yet merged to phase; ship must rebase onto phase once M2-502 lands there); `go test ./...`/`vet`/`gofmt` all clean, real output in ticket Notes |
 | M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | â€” | in-review (do not merge until M2-504 done) |
 
 ## How to regenerate/verify this file

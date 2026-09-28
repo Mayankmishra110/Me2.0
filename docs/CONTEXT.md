@@ -63,6 +63,7 @@ An **income pipeline** that grows into an **agency across many domains**:
 2. Channel names and handles for the 4 YouTube channels and the X accounts.
 3. OK for Builder to pause when the Pro usage limit is hit and resume after reset? (Assumed **yes**.)
 4. Is Hindi content written natively (assumed **yes** — never literal translation) and voiced with Kokoro Hindi?
+5. Builder Auditor (M2-503): when the Auditor tries to land its `audit/N.M.md` + test commit onto the shared build branch and finds the Implementer moved the branch concurrently in a way that isn't a plain fast-forward (a real conflict, not a rebase mechanic), should the Auditor retry automatically (re-rebase its detached worktree and try again), or should M2-504 (phase gate) own that retry loop explicitly? Current implementation returns a plain retryable error and does nothing further.
 
 ## 6. External accounts Mayank must set up (real waiting time)
 
