@@ -57,12 +57,13 @@ Final gates F1?F6 + approval flow (**M2-210**, code `9646b4b`, QA/SEC `d283fb4`)
 | M2-401 Blog draft + merge (Mayankbuilt) | be | `m2/M2-401` | `4aec99f` | [M2-401.md](M2-401.md) | QA pass ? SEC pass ? 2026-09-28 (stamp `1b0a9e0`) |
 | M2-403 X personal thread repurpose | be-3 | `m2/M2-403` | `0e48987` | [M2-403.md](M2-403.md) | QA pass ? SEC pass ? 2026-09-28 (fold `465693b`) |
 | M2-501 Builder planner (builder.plan) | be | `m2/M2-501` | `1f20dce` | [M2-501.md](M2-501.md) | QA pass ? SEC pass ? 2026-09-28 @ `f4e4c91` (feat `c64c2cf`) |
+| M2-505 Builder dashboard + PR link | fe | `m2/M2-505` | `c10146a` | [M2-505.md](M2-505.md) | QA pass ? SEC pass ? 2026-09-28 @ `c7d1fc8` (feat `853f6bb`); **in-review** (done blocked on M2-504) |
 
 Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
 merge wave **103 / 104 / 213 / 114 / 201 / 105 / 106 / 110 / 202 / 203 / 108** is on the phase branch.
 **M2-204**, **M2-209**, **M2-205**, and **M2-210** are merged; **M2-211** and **M2-212** are merged.
-P3 publishers **301/302/303/304** and P4 **401/403** are on the phase branch. **P5** starts with **M2-501**
-merged. Hot path M2-210?212 complete. Phase?main PR can open when Mayank is ready (compare URL above).
+P3 publishers **301/302/303/304** and P4 **401/403** are on the phase branch. **P5**: **M2-501** done;
+**M2-505** merged for integration but remains **in-review** until **M2-504** is done. Hot path M2-210?212 complete. Phase?main PR can open when Mayank is ready (compare URL above).
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled
 task on this laptop, self-detected and removed within the same session; AC power settings were never

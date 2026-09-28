@@ -10,6 +10,7 @@ Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://gith
 
 | Ticket | Branch | Phase merge | QA | SEC | State |
 |---|---|---|---|---|---|
+| M2-505 | `m2/M2-505` | `c10146a` on `phase/p1-foundation` | pass @ `c7d1fc8` | pass @ `c7d1fc8` | **merged-to-phase** · ticket stays **in-review** (depends M2-504) · audit [M2-505.md](../docs/audit/p1-foundation/M2-505.md) |
 | M2-501 | `m2/M2-501` | `1f20dce` on `phase/p1-foundation` | pass @ `f4e4c91` | pass @ `f4e4c91` | **merged-to-phase** · audit [M2-501.md](../docs/audit/p1-foundation/M2-501.md) · main PR queued |
 | M2-402 | `m2/M2-402` | `84361f9` on `phase/p1-foundation` | pass @ phase | pass @ phase | **merged-to-phase** · main PR queued |
 | M2-404 | `m2/M2-404` | `bd09d1c` on `phase/p1-foundation` | pass @ phase | n/a | **merged-to-phase** · main PR queued |
@@ -30,7 +31,7 @@ tickets into `phase/p1-foundation` and queues main PRs here.
 
 | Phase | Branch | Tickets in it | Checks | State |
 |---|---|---|---|---|
-| P1 Foundation + P3/P4/P5 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401–404** + **M2-501** | builder.plan green; P5 started | **pushed** (tip after M2-501 merge) |
+| P1 Foundation + P3/P4/P5 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401–404** + **M2-501** + **M2-505** (in-review) | M2-505 integrated; done blocked on M2-504 | **pushed** (tip after M2-505 merge) |
 
 PR body: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) (everything below its `---`).
 Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation
