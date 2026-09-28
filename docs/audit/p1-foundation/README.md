@@ -50,10 +50,15 @@ Final gates F1–F6 + approval flow (**M2-210**, code `9646b4b`, QA/SEC `d283fb4
 | M2-210 Final gates and approval flow | be | `m2/M2-210` | `d283fb4` | [M2-210.md](M2-210.md) | QA pass · SEC pass (`needs-sec: yes`) — 2026-09-28 |
 | M2-211 YouTube uploader for 4 channels | be | `m2/M2-211` | `e88f6f8` | [M2-211.md](M2-211.md) | QA pass � SEC pass (`needs-sec: yes`) � 2026-09-28 |
 | M2-212 Analytics pull and scores | be | `m2/M2-212` | `904a475` | [M2-212.md](M2-212.md) | QA pass � SEC pass (`needs-sec: yes`) � 2026-09-28 |
+| M2-301 Instagram Reels publisher | be | `m2/M2-301` | `636baff` | (ticket/Review) | QA pass · SEC pass — 2026-09-28 |
+| M2-302 Facebook Page publisher | be | `m2/M2-302` | `e28652a` | [M2-302.md](M2-302.md) | QA pass · SEC pass (UploadHosted redact) — 2026-09-28 |
+| M2-303 X business publisher | be | `m2/M2-303` | `53a8b60` | (ticket/Review) | QA pass · SEC pass — 2026-09-28 |
+| M2-304 Pinterest video pin publisher | be | `m2/M2-304` | `d40a796` | (ticket/Review) | QA pass · SEC pass — 2026-09-28 |
 
 Batch 1 (8 tickets) has full QA, and every `needs-sec: yes` ticket among them has a SEC pass. Batch-2
 merge wave **103 / 104 / 213 / 114 / 201 / 105 / 106 / 110 / 202 / 203 / 108** is on the phase branch.
-**M2-204**, **M2-209**, **M2-205**, and **M2-210** are merged; **M2-211** and **M2-212** are merged. Hot path M2-210?212 complete. Phase→main PR can
+**M2-204**, **M2-209**, **M2-205**, and **M2-210** are merged; **M2-211** and **M2-212** are merged.
+P3 publishers **301/302/303/304** are on the phase branch. Hot path M2-210?212 complete. Phase→main PR can
 open when Mayank is ready (compare URL above).
 
 **M2-109 disclosure:** while building its tests, a debug run briefly registered a real Windows scheduled

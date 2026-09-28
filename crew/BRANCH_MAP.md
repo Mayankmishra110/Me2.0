@@ -48,6 +48,7 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-301 | `m2/M2-301` | Instagram Reels publisher | be | `3dc5623`..`681cab8` | `636baff` | merged, done, QA+SEC pass |
 | M2-303 | `m2/M2-303` | X (business) publisher | be-3 | `9249bd7`..`1818f3b` | `53a8b60` | merged, done, QA+SEC pass |
 | M2-304 | `m2/M2-304` | Pinterest video pin publisher | be-4 | `b5c541b`..`9947ace` | `d40a796` | merged, done, QA+SEC pass |
+| M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`8eb3de4` | `e28652a` | merged, done, QA+SEC pass (UploadHosted redact `a6e50d6`) |
 
 **Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -62,13 +63,13 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 ## Phase P3 publishers (on phase branch; awaiting D25 main PRs)
 
 **M2-301** merge `636baff`. **M2-303** merge `53a8b60`. **M2-304** merge `d40a796`.
-**M2-302** held: independent audit `cc969a2` found blocking SEC gap in `UploadHosted` error path (raw body before redact).
+**M2-302** merge `e28652a` (SEC fix `a6e50d6`, tip `8eb3de4`).
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`cc969a2` | — | in-review, SEC: changes (UploadHosted redact) |
+| — | — | (none) | — | — | — | — |
 
 ## How to regenerate/verify this file
 
