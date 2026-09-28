@@ -27,7 +27,7 @@ tickets into `phase/p1-foundation` and queues main PRs here.
 
 | Phase | Branch | Tickets in it | Checks | State |
 |---|---|---|---|---|
-| P1 Foundation + P3/P4 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401/403** (+404) | blog+publish green after M2-403 fold | **ahead** (done commit pending push) |
+| P1 Foundation + P3/P4 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401/403** (+404) | blog+publish green after M2-403 fold | **pushed** @ `615ba16` |
 
 PR body: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) (everything below its `---`).
 Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation
