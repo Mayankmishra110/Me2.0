@@ -1,4 +1,4 @@
-import { ClipboardCheck, Home, MoreHorizontal, ScrollText, Wrench } from 'lucide-react'
+import { ClipboardCheck, Home, MoreHorizontal, ScrollText, Wallet, Wrench } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 import { cn } from '@/lib/utils'
@@ -8,6 +8,7 @@ const items = [
   { to: '/approvals', label: 'Approvals', icon: ClipboardCheck },
   { to: '/pipeline', label: 'Pipeline', icon: MoreHorizontal, disabled: true },
   { to: '/builder', label: 'Builder', icon: Wrench },
+  { to: '/revenue', label: 'Revenue', icon: Wallet },
   { to: '/logs', label: 'Logs', icon: ScrollText },
 ] as const
 
@@ -61,7 +62,7 @@ const mobileTabs = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/approvals', label: 'Approvals', icon: ClipboardCheck },
   { to: '/builder', label: 'Builder', icon: Wrench },
-  { to: '/logs', label: 'Logs', icon: ScrollText },
+  { to: '/revenue', label: 'Revenue', icon: Wallet },
   { to: '/more', label: 'More', icon: MoreHorizontal },
 ] as const
 

@@ -65,6 +65,8 @@ An **income pipeline** that grows into an **agency across many domains**:
 2. Channel names and handles for the 4 YouTube channels and the X accounts.
 3. OK for Builder to pause when the Pro usage limit is hit and resume after reset? (Assumed **yes**.)
 4. Is Hindi content written natively (assumed **yes** — never literal translation) and voiced with Kokoro Hindi?
+5. OK to add YouTube OAuth scope `yt-analytics-monetary.readonly` (requires re-consent) so M2-601 can auto-pull `estimatedRevenue`? Current M2-211/M2-212 scopes are upload + yt-analytics.readonly only. Meta Page ad revenue stays manual (no clean Insights path).
+6. Amazon Associates account + Pinterest affiliate board(s) for M2-604 (and which software affiliate programs)?
 
 ## 6. External accounts Mayank must set up (real waiting time)
 
@@ -77,6 +79,7 @@ An **income pipeline** that grows into an **agency across many domains**:
 - [ ] Telegram bot via @BotFather; Tailscale on laptop + phone; Cloudflare R2 bucket.
 - [ ] Free-tier keys: Groq / Cerebras / OpenRouter / Gemini; Pexels and Pixabay API keys.
 - [ ] Laptop: battery charge limit 80%, lid close = do nothing, sleep on AC = never.
+- [ ] Amazon Associates (and any software affiliate programs) + Pinterest board(s) for affiliate pins (M2-604).
 
 ## 7. Documents map
 

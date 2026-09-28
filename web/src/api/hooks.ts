@@ -13,6 +13,8 @@ import type {
   JobsResponse,
   PauseRequest,
   PauseResponse,
+  RevenueCreateRequest,
+  RevenueResponse,
 } from './types'
 
 export const queryKeys = {
@@ -24,6 +26,8 @@ export const queryKeys = {
   content: (params?: { channel?: string; stage?: string }) =>
     ['content', params?.channel ?? 'all', params?.stage ?? 'all'] as const,
   builder: ['builder'] as const,
+  revenue: (params?: { line?: string; from?: string; to?: string }) =>
+    ['revenue', params?.line ?? 'all', params?.from ?? '', params?.to ?? ''] as const,
 }
 
 export function useHealth() {
@@ -79,6 +83,32 @@ export function useBuilder() {
   return useQuery({
     queryKey: queryKeys.builder,
     queryFn: () => apiFetch<BuilderResponse>('/api/builder'),
+  })
+}
+
+export function useRevenue(params?: { line?: string; from?: string; to?: string }) {
+  const search = new URLSearchParams()
+  if (params?.line) search.set('line', params.line)
+  if (params?.from) search.set('from', params.from)
+  if (params?.to) search.set('to', params.to)
+  const qs = search.toString() ? `?${search}` : ''
+  return useQuery({
+    queryKey: queryKeys.revenue(params),
+    queryFn: () => apiFetch<RevenueResponse>(`/api/revenue${qs}`),
+  })
+}
+
+export function useCreateRevenue() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: RevenueCreateRequest) =>
+      apiFetch<{ ok: boolean; entry: unknown }>('/api/revenue', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['revenue'] })
+    },
   })
 }
 

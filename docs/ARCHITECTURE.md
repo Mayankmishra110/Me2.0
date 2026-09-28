@@ -54,6 +54,7 @@ Everything runs inside **one Go process** plus short-lived child processes (Pyth
 | `internal/media` | Wrappers for ffmpeg, media-tools, remotion (JSON in / JSON out) |
 | `internal/publish` | One adapter per platform behind a `Publisher` interface |
 | `internal/analytics` | Pull metrics, compute scores, write `metrics` and `topic_scores` |
+| `internal/revenue` | Record ads/affiliate/agency/saas/sponsor entries; `GET/POST /api/revenue`; `revenue.pull` for YouTube estimatedRevenue |
 | `internal/blog` | Blog pipeline into the Mayankbuilt repo |
 | `internal/builder` | Planner, Implementer, Auditor, worktrees, phase gates |
 | `internal/tickets` | Parse/update markdown tickets (exists) |
@@ -223,7 +224,7 @@ Mayank2.0/
 ├─ cmd/mayank2/                 main.go
 ├─ internal/                    config, db, queue, scheduler, events, telegram, httpapi, secrets,
 │                               llm, content, compliance, media, publish, analytics, blog, builder,
-│                               tickets, storage
+│                               tickets, storage, revenue
 ├─ migrations/                  001_init.sql …  (embedded)
 ├─ media-tools/                 Python (uv): pyproject.toml, mediatools/{tts,stt}.py
 ├─ remotion/                    Node: package.json, src/compositions/{formats}/, src/brand/
