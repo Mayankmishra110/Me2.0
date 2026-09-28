@@ -85,17 +85,18 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | M2-502 | ready | 501 (done) | `internal/builder/implementer.go` |
 | M2-503 | todo | 502 | `internal/builder/auditor.go` |
 | M2-504 | todo | 503 | `internal/builder/gate.go` |
-| M2-505 | in-review on branch (blocked: depends 504) | 504, 106 | `internal/builder/pr.go`, Builder dashboard |
+| M2-505 | merged on phase, **in-review** (QA+SEC pass; done blocked on M2-504) | 504 (not done), 106 (done) | `internal/builder/pr.go`, Builder dashboard |
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
 | M2-501 | `m2/M2-501` | Builder planner | be | `c64c2cf`, `4a38ce5`, `05d922f`, `ae8c68b`, `6bc991c`, `f4e4c91` | `1f20dce` | merged, done, QA+SEC pass |
+| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | (this merge) | merged on phase, in-review (QA+SEC @ c7d1fc8; depends M2-504 blocks done) |
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | — | in-review (do not merge until M2-504 done) |
+| — | — | (none open) | — | — | — | — |
 
 ## How to regenerate/verify this file
 

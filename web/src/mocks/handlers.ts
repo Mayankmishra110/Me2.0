@@ -88,7 +88,7 @@ export const handlers = [
     const body = await request.json()
     return HttpResponse.json({ ok: true, topic: body }, { status: 201 })
   }),
-  http.get('/api/builder', () => HttpResponse.json({ plans: [], threads: [], audits: [] })),
+  http.get('/api/builder', () => HttpResponse.json(db.builder)),
   http.get('/api/revenue', () => HttpResponse.json({ entries: [] })),
   http.post('/api/revenue', async ({ request }) => {
     const body = await request.json()

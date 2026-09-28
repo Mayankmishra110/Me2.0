@@ -7,7 +7,7 @@ const items = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/approvals', label: 'Approvals', icon: ClipboardCheck },
   { to: '/pipeline', label: 'Pipeline', icon: MoreHorizontal, disabled: true },
-  { to: '/builder', label: 'Builder', icon: Wrench, disabled: true },
+  { to: '/builder', label: 'Builder', icon: Wrench },
   { to: '/logs', label: 'Logs', icon: ScrollText },
 ] as const
 
@@ -60,6 +60,7 @@ export function Sidebar() {
 const mobileTabs = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/approvals', label: 'Approvals', icon: ClipboardCheck },
+  { to: '/builder', label: 'Builder', icon: Wrench },
   { to: '/logs', label: 'Logs', icon: ScrollText },
   { to: '/more', label: 'More', icon: MoreHorizontal },
 ] as const

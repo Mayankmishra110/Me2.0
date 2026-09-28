@@ -122,6 +122,52 @@ export interface ContentResponse {
   items: ContentItem[]
 }
 
+/** Builder dashboard shapes for GET /api/builder (SPEC §4: plans, threads, audits). */
+export type BuilderSubphaseStatus = 'pending' | 'running' | 'pass' | 'fail' | 'gated' | 'blocked'
+
+export interface BuilderSubphase {
+  id: string
+  title: string
+  status: BuilderSubphaseStatus
+}
+
+export interface BuilderPhase {
+  id: string
+  title: string
+  subphases: BuilderSubphase[]
+}
+
+export interface BuilderPlan {
+  id: string
+  /** Configured repo name from the API — never hardcode product repos in UI. */
+  repo: string
+  phases: BuilderPhase[]
+  prUrl: string | null
+}
+
+export interface BuilderThread {
+  id: 'implementer' | 'auditor'
+  repo: string
+  currentSubphase: string | null
+  lastOutput: string[]
+  sessionCost: number | null
+  sessionLimit: number | null
+}
+
+export interface BuilderAudit {
+  id: string
+  repo: string
+  subphase: string
+  verdict: 'pass' | 'fail'
+  findings: string[]
+}
+
+export interface BuilderResponse {
+  plans: BuilderPlan[]
+  threads: BuilderThread[]
+  audits: BuilderAudit[]
+}
+
 export interface PauseRequest {
   scope: 'all' | string
 }
