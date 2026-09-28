@@ -45,6 +45,9 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-211 | `m2/M2-211` | YouTube uploader for 4 channels | be | (see ticket) | `e88f6f8` | merged, done, QA+SEC pass |
 | M2-212 | `m2/M2-212` | Analytics pull and scores | be | (see ticket) | `904a475` | merged, done, QA+SEC pass |
 | ? | ? | Independent qa+sec audit of M2-201..M2-213 (first review not by ship/self; Cursor's own agents had self-reviewed the whole batch) | qa/sec | (this commit) | (direct to phase branch) | housekeeping, not a ticket — found a real gap in M2-205 (G7 fails open for English with no LLM classifier wired, untested); everything else in the batch independently re-verified pass. See ticket Review sections. |
+| M2-301 | `m2/M2-301` | Instagram Reels publisher | be | `3dc5623`..`681cab8` | `636baff` | merged, done, QA+SEC pass |
+| M2-303 | `m2/M2-303` | X (business) publisher | be-3 | `9249bd7`..`1818f3b` | `53a8b60` | merged, done, QA+SEC pass |
+| M2-304 | `m2/M2-304` | Pinterest video pin publisher | be-4 | `b5c541b`..`9947ace` | `d40a796` | merged, done, QA+SEC pass |
 
 **Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -56,11 +59,16 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 (compliance G1?G7) merged `a76a141`. **M2-210** (final gates + approval) merged `9646b4b` /
 `d283fb4` (QA+SEC). **M2-211** flipped `ready` (deps 110+210).
 
+## Phase P3 publishers (on phase branch; awaiting D25 main PRs)
+
+**M2-301** merge `636baff`. **M2-303** merge `53a8b60`. **M2-304** merge `d40a796`.
+**M2-302** held: independent audit `cc969a2` found blocking SEC gap in `UploadHosted` error path (raw body before redact).
+
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| ? | ? | (none) | ? | ? | ? | ? |
+| M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`cc969a2` | — | in-review, SEC: changes (UploadHosted redact) |
 
 ## How to regenerate/verify this file
 
