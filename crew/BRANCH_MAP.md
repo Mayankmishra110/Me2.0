@@ -82,7 +82,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | Ticket | Status | Depends | Touches |
 |---|---|---|---|
 | M2-501 | **done** Â· merge `1f20dce` | 103, 105 (done) | `internal/builder/planner.go`, `config/config.example.yaml` |
-| M2-502 | **done** Â· merge PENDING_SHA | 501 (done) | `internal/builder/implementer.go` |
+| M2-502 | **done** Â· merge `23e708f` | 501 (done) | `internal/builder/implementer.go` |
 | M2-503 | todo | 502 | `internal/builder/auditor.go` |
 | M2-504 | todo | 503 | `internal/builder/gate.go` |
 | M2-505 | merged on phase, **in-review** (QA+SEC pass; done blocked on M2-504) | 504 (not done), 106 (done) | `internal/builder/pr.go`, Builder dashboard |
@@ -90,7 +90,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
 | M2-501 | `m2/M2-501` | Builder planner | be | `c64c2cf`, `4a38ce5`, `05d922f`, `ae8c68b`, `6bc991c`, `f4e4c91` | `1f20dce` | merged, done, QA+SEC pass |
-| M2-502 | `m2/M2-502` | Builder implementer | be (Cursor) | `c0e480e`, `df5b117`, `53f9b40`, `b4d2f34`, `1db9897`, `72a3d73` | PENDING_SHA | merged, done, QA+SEC pass (independent qa/sec re-review this session, re-derived from code + real go test/vet/gofmt output) |
+| M2-502 | `m2/M2-502` | Builder implementer | be (Cursor) | `c0e480e`, `df5b117`, `53f9b40`, `b4d2f34`, `1db9897`, `72a3d73` | `23e708f` | merged, done, QA+SEC pass (independent qa/sec re-review this session, re-derived from code + real go test/vet/gofmt output) |
 | M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | `c10146a` | merged on phase, in-review (QA+SEC @ c7d1fc8; depends M2-504 blocks done) |
 
 ## In progress (branched from `phase/p1-foundation`)
