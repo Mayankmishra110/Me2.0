@@ -60,7 +60,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | M2-301 | `m2/M2-301` | Instagram Reels publisher | be | (tip) | ù | in-review |
 | M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`585a033` | ù | in-review, QA: pass; needs SEC |
 | M2-303 | `m2/M2-303` | X (business) publisher | be-3 | 25cfd53 | ù | in-review, QA: pass; SEC: pass |
-| M2-304 | `m2/M2-304` | Pinterest publisher | be-4 | `8714915` (+ QA review) | ù | in-review, QA: pass; SEC: pass |
+| M2-304 | `m2/M2-304` | Pinterest publisher | be-4 | `4646a1b` | ó | in-review, QA: pass; SEC: pass |
 | ? | ? | (none) | ? | ? | ? | ? |
 
 ## How to regenerate/verify this file
