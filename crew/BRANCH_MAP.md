@@ -117,7 +117,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-116 | `m2/M2-116` (worktree `data/worktrees/m2-116`, based on `dev` at `ad545bd`) | Wire the daemon: `cmd/mayank2 run` starts everything (queue+handlers+scheduler+telegram+http under one context) | be | (pending commit) | — | in-review, needs-sec: yes |
+| M2-116 | `m2/M2-116` (worktree `data/worktrees/m2-116`, based on `dev` at `ad545bd`) | Wire the daemon: `cmd/mayank2 run` starts everything (queue+handlers+scheduler+telegram+http under one context) | be | (pending commit) | — | done, QA+SEC pass (independent qa/sec re-review, re-derived from real code + real go vet/gofmt/go test output) |
 
 ## How to regenerate/verify this file
 
