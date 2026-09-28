@@ -12,7 +12,8 @@ import (
 	"mayank2/internal/llm"
 )
 
-type fakeXCompleter struct {
+// seqXCompleter fakes internal/llm for X-thread repurpose tests (multi-call).
+type seqXCompleter struct {
 	responses []llm.Response
 	err       error
 	calls     int
@@ -20,7 +21,7 @@ type fakeXCompleter struct {
 	lastTask  llm.Task
 }
 
-func (f *fakeXCompleter) Complete(_ context.Context, task llm.Task, req llm.Request) (llm.Response, error) {
+func (f *seqXCompleter) Complete(_ context.Context, task llm.Task, req llm.Request) (llm.Response, error) {
 	f.lastTask = task
 	f.lastReq = req
 	f.calls++
@@ -59,8 +60,8 @@ func (f *fakeApprovalStarter) Start(_ context.Context, contentID, kind, summary,
 	return "ap-" + string(rune('0'+f.nextID)), nil
 }
 
-func sampleSource() XSourcePost {
-	return XSourcePost{
+func sampleSource() SourcePost {
+	return SourcePost{
 		ContentID: "canonical-1",
 		Title:     "Why most side projects never ship",
 		URL:       "https://mayankbuilt.com/blog/why-side-projects-never-ship",
@@ -70,7 +71,7 @@ func sampleSource() XSourcePost {
 	}
 }
 
-func newTestRepurposer(sqlDB *sql.DB, completer *fakeXCompleter, approval *fakeApprovalStarter) *XRepurposer {
+func newTestRepurposer(sqlDB *sql.DB, completer Completer, approval *fakeApprovalStarter) *XRepurposer {
 	n := 0
 	return &XRepurposer{
 		DB:       sqlDB,
@@ -87,7 +88,7 @@ func newTestRepurposer(sqlDB *sql.DB, completer *fakeXCompleter, approval *fakeA
 func TestXRepurposer_StartHappyPath(t *testing.T) {
 	sqlDB := openBlogDB(t)
 	src := sampleSource()
-	completer := &fakeXCompleter{responses: []llm.Response{threadResponse(
+	completer := &seqXCompleter{responses: []llm.Response{threadResponse(
 		"Shipping beats perfect every single time — here's the 3-part deadline trick that finally got my side project out the door.",
 		"1) A real deadline, told to a real person. 2) A landing page before the code. 3) Ship the ugly version first.",
 		"Full breakdown + the exact commitments: https://mayankbuilt.com/blog/why-side-projects-never-ship",
@@ -152,7 +153,7 @@ func TestXRepurposer_RejectsCopyPastedHook(t *testing.T) {
 	// Hook is the source body's opening text, near-verbatim (just
 	// whitespace/case differences) — must be rejected.
 	copyHook := strings.ToUpper(src.Body[:60])
-	completer := &fakeXCompleter{responses: []llm.Response{threadResponse(
+	completer := &seqXCompleter{responses: []llm.Response{threadResponse(
 		copyHook,
 		"second tweet",
 	)}}
@@ -171,7 +172,7 @@ func TestXRepurposer_RejectsCopyPastedHook(t *testing.T) {
 func TestXRepurposer_Redo(t *testing.T) {
 	sqlDB := openBlogDB(t)
 	src := sampleSource()
-	completer := &fakeXCompleter{responses: []llm.Response{
+	completer := &seqXCompleter{responses: []llm.Response{
 		threadResponse("original hook about deadlines and shipping", "second tweet", "third tweet with link"),
 		threadResponse("redo hook, now mentioning the specific 3-commitment framework directly", "second tweet redo", "third tweet redo with link"),
 	}}
@@ -218,16 +219,16 @@ func TestXRepurposer_Redo(t *testing.T) {
 
 func TestXRepurposer_MissingSourceFields(t *testing.T) {
 	sqlDB := openBlogDB(t)
-	r := newTestRepurposer(sqlDB, &fakeXCompleter{}, &fakeApprovalStarter{})
+	r := newTestRepurposer(sqlDB, &seqXCompleter{}, &fakeApprovalStarter{})
 
 	cases := []struct {
 		name string
-		src  XSourcePost
+		src  SourcePost
 	}{
-		{"empty content id", XSourcePost{Title: "t", URL: "u", Body: "b"}},
-		{"empty title", XSourcePost{ContentID: "c", URL: "u", Body: "b"}},
-		{"empty url", XSourcePost{ContentID: "c", Title: "t", Body: "b"}},
-		{"empty body", XSourcePost{ContentID: "c", Title: "t", URL: "u"}},
+		{"empty content id", SourcePost{Title: "t", URL: "u", Body: "b"}},
+		{"empty title", SourcePost{ContentID: "c", URL: "u", Body: "b"}},
+		{"empty url", SourcePost{ContentID: "c", Title: "t", Body: "b"}},
+		{"empty body", SourcePost{ContentID: "c", Title: "t", URL: "u"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -241,7 +242,7 @@ func TestXRepurposer_MissingSourceFields(t *testing.T) {
 
 func TestXRepurposer_LLMSchemaError(t *testing.T) {
 	sqlDB := openBlogDB(t)
-	completer := &fakeXCompleter{responses: []llm.Response{{Text: `{"not_tweets": []}`}}}
+	completer := &seqXCompleter{responses: []llm.Response{{Text: `{"not_tweets": []}`}}}
 	r := newTestRepurposer(sqlDB, completer, &fakeApprovalStarter{})
 
 	_, _, err := r.Start(context.Background(), sampleSource())
@@ -252,7 +253,7 @@ func TestXRepurposer_LLMSchemaError(t *testing.T) {
 
 func TestXRepurposer_LLMError(t *testing.T) {
 	sqlDB := openBlogDB(t)
-	completer := &fakeXCompleter{err: errors.New("provider down")}
+	completer := &seqXCompleter{err: errors.New("provider down")}
 	r := newTestRepurposer(sqlDB, completer, &fakeApprovalStarter{})
 
 	_, _, err := r.Start(context.Background(), sampleSource())

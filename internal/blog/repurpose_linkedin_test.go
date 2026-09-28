@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"mayank2/internal/db"
 	"mayank2/internal/llm"
 )
 
@@ -24,14 +25,14 @@ teaser.`
 
 const sourceURL = "https://mayank.dev/blog/go-daemon-16gb-laptop"
 
-// fakeCompleter returns a canned response, or an error, per call.
-type fakeLICompleter struct {
+// seqCompleter returns a canned response, or an error, per call.
+type seqCompleter struct {
 	responses []string
 	errs      []error
 	calls     []llm.Request
 }
 
-func (f *fakeLICompleter) Complete(ctx context.Context, task llm.Task, req llm.Request) (llm.Response, error) {
+func (f *seqCompleter) Complete(ctx context.Context, task llm.Task, req llm.Request) (llm.Response, error) {
 	f.calls = append(f.calls, req)
 	i := len(f.calls) - 1
 	if i < len(f.errs) && f.errs[i] != nil {
@@ -80,7 +81,7 @@ func TestRepurposer_Run_HappyPath(t *testing.T) {
 	draft := "Most 'production-ready' setups I see are five services held together by hope.\n\n" +
 		"Mine is one Go binary and SQLite. Here is why that held up fine on a laptop with 16 GB of RAM.\n\n" +
 		"Full writeup: " + sourceURL
-	comp := &fakeLICompleter{responses: []string{draft}}
+	comp := &seqCompleter{responses: []string{draft}}
 	appr := &fakeApprover{returnID: "ap-42"}
 	r, err := NewRepurposer(Options{Completer: comp, Approver: appr})
 	if err != nil {
@@ -129,7 +130,7 @@ func TestRepurposer_Run_NotCopyPaste(t *testing.T) {
 	copyPaste := strings.Join(strings.Fields(sourceBody)[:20], " ")
 	rewrite := "Nobody warns you that a single Go binary beats five microservices when you're the only one on call.\n\n" +
 		"Wrote up the whole approach here: " + sourceURL
-	comp := &fakeLICompleter{responses: []string{copyPaste, rewrite}}
+	comp := &seqCompleter{responses: []string{copyPaste, rewrite}}
 	appr := &fakeApprover{}
 	r, err := NewRepurposer(Options{Completer: comp, Approver: appr})
 	if err != nil {
@@ -157,7 +158,7 @@ func TestRepurposer_Run_NotCopyPaste(t *testing.T) {
 // letter, not endless retry) wrapping ErrDraftNotOriginal.
 func TestRepurposer_Run_AlwaysCopyPaste_PermanentError(t *testing.T) {
 	copyPaste := strings.Join(strings.Fields(sourceBody)[:20], " ")
-	comp := &fakeLICompleter{responses: []string{copyPaste, copyPaste}}
+	comp := &seqCompleter{responses: []string{copyPaste, copyPaste}}
 	appr := &fakeApprover{}
 	r, err := NewRepurposer(Options{Completer: comp, Approver: appr})
 	if err != nil {
@@ -177,7 +178,7 @@ func TestRepurposer_Run_AlwaysCopyPaste_PermanentError(t *testing.T) {
 }
 
 func TestRepurposer_Run_LLMError(t *testing.T) {
-	comp := &fakeLICompleter{errs: []error{errors.New("provider down")}}
+	comp := &seqCompleter{errs: []error{errors.New("provider down")}}
 	appr := &fakeApprover{}
 	r, err := NewRepurposer(Options{Completer: comp, Approver: appr})
 	if err != nil {
@@ -194,7 +195,7 @@ func TestRepurposer_Run_LLMError(t *testing.T) {
 
 func TestRepurposer_Run_RedoNotesInPrompt(t *testing.T) {
 	rewrite := "A sharper hook this time, per the note.\n\nMore: " + sourceURL
-	comp := &fakeLICompleter{responses: []string{rewrite}}
+	comp := &seqCompleter{responses: []string{rewrite}}
 	appr := &fakeApprover{}
 	r, err := NewRepurposer(Options{Completer: comp, Approver: appr})
 	if err != nil {
@@ -219,7 +220,7 @@ func TestRepurposer_Run_RedoNotesInPrompt(t *testing.T) {
 }
 
 func TestRepurposer_Run_MissingSourceFields(t *testing.T) {
-	comp := &fakeLICompleter{responses: []string{"x " + sourceURL}}
+	comp := &seqCompleter{responses: []string{"x " + sourceURL}}
 	appr := &fakeApprover{}
 	r, err := NewRepurposer(Options{Completer: comp, Approver: appr})
 	if err != nil {
@@ -241,7 +242,7 @@ func TestNewRepurposer_RequiresDeps(t *testing.T) {
 	if _, err := NewRepurposer(Options{Approver: &fakeApprover{}}); err == nil {
 		t.Fatal("want error without Completer")
 	}
-	if _, err := NewRepurposer(Options{Completer: &fakeLICompleter{}}); err == nil {
+	if _, err := NewRepurposer(Options{Completer: &seqCompleter{}}); err == nil {
 		t.Fatal("want error without Approver")
 	}
 }
@@ -309,6 +310,20 @@ func TestLongestSharedRun(t *testing.T) {
 
 // --- LoadSourcePost (DB) -----------------------------------------------
 
+func openBlogDBNoSeed(t *testing.T) *sql.DB {
+	t.Helper()
+	ctx := context.Background()
+	sqlDB, err := db.Open(ctx, filepath.Join(t.TempDir(), "b.db"))
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if _, err := db.Migrate(ctx, sqlDB); err != nil {
+		t.Fatalf("db.Migrate: %v", err)
+	}
+	return sqlDB
+}
+
 func mustExecBlog(t *testing.T, sqlDB *sql.DB, q string, args ...any) {
 	t.Helper()
 	if _, err := sqlDB.Exec(q, args...); err != nil {
@@ -317,7 +332,7 @@ func mustExecBlog(t *testing.T, sqlDB *sql.DB, q string, args ...any) {
 }
 
 func TestLoadSourcePost(t *testing.T) {
-	sqlDB := openBlogDB(t)
+	sqlDB := openBlogDBNoSeed(t)
 	mustExecBlog(t, sqlDB, `
 INSERT INTO channels (id, platform, handle, language, niche, account_ref, status)
 VALUES ('blog-ch', 'mayankbuilt', '', 'en', 'blog', '', 'active')`)
@@ -350,7 +365,7 @@ INSERT INTO assets (id, content_id, kind, path) VALUES ('a1', 'c1', 'mdx', ?)`, 
 }
 
 func TestLoadSourcePost_NoPublication(t *testing.T) {
-	sqlDB := openBlogDB(t)
+	sqlDB := openBlogDBNoSeed(t)
 	_, err := LoadSourcePost(context.Background(), sqlDB, "missing")
 	if err == nil || !strings.Contains(err.Error(), "no live mayankbuilt publication") {
 		t.Fatalf("err = %v, want 'no live mayankbuilt publication'", err)

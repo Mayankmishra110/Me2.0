@@ -30,7 +30,6 @@ import (
 const (
 	// PlatformLinkedIn is publications.platform / oauth_tokens.platform
 	// for this leg (matches internal/publish/linkedin.go's Platform()).
-	// PlatformMayankbuilt lives in merge.go (shared with M2-401/404).
 	PlatformLinkedIn = "linkedin"
 
 	// approvalKindLinkedIn is approvals.kind for this leg's approval row.
@@ -73,14 +72,17 @@ type Approver interface {
 	Start(ctx context.Context, contentID, kind, summary, previewPath string) (string, error)
 }
 
-// SourcePost is the live, canonical Mayankbuilt post this leg repurposes.
+// SourcePost is the live, canonical Mayankbuilt post repurposed to LinkedIn
+// or X (M2-402/403). Title is required for the X leg; LinkedIn may leave it
+// empty when loading via LoadSourcePost.
 type SourcePost struct {
 	ContentID string
+	Title     string
 	URL       string // canonical live URL
 	Body      string // plain-text/markdown body (MDX with frontmatter stripped)
 }
 
-// Draft is the produced LinkedIn-native repost, still pending approval.
+// LinkedInDraft is the produced LinkedIn-native repost, still pending approval.
 type LinkedInDraft struct {
 	Text       string // LinkedIn post body, includes the link back to Source.URL
 	ApprovalID string
