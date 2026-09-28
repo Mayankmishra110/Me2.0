@@ -104,7 +104,11 @@ All four are independent of each other once 210 and 213 are done — safe to run
 | M2-402 | Repurpose blog post to LinkedIn | 401 |
 | M2-403 | Repurpose blog post to X (personal account) | 401 |
 | M2-404 | Medium import-story link prep | 401 |
-| M2-501…505 | Builder planner, implementer, auditor, phase gate, Builder screen | 103, 105 |
+| M2-501 | Builder planner: spec/architecture → ordered subphase plan | 103, 105 |
+| M2-502 | Builder implementer: worktree + headless Opus, never main | 501 |
+| M2-503 | Builder auditor: parallel audit against architecture/design | 502 |
+| M2-504 | Builder phase gate: pass/fix-retry decision, timeout, limit pause | 503 |
+| M2-505 | Builder dashboard screen + PR link | 504, 106 |
 | M2-601…604 | Revenue, micro-SaaS flow, agency leads + drafts, Pinterest affiliate | P2–P5 |
 
 Ticket files exist for P1 and P2. P3+ tickets are written when P2 reaches M2-210.
