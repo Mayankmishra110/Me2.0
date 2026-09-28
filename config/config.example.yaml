@@ -52,3 +52,19 @@ builder:
   run_timeout: 60m
   limit_pause: 30m
   repos: []                     # filled once Mayank answers CONTEXT.md open question 1
+
+# blog: the whole section is optional (CONTEXT D24). Leave repo_path empty
+# (or delete this section) to run mayank2 with the blog pipeline off — M2-117
+# wires blog.draft/blog.merge/blog.repurpose but does not register them when
+# repo_path is empty (cmd/mayank2/run.go registerBlogHandlers logs
+# "blog not configured" and moves on; the daemon still starts).
+# blog:
+#   repo_path: "../Mayankbuilt"        # local clone of the Mayankbuilt repo; must already exist with a remote
+#   posts_dir: content/blog            # MDX posts directory inside that repo
+#   base_branch: main
+#   remote: origin
+#   channel_id: blog                   # channels.id row for blog content_items (seed it — see internal/blog doc comment)
+#   site_base_url: "https://mayankbuilt.com"
+#   git_timeout: 2m
+#   backlog_path: config/blog-topics.md
+#   preview_url_template: ""           # unconfirmed Vercel preview URL shape; leave empty until verified

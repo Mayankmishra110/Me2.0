@@ -65,6 +65,17 @@ An **income pipeline** that grows into an **agency across many domains**:
 2. Channel names and handles for the 4 YouTube channels and the X accounts.
 3. OK for Builder to pause when the Pro usage limit is hit and resume after reset? (Assumed **yes**.)
 4. Is Hindi content written natively (assumed **yes** — never literal translation) and voiced with Kokoro Hindi?
+5. (M2-117) `script.write`'s format picker needs a channel's configured `Formats` subset
+   (`config/channels/*.yaml`), but a `research.brief`/`script.write` job payload has no path to it without
+   a filesystem lookup neither handler otherwise needs. Currently defaults to every format in
+   `formats.Catalog` when a job doesn't supply `allowed` explicitly — should the daemon resolve a channel's
+   configured subset automatically (and if so, from which component), or is defaulting to the full catalog
+   (still G6/topic-fit scored) fine long-term?
+6. (M2-117) `blog.merge` should chain to `blog.medium` (M2-404) once a post goes live, same as it now
+   chains to `blog.repurpose`, but `internal/blog/medium.go`'s `TelegramSender` needs a `*telegram.Client`
+   that `internal/telegram.Bot` doesn't expose publicly. Should `internal/telegram` add an accessor (e.g.
+   `Bot.Client()`), or should `blog.medium` build its own minimal Telegram sender instead of reusing
+   `internal/telegram`'s?
 5. OK to add YouTube OAuth scope `yt-analytics-monetary.readonly` (requires re-consent) so M2-601 can auto-pull `estimatedRevenue`? Current M2-211/M2-212 scopes are upload + yt-analytics.readonly only. Meta Page ad revenue stays manual (no clean Insights path).
 6. Amazon Associates account + Pinterest affiliate board(s) for M2-604 (and which software affiliate programs)?
 7. **How should the accumulated `dev` branch (P1-P6, built under the pre-D25 phase-branch model, now including M2-116) land on `main`?** A ship session was asked (2026-09-29) to open one PR bundling all ~43 tickets from `dev` into `main` and auto-merge it under D25's authorization. D25's own text is a per-ticket model — each ticket branches off and rebases onto current `main` individually, is auto-merged by ship once it has real QA (+SEC when flagged) on a clean, green branch — and its stated purpose was explicitly to *stop* batching ("ship one feature at a time... instead of batching into one big PR"). It also says already-built phase-branch work should be "migrated to this model ticket by ticket rather than redone," which reads as migrating `dev`'s ~43 tickets onto `main` individually, not as one combined PR. A single 43-ticket `dev`→`main` PR is the batching D25 was written to end, and no decision-log entry or ticket documents a one-time exception for it. Ship did not open that PR or touch `main`; it merged M2-116 into `dev` only (real QA+SEC pass, real green `go test ./...` post-merge — see `crew/BRANCH_MAP.md`) and is leaving the `dev`→`main` landing question here rather than guessing on product process. Options as ship sees them: (a) ship walks the ~43 `dev` tickets onto `main` one at a time per D25's literal text, or (b) Mayank explicitly authorizes a one-time bulk `dev`→`main` PR as a stated exception (and that exception gets its own decision-log row so it's not re-litigated next time). Either is fine; ship needs the call before pushing anything to `main`.

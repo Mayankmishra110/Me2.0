@@ -23,6 +23,7 @@ type Config struct {
 	LLM       LLMConfig       `yaml:"llm"`
 	Content   ContentConfig   `yaml:"content"`
 	Builder   BuilderConfig   `yaml:"builder"`
+	Blog      BlogConfig      `yaml:"blog"`
 
 	// Resolved / derived (not from YAML).
 	ConfigDir  string         `yaml:"-"`
@@ -75,6 +76,47 @@ type BuilderConfig struct {
 	RunTimeout       string       `yaml:"run_timeout"`
 	LimitPause       string       `yaml:"limit_pause"`
 	Repos            []RepoConfig `yaml:"repos"`
+}
+
+// BlogConfig configures the M2-401..404 Mayankbuilt blog pipeline
+// (internal/blog.Config). Mirrors internal/blog.Config's fields exactly so
+// cmd/mayank2/run.go can pass this straight through. The whole section is
+// optional (CONTEXT D24): when RepoPath is empty, cmd/mayank2/run.go does
+// not register any blog.* job handler rather than starting with a broken
+// git remote it would fail against on first use — see run.go's
+// registerBlogHandlers doc comment.
+type BlogConfig struct {
+	// RepoPath is the local clone of the Mayankbuilt repo. Empty disables
+	// the whole blog pipeline (D24) — no ticket/env currently requires it.
+	RepoPath string `yaml:"repo_path"`
+	// PostsDir is the MDX posts directory inside the repo. Default
+	// "content/blog" (internal/blog.Config.withDefaults).
+	PostsDir string `yaml:"posts_dir"`
+	// BaseBranch is the branch merged into on approval. Default "main".
+	BaseBranch string `yaml:"base_branch"`
+	// Remote is the git remote name. Default "origin".
+	Remote string `yaml:"remote"`
+	// ChannelID is the channels.id content_items rows for blog posts point
+	// at (schema has no "no channel" concept). Default "blog".
+	ChannelID string `yaml:"channel_id"`
+	// SiteBaseURL computes the canonical post URL, e.g. "https://mayankbuilt.com".
+	SiteBaseURL string `yaml:"site_base_url"`
+	// GitTimeout bounds each git child-process call, e.g. "2m". Default 2m.
+	GitTimeout string `yaml:"git_timeout"`
+	// BacklogPath is config/blog-topics.md — the next topic when a
+	// blog.draft job has none (ARCHITECTURE §3.2).
+	BacklogPath string `yaml:"backlog_path"`
+	// PreviewURLTemplate is a Go text/template (fields .Branch, .Slug) that
+	// guesses a Vercel preview URL. Left empty by default — the real
+	// mechanism is unconfirmed (internal/blog/draft.go doc comment); empty
+	// means blog.draft requests approval with no preview link.
+	PreviewURLTemplate string `yaml:"preview_url_template"`
+}
+
+// Enabled reports whether the blog pipeline has enough config to run
+// (CONTEXT D24: a missing RepoPath switches it off cleanly, not fatally).
+func (b BlogConfig) Enabled() bool {
+	return strings.TrimSpace(b.RepoPath) != ""
 }
 
 type RepoConfig struct {
@@ -152,6 +194,13 @@ func (c *Config) resolve() error {
 	}
 	if c.LimitPause, err = parseDuration(c.Builder.LimitPause, "30m"); err != nil {
 		return fmt.Errorf("builder.limit_pause: %w", err)
+	}
+
+	if c.Blog.Enabled() {
+		c.Blog.RepoPath = absPath(c.Blog.RepoPath)
+		if c.Blog.BacklogPath != "" {
+			c.Blog.BacklogPath = absPath(c.Blog.BacklogPath)
+		}
 	}
 
 	for i := range c.Builder.Repos {

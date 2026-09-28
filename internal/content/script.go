@@ -4,6 +4,7 @@ package content
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -13,6 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"mayank2/internal/compliance"
 	"mayank2/internal/content/formats"
 	"mayank2/internal/llm"
 	"mayank2/internal/queue"
@@ -23,6 +25,26 @@ type ScriptOptions struct {
 	OutDir    string // required; receives script.json
 	Completer Completer
 	Logger    *slog.Logger
+
+	// DB, when set, lets the script.write queue handler persist script.json
+	// onto the content_items row (script column) it belongs to. Optional —
+	// nil just skips persistence (still writes OutDir/script.json).
+	DB ScriptDB
+	// Enqueue, when set, lets the script.write handler chain to
+	// compliance.script on success (ARCHITECTURE §3.1: script.write ->
+	// compliance.script). Optional — nil just skips the chain.
+	Enqueue ScriptEnqueuer
+}
+
+// ScriptDB is the subset of *sql.DB the script.write handler needs.
+type ScriptDB interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// ScriptEnqueuer enqueues the follow-up compliance.script job.
+type ScriptEnqueuer interface {
+	Enqueue(ctx context.Context, jobType string, payload any, opts ...queue.EnqueueOpt) (id string, err error)
 }
 
 // Script writes original long+short scripts for one channel/language.
@@ -388,4 +410,176 @@ func hasDevanagari(s string) bool {
 		}
 	}
 	return false
+}
+
+// --- script.write queue handler (M2-117) -------------------------------------
+
+// ScriptJobPayload is the script.write job body. It doubles as the redo/
+// rewrite payload: content.ApprovalService.Decide (approval.go) and
+// compliance.Engine.Handle (internal/compliance/engine.go) both enqueue
+// script.write with content_id/redo_notes (+ rewrite_attempt/gate_feedback
+// on a compliance rewrite) merged on top of whatever this job originally
+// carried (compliance forwards the original payload verbatim as
+// "script_write" on the compliance.script job it built from this one).
+type ScriptJobPayload struct {
+	ContentID    string                 `json:"content_id"`
+	ChannelID    string                 `json:"channel_id,omitempty"`
+	Language     string                 `json:"language,omitempty"`
+	Topic        string                 `json:"topic,omitempty"`
+	Brief        Brief                  `json:"brief,omitempty"`
+	Allowed      []string               `json:"allowed,omitempty"`
+	FormatScores map[string]float64     `json:"format_scores,omitempty"`
+	Recent       []formats.HistoryEntry `json:"recent,omitempty"`
+	RedoNotes    string                 `json:"redo_notes,omitempty"`
+	// GateFeedback/RewriteAttempt are set by compliance.Engine on a rewrite
+	// (internal/compliance/engine.go's ScriptPayload merge). Folded into the
+	// prompt as redo notes when RedoNotes itself is empty.
+	GateFeedback   string `json:"gate_feedback,omitempty"`
+	RewriteAttempt int    `json:"rewrite_attempt,omitempty"`
+	Format         string `json:"format,omitempty"`
+	HookStyle      string `json:"hook_style,omitempty"`
+}
+
+// RegisterHandler registers script.write on the net resource class (LLM
+// call only — not a local model or render, so CLAUDE.md's "heavy" rule
+// does not apply).
+func (s *Script) RegisterHandler(q *queue.Queue) {
+	if q == nil || s == nil {
+		return
+	}
+	q.Register(JobScriptWrite, queue.ResourceNet, 3, s.handleJob)
+}
+
+func (s *Script) handleJob(ctx context.Context, job queue.Job) (json.RawMessage, error) {
+	var p ScriptJobPayload
+	if err := json.Unmarshal(job.Payload, &p); err != nil {
+		return nil, queue.Permanent(fmt.Errorf("content script.write payload: %w", err))
+	}
+	contentID := firstNonEmpty(p.ContentID, deref(job.ContentID))
+	if contentID == "" {
+		return nil, queue.Permanent(fmt.Errorf("content script.write: content_id required"))
+	}
+	if contentID != filepath.Base(contentID) || strings.Contains(contentID, "..") {
+		return nil, queue.Permanent(fmt.Errorf("content script.write: unsafe content_id %q", contentID))
+	}
+	channelID := strings.TrimSpace(p.ChannelID)
+	lang := Language(strings.TrimSpace(p.Language))
+	if s.opts.DB != nil && (channelID == "" || lang == "") {
+		var dbChannel, dbLang string
+		if err := s.opts.DB.QueryRowContext(ctx, `
+SELECT channel_id, language FROM content_items WHERE id=?`, contentID).Scan(&dbChannel, &dbLang); err == nil {
+			if channelID == "" {
+				channelID = dbChannel
+			}
+			if lang == "" {
+				lang = Language(dbLang)
+			}
+		}
+	}
+	if channelID == "" {
+		return nil, queue.Permanent(fmt.Errorf("content script.write: channel_id required"))
+	}
+	if lang == "" {
+		return nil, queue.Permanent(fmt.Errorf("content script.write: language required"))
+	}
+
+	allowed := p.Allowed
+	if len(allowed) == 0 {
+		allowed = allCatalogFormatIDs()
+	}
+	redoNotes := strings.TrimSpace(p.RedoNotes)
+	if redoNotes == "" && strings.TrimSpace(p.GateFeedback) != "" {
+		redoNotes = "Compliance gate feedback (must fix): " + p.GateFeedback
+	}
+
+	// Per-content_id subdirectory of the shared OutDir — same reasoning as
+	// content research.brief's handleJob (research.go): s.opts.OutDir is one
+	// fixed path, so concurrent script.write jobs must not share it.
+	perJob := &Script{opts: s.opts, log: s.log}
+	perJob.opts.OutDir = filepath.Join(s.opts.OutDir, contentID)
+	doc, err := perJob.Run(ctx, ScriptInput{
+		ChannelID:    channelID,
+		Language:     lang,
+		Topic:        p.Topic,
+		Brief:        p.Brief,
+		Allowed:      allowed,
+		FormatScores: p.FormatScores,
+		Recent:       p.Recent,
+		RedoNotes:    redoNotes,
+		Format:       p.Format,
+		HookStyle:    p.HookStyle,
+	})
+	if err != nil {
+		return nil, err // Run already wraps queue.Permanent where appropriate
+	}
+
+	if s.opts.DB != nil {
+		raw, merr := json.Marshal(doc)
+		if merr != nil {
+			return nil, fmt.Errorf("content script.write: marshal script doc: %w", merr)
+		}
+		if _, err := s.opts.DB.ExecContext(ctx, `
+UPDATE content_items SET script=?, stage='script_written' WHERE id=?`, string(raw), contentID); err != nil {
+			return nil, fmt.Errorf("content script.write: persist script for %s: %w", contentID, err)
+		}
+	}
+
+	if s.opts.Enqueue != nil {
+		scriptText := scriptSpokenText(doc)
+		item := compliance.ContentItem{
+			ID:            contentID,
+			ChannelID:     channelID,
+			Kind:          "short",
+			Format:        doc.Format,
+			HookStyle:     doc.HookStyle,
+			Language:      string(lang),
+			Title:         doc.Long.Title,
+			ThumbnailText: doc.Long.ThumbnailText,
+			ScriptText:    scriptText,
+		}
+		_, err := s.opts.Enqueue.Enqueue(ctx, compliance.JobScriptCompliance, compliance.ScriptPayload{
+			ContentID:      contentID,
+			ChannelID:      channelID,
+			RewriteAttempt: p.RewriteAttempt,
+			Item:           item,
+			ScriptWrite:    json.RawMessage(job.Payload),
+		}, queue.ContentID(contentID))
+		if err != nil {
+			return nil, fmt.Errorf("content script.write: enqueue compliance.script: %w", err)
+		}
+	}
+
+	out := map[string]any{"content_id": contentID, "script": doc}
+	return json.Marshal(out)
+}
+
+// scriptSpokenText joins the long variant's beats (falling back to short)
+// into the text compliance's G1/G2/G4/G7 gates check.
+func scriptSpokenText(doc *ScriptDoc) string {
+	v := doc.Long
+	if len(v.Beats) == 0 {
+		v = doc.Short
+	}
+	parts := make([]string, 0, len(v.Beats)+1)
+	if v.Hook != "" {
+		parts = append(parts, v.Hook)
+	}
+	for _, b := range v.Beats {
+		parts = append(parts, b.Text)
+	}
+	return strings.Join(parts, " ")
+}
+
+// allCatalogFormatIDs is the fallback Allowed list for research.brief/
+// script.write jobs that don't specify a channel's configured format
+// subset (config/channels/*.yaml Formats — not reachable from a bare
+// job payload without a channel-config lookup, which is a bigger product
+// wiring question than this ticket's "register the missing handlers"
+// scope; flagged in CONTEXT.md as a follow-up).
+func allCatalogFormatIDs() []string {
+	ids := make([]string, 0, len(formats.Catalog))
+	for _, f := range formats.Catalog {
+		ids = append(ids, f.ID)
+	}
+	return ids
 }

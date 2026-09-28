@@ -21,6 +21,11 @@ import (
 // look this row up by content_id + platform.
 const PlatformMayankbuilt = "mayankbuilt"
 
+// MergeEnqueuer enqueues the follow-up blog.repurpose / blog.medium jobs.
+type MergeEnqueuer interface {
+	Enqueue(ctx context.Context, jobType string, payload any, opts ...queue.EnqueueOpt) (id string, err error)
+}
+
 // MergeOptions configures Merge. Git and DB are required.
 type MergeOptions struct {
 	Config Config
@@ -32,6 +37,12 @@ type MergeOptions struct {
 	// Account is publications.account for the mayankbuilt row. Default
 	// "mayankbuilt" -- a single portfolio site, not a multi-account platform.
 	Account string
+	// Enqueue, when set, chains a freshly-merged post to blog.repurpose
+	// (M2-117 dispatcher, repurpose.go) and blog.medium (M2-404, medium.go)
+	// on a genuinely new merge (ARCHITECTURE §3.2: merge -> live ->
+	// repurpose / medium link). Optional — nil just skips the chain; a
+	// replayed/already-merged run never re-chains (see Run).
+	Enqueue MergeEnqueuer
 }
 
 // Merge implements the blog.merge job: after F7 approval, fast-forward
@@ -182,6 +193,18 @@ func (m *Merge) Run(ctx context.Context, p MergePayload) (*MergeResult, error) {
 	if _, err := m.opts.DB.ExecContext(ctx, `
 UPDATE content_items SET stage=? WHERE id=?`, "published", contentID); err != nil {
 		m.log.Warn("blog: merge: update stage failed (non-fatal)", "content_id", contentID, "error", err.Error())
+	}
+
+	// blog.medium (M2-404) is deliberately not chained here: it needs a
+	// *telegram.Client sender (internal/blog/medium.go's TelegramSender),
+	// which internal/telegram.Bot does not currently expose publicly, and
+	// wiring that is outside this ticket's touches (cmd/mayank2/,
+	// internal/config/, internal/content/, internal/media/,
+	// internal/blog/{draft,merge,repurpose*}.go) — flagged in CONTEXT.md.
+	if m.opts.Enqueue != nil {
+		if _, err := m.opts.Enqueue.Enqueue(ctx, JobRepurpose, RepurposePayload{ContentID: contentID}, queue.ContentID(contentID)); err != nil {
+			m.log.Warn("blog: merge: enqueue blog.repurpose failed (non-fatal)", "content_id", contentID, "error", err.Error())
+		}
 	}
 
 	return &MergeResult{
