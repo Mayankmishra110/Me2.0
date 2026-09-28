@@ -1,19 +1,22 @@
-# Plan ? owned by lead
+# Plan â€” owned by lead
 
-Updated: 2026-09-28 · **pipeline complete** for tickets M2-210 ? M2-212 on `phase/p1-foundation`
+Updated: 2026-09-28 Â· P3 publishers + M2-401 on `phase/p1-foundation`
 
 ## Status
 
-| Ticket | State on origin |
+| Ticket | State on phase |
 |---|---|
-| M2-210 Final gates + approval | **done** · merges `9646b4b` / `d283fb4` · audit `0428aa6` |
-| M2-211 YouTube uploader | **done** · merge `e88f6f8` · audit `d33b23b` |
-| M2-212 Analytics pull + scores | **done** · merge `904a475` |
+| M2-301 Instagram Reels | **done** Â· merge `636baff` |
+| M2-302 Facebook Page | **done** Â· merge `e28652a` (SEC fix `a6e50d6`) |
+| M2-303 X business | **done** Â· merge `53a8b60` |
+| M2-304 Pinterest | **done** Â· merge `d40a796` |
+| M2-401 Blog draft/merge | **done** Â· merge `4aec99f` (QA+SEC stamp `1b0a9e0`) |
 
 ## Phase tip
 
-`origin/phase/p1-foundation` @ `92a44c8`
+`phase/p1-foundation` @ bookkeeping after `1b0a9e0` (feat merge `4aec99f`)
 
 ## Next
 
-Mayank opens ONE PR `phase/p1-foundation` ? `main` from `docs/audit/p1-foundation/README.md` (D23). Never push `main` from crew.
+1. Mayank: `gh auth login` â†’ ship D25-migrates phase tickets onto `main` (never raw push main).
+2. Phaseâ†’main PR when ready from `docs/audit/p1-foundation/README.md`.

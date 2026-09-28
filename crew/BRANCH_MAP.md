@@ -48,6 +48,11 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-301 | `m2/M2-301` | Instagram Reels publisher | be | `3dc5623`..`681cab8` | `636baff` | merged, done, QA+SEC pass |
 | M2-303 | `m2/M2-303` | X (business) publisher | be-3 | `9249bd7`..`1818f3b` | `53a8b60` | merged, done, QA+SEC pass |
 | M2-304 | `m2/M2-304` | Pinterest video pin publisher | be-4 | `b5c541b`..`9947ace` | `d40a796` | merged, done, QA+SEC pass |
+| M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`8eb3de4` | `e28652a` | merged, done, QA+SEC pass (UploadHosted redact `a6e50d6`) |
+| M2-401 | `m2/M2-401` | Blog draft + merge for Mayankbuilt | be | `9dbb996`, `9f01826` (phase cherry-pick `1b0a9e0`) | `4aec99f` | merged, done, QA+SEC pass |
+| M2-404 | `m2/M2-404` | Medium import-story link prep | be-4 | `0e8d1b3` | `bd09d1c` | merged, done, QA pass / SEC n/a |
+| M2-403 | `m2/M2-403` | X personal thread repurpose + publisher | be-3 | `ebb2a77`, `fe4bede`, `710e35c`, `465693b` | `0e48987` | merged, done, QA+SEC pass (notes+stamp folded from `5fe3733`/`a8ce2d3`) |
+| M2-402 | `m2/M2-402` | LinkedIn repurpose + Posts API publisher | be-2 | `118475d` (+ SourcePost fold) | `84361f9` | merged, done, QA+SEC pass |
 
 **Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -62,17 +67,36 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 ## Phase P3 publishers (on phase branch; awaiting D25 main PRs)
 
 **M2-301** merge `636baff`. **M2-303** merge `53a8b60`. **M2-304** merge `d40a796`.
-**M2-302** held: independent audit `cc969a2` found blocking SEC gap in `UploadHosted` error path (raw body before redact).
+**M2-302** merge `e28652a` (SEC fix `a6e50d6`, tip `8eb3de4`).
+
+## Phase P4 blog (complete on phase branch; awaiting D25 main PRs)
+
+**M2-401** merge `4aec99f` (QA+SEC stamp `1b0a9e0`, feat `9dbb996`).
+**M2-404** merge `bd09d1c` (feat `0e8d1b3`; QA pass / SEC n/a).
+**M2-403** merge `0e48987` + dedupe `fe4bede`; notes `710e35c` / Review stamp `465693b`
+(from tip `5fe3733` / `a8ce2d3`).
+**M2-402** merge `84361f9` (feat `118475d`; QA+SEC pass; SourcePost shared-type fold on phase).
+
+## Phase P5 Builder (tickets on phase; branched from `phase/p1-foundation`)
+
+| Ticket | Status | Depends | Touches |
+|---|---|---|---|
+| M2-501 | **done** · merge `1f20dce` | 103, 105 (done) | `internal/builder/planner.go`, `config/config.example.yaml` |
+| M2-502 | in-progress (crew-be) | 501 (done) | `internal/builder/implementer.go` |
+| M2-503 | todo | 502 | `internal/builder/auditor.go` |
+| M2-504 | todo | 503 | `internal/builder/gate.go` |
+| M2-505 | in-review on branch (blocked: depends 504) | 504, 106 | `internal/builder/pr.go`, Builder dashboard |
+
+| Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
+|---|---|---|---|---|---|---|
+| M2-501 | `m2/M2-501` | Builder planner | be | `c64c2cf`, `4a38ce5`, `05d922f`, `ae8c68b`, `6bc991c`, `f4e4c91` | `1f20dce` | merged, done, QA+SEC pass |
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`cc969a2` | — | in-review, SEC: changes (UploadHosted redact) |
-| M2-401 | `m2/M2-401` | Blog draft → Mayankbuilt | be | (this commit) | — | in-review |
-| M2-402 | `m2/M2-402` | LinkedIn repurpose + publisher | be-2 | `1f78bec` | — | in-review |
-| M2-403 | `m2/M2-403` | X personal publisher | be-3 | (sibling) | — | in-progress |
-| M2-404 | `m2/M2-404` | Medium import-story link | be-4 | `1932449` | — | in-review |
+| M2-502 | `m2/M2-502` | Builder implementer | be | (building) | — | in-progress |
+| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | — | in-review (do not merge until M2-504 done) |
 
 ## How to regenerate/verify this file
 

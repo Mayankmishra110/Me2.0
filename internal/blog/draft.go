@@ -171,13 +171,36 @@ type GitRunner func(ctx context.Context, dir string, args []string) (stdout, std
 
 // DefaultGitRunner is the production GitRunner.
 func DefaultGitRunner(ctx context.Context, dir string, args []string) ([]byte, []byte, error) {
-	cmd := exec.CommandContext(ctx, "git", args...)
+	if strings.TrimSpace(dir) == "" {
+		return nil, nil, fmt.Errorf("blog: git: empty working directory")
+	}
+	// Isolate from a global/shared core.hooksPath (this monorepo's hooks must
+	// never run against the Mayankbuilt clone) and from GIT_DIR/GIT_WORK_TREE.
+	fullArgs := append([]string{"-c", "core.hooksPath="}, args...)
+	cmd := exec.CommandContext(ctx, "git", fullArgs...)
 	cmd.Dir = dir
+	cmd.Env = gitCleanEnv(os.Environ())
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	return stdout.Bytes(), stderr.Bytes(), err
+}
+
+func gitCleanEnv(base []string) []string {
+	out := make([]string, 0, len(base))
+	for _, e := range base {
+		upper := strings.ToUpper(e)
+		if strings.HasPrefix(upper, "GIT_DIR=") ||
+			strings.HasPrefix(upper, "GIT_WORK_TREE=") ||
+			strings.HasPrefix(upper, "GIT_INDEX_FILE=") ||
+			strings.HasPrefix(upper, "GIT_OBJECT_DIRECTORY=") ||
+			strings.HasPrefix(upper, "GIT_ALTERNATE_OBJECT_DIRECTORIES=") {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out
 }
 
 // CredentialSource supplies the token used to authenticate git fetch/push
@@ -245,13 +268,22 @@ type localGitRepo struct {
 // cred may be nil (defaults: DefaultGitRunner, NoCredential).
 func NewLocalGitRepo(cfg Config, cred CredentialSource, run GitRunner) GitRepo {
 	cfg = cfg.withDefaults()
+	if strings.TrimSpace(cfg.RepoPath) == "" {
+		// Never fall through to process cwd — that would let git ops touch
+		// the Mayank2.0 checkout (seen under test pollution).
+		panic("blog: NewLocalGitRepo: Config.RepoPath is required")
+	}
 	if run == nil {
 		run = DefaultGitRunner
 	}
 	if cred == nil {
 		cred = NoCredential{}
 	}
-	return &localGitRepo{dir: cfg.RepoPath, remote: cfg.Remote, cred: cred, run: run, timeout: cfg.GitTimeout}
+	dir := cfg.RepoPath
+	if abs, err := filepath.Abs(dir); err == nil {
+		dir = abs
+	}
+	return &localGitRepo{dir: dir, remote: cfg.Remote, cred: cred, run: run, timeout: cfg.GitTimeout}
 }
 
 func (g *localGitRepo) Dir() string { return g.dir }

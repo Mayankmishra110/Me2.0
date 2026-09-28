@@ -3,16 +3,34 @@
 Which branches need a PR, where each one stands, and the PR text. Newest at the top.
 Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://github.com/Mayankmishra110/Me2.0/compare/main...<branch>`
 
-**2026-09-28: switched to the phase-branch flow (D23).** The per-ticket-PR entries below (M2-101, 102, 107,
-109, 111, 206, 207, 208) are superseded — all eight are now merged into `phase/p1-foundation` with spec-audit
-docs, instead of six separate PRs. Kept below for the check-output history; do not re-open individual PRs
-for these unless Mayank asks for that instead of the phase flow.
+## D25 main PRs (queued — `gh` not authenticated)
 
-## Phase branches (D23 — the normal path)
+`gh auth status` → not logged in. Ship cannot `gh pr create` / `gh pr merge`. Next for Mayank:
+`"C:\Program Files\GitHub CLI\gh.exe" auth login` then ship resumes D25 per-ticket PRs onto `main`.
+
+| Ticket | Branch | Phase merge | QA | SEC | State |
+|---|---|---|---|---|---|
+| M2-501 | `m2/M2-501` | `1f20dce` on `phase/p1-foundation` | pass @ `f4e4c91` | pass @ `f4e4c91` | **merged-to-phase** · audit [M2-501.md](../docs/audit/p1-foundation/M2-501.md) · main PR queued |
+| M2-402 | `m2/M2-402` | `84361f9` on `phase/p1-foundation` | pass @ phase | pass @ phase | **merged-to-phase** · main PR queued |
+| M2-404 | `m2/M2-404` | `bd09d1c` on `phase/p1-foundation` | pass @ phase | n/a | **merged-to-phase** · main PR queued |
+| M2-403 | `m2/M2-403` | `0e48987` (+ `fe4bede`; fold `710e35c`/`465693b`) | pass @ `5fe3733` | pass @ `a8ce2d3` | **merged-to-phase** · main PR queued |
+| M2-401 | `m2/M2-401` | `4aec99f` on `phase/p1-foundation` | pass @ `9dbb996` | pass @ `9dbb996` | **merged-to-phase** · review stamp `1b0a9e0` · main PR queued |
+| M2-302 | `m2/M2-302` | `e28652a` on `phase/p1-foundation` | pass @ `8eb3de4` | pass @ `a6e50d6` | **merged-to-phase** · main PR queued |
+| M2-301 | `m2/M2-301` | `636baff` on `phase/p1-foundation` | pass | pass | **merged-to-phase** · main PR queued |
+| M2-303 | `m2/M2-303` | `53a8b60` | pass | pass | **merged-to-phase** · main PR queued |
+| M2-304 | `m2/M2-304` | `d40a796` | pass | pass | **merged-to-phase** · main PR queued |
+| M2-101 (migrate) | `m2/M2-101` @ `21d3736` | n/a (D25 onto main) | pass | pass | rebased onto prior main tip; force-with-lease push pending; checks green |
+
+Compare phase: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation
+
+**2026-09-28: D25 supersedes D23 for new landings**, but while `gh` is down, ship keeps merging QA+SEC-ready
+tickets into `phase/p1-foundation` and queues main PRs here.
+
+## Phase branches (D23 backlog still on phase)
 
 | Phase | Branch | Tickets in it | Checks | State |
 |---|---|---|---|---|
-| P1 Foundation | `phase/p1-foundation` | M2-101, 102, 107, 109, 111, 206, 207, 208 (all `done`) | Go/web/remotion/media-tools all green — real output in [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) | **pushed — ready for Mayank to open the PR** |
+| P1 Foundation + P3/P4/P5 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401–404** + **M2-501** | builder.plan green; P5 started | **pushed** (tip after M2-501 merge) |
 
 PR body: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) (everything below its `---`).
 Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation

@@ -48,10 +48,16 @@ func newTestMayankbuiltRepo(t *testing.T) (remoteDir, cloneDir string) {
 
 func runGitT(t *testing.T, dir string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", args...)
+	cmd := exec.Command("git", append([]string{"-c", "core.hooksPath="}, args...)...)
 	if dir != "" {
 		cmd.Dir = dir
 	}
+	cmd.Env = append(gitCleanEnv(os.Environ()),
+		"GIT_AUTHOR_NAME=test",
+		"GIT_AUTHOR_EMAIL=test@example.com",
+		"GIT_COMMITTER_NAME=test",
+		"GIT_COMMITTER_EMAIL=test@example.com",
+	)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %s (dir=%s): %v\n%s", strings.Join(args, " "), dir, err, out)
@@ -60,7 +66,9 @@ func runGitT(t *testing.T, dir string, args ...string) string {
 }
 
 func gitShow(dir, ref string) (string, error) {
-	out, err := exec.Command("git", "-C", dir, "show", ref).CombinedOutput()
+	cmd := exec.Command("git", "-C", dir, "show", ref)
+	cmd.Env = gitCleanEnv(os.Environ())
+	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
 
