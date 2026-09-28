@@ -1,4 +1,4 @@
-# Plan — owned by lead
+# Plan ? owned by lead
 
 Updated: 2026-09-28 · P3 publishers + M2-401 on `phase/p1-foundation`
 
