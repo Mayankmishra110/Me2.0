@@ -1,4 +1,4 @@
-# Branch map ? owned by ship, overlooked by lead
+﻿# Branch map ? owned by ship, overlooked by lead
 
 Every branch that has existed in this repo, which ticket/feature it maps to, and what happened to it.
 **Ship updates this file in the same commit as every merge** (into a phase branch or into `main`) ? see
@@ -44,7 +44,7 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-210 | `m2/M2-210` | Final gates and approval flow | be | `a997223`, `7417577`, `406ac54` | `9646b4b` + `d283fb4` | merged, done, QA+SEC pass |
 | M2-211 | `m2/M2-211` | YouTube uploader for 4 channels | be | (see ticket) | `e88f6f8` | merged, done, QA+SEC pass |
 | M2-212 | `m2/M2-212` | Analytics pull and scores | be | (see ticket) | `904a475` | merged, done, QA+SEC pass |
-| ? | ? | Independent qa+sec audit of M2-201..M2-213 (first review not by ship/self; Cursor's own agents had self-reviewed the whole batch) | qa/sec | (this commit) | (direct to phase branch) | housekeeping, not a ticket — found a real gap in M2-205 (G7 fails open for English with no LLM classifier wired, untested); everything else in the batch independently re-verified pass. See ticket Review sections. |
+| ? | ? | Independent qa+sec audit of M2-201..M2-213 (first review not by ship/self; Cursor's own agents had self-reviewed the whole batch) | qa/sec | (this commit) | (direct to phase branch) | housekeeping, not a ticket â€” found a real gap in M2-205 (G7 fails open for English with no LLM classifier wired, untested); everything else in the batch independently re-verified pass. See ticket Review sections. |
 | M2-301 | `m2/M2-301` | Instagram Reels publisher | be | `3dc5623`..`681cab8` | `636baff` | merged, done, QA+SEC pass |
 | M2-303 | `m2/M2-303` | X (business) publisher | be-3 | `9249bd7`..`1818f3b` | `53a8b60` | merged, done, QA+SEC pass |
 | M2-304 | `m2/M2-304` | Pinterest video pin publisher | be-4 | `b5c541b`..`9947ace` | `d40a796` | merged, done, QA+SEC pass |
@@ -81,7 +81,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Status | Depends | Touches |
 |---|---|---|---|
-| M2-501 | **done** · merge `1f20dce` | 103, 105 (done) | `internal/builder/planner.go`, `config/config.example.yaml` |
+| M2-501 | **done** Â· merge `1f20dce` | 103, 105 (done) | `internal/builder/planner.go`, `config/config.example.yaml` |
 | M2-502 | in-review (crew-be) | 501 (done) | `internal/builder/implementer.go` |
 | M2-503 | todo | 502 | `internal/builder/auditor.go` |
 | M2-504 | todo | 503 | `internal/builder/gate.go` |
@@ -95,8 +95,8 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-502 | `m2/M2-502` | Builder implementer | be | (see log) | — | in-review |
-| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | — | in-review (do not merge until M2-504 done) |
+| M2-502 | `m2/M2-502` | Builder implementer | be | `c0e480e`..`df5b117` | — | in-review |
+| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | â€” | in-review (do not merge until M2-504 done) |
 
 ## How to regenerate/verify this file
 
