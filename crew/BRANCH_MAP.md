@@ -77,11 +77,21 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 (from tip `5fe3733` / `a8ce2d3`).
 **M2-402** merge `84361f9` (feat `118475d`; QA+SEC pass; SourcePost shared-type fold on phase).
 
+## Phase P5 Builder (tickets on phase; branched from `phase/p1-foundation`)
+
+| Ticket | Status | Depends | Touches |
+|---|---|---|---|
+| M2-501 | in-progress (crew-be) | 103, 105 (done) | `internal/builder/planner.go` |
+| M2-502 | todo | 501 | `internal/builder/implementer.go` |
+| M2-503 | todo | 502 | `internal/builder/auditor.go` |
+| M2-504 | todo | 503 | `internal/builder/gate.go` |
+| M2-505 | todo | 504, 106 | `internal/builder/pr.go`, Builder dashboard |
+
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| — | — | (none) | — | — | — | — |
+| M2-501 | `m2/M2-501` | Builder planner | be | (building) | — | in-progress |
 
 ## How to regenerate/verify this file
 
