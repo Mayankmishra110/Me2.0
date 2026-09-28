@@ -325,7 +325,7 @@ func (g *localGitRepo) Fetch(ctx context.Context) error {
 		return fmt.Errorf("blog: git fetch: %w", err)
 	}
 	refspec := "+refs/heads/*:refs/remotes/" + g.remote + "/*"
-	if _, err := g.exec(ctx, g.redactList(ctx, token), "fetch", remoteURL, refspec); err != nil {
+	if _, err := g.exec(ctx, []string{token}, "fetch", remoteURL, refspec); err != nil {
 		return fmt.Errorf("blog: git fetch: %w", err)
 	}
 	return nil
@@ -378,27 +378,10 @@ func (g *localGitRepo) Push(ctx context.Context, branch string) error {
 		return fmt.Errorf("blog: git push %s: %w", branch, err)
 	}
 	// Fixed refspec, no --force flag exists anywhere in this package.
-	if _, err := g.exec(ctx, g.redactList(ctx, token), "push", remoteURL, branch+":"+branch); err != nil {
+	if _, err := g.exec(ctx, []string{token}, "push", remoteURL, branch+":"+branch); err != nil {
 		return fmt.Errorf("blog: git push %s: %w", branch, err)
 	}
 	return nil
-}
-
-// redactList always includes any vault token so error strings never leak it,
-// even when the remote is a local path / file:// (token unused for auth).
-func (g *localGitRepo) redactList(ctx context.Context, already string) []string {
-	out := make([]string, 0, 2)
-	if already != "" {
-		out = append(out, already)
-	}
-	if g.cred == nil {
-		return out
-	}
-	tok, err := g.cred.Token(ctx)
-	if err != nil || tok == "" || tok == already {
-		return out
-	}
-	return append(out, tok)
 }
 
 // AlreadyMerged implements GitRepo.
@@ -719,12 +702,9 @@ VALUES (?, ?, 'blog', 'post', 'en', 'drafted', ?, ?)`,
 
 func (d *Draft) recordMDXAsset(ctx context.Context, contentID, relPath string) error {
 	id := d.newID()
-	// Absolute path so M2-402 LoadSourcePost can os.ReadFile it (publications
-	// has no body column; the mdx asset is the canonical body source).
-	absPath := filepath.Join(d.opts.Git.Dir(), filepath.FromSlash(relPath))
 	_, err := d.opts.DB.ExecContext(ctx, `
 INSERT INTO assets (id, content_id, kind, path) VALUES (?, ?, 'mdx', ?)`,
-		id, contentID, absPath,
+		id, contentID, relPath,
 	)
 	return err
 }

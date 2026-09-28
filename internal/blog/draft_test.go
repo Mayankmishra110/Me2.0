@@ -355,9 +355,8 @@ func TestDraft_RunHappyPath(t *testing.T) {
 	if err := sqlDB.QueryRow(`SELECT path FROM assets WHERE content_id=? AND kind='mdx'`, res.ContentID).Scan(&assetPath); err != nil {
 		t.Fatalf("query assets: %v", err)
 	}
-	wantAsset := filepath.Join(cloneDir, filepath.FromSlash(relPath))
-	if assetPath != wantAsset {
-		t.Errorf("asset path = %q, want absolute %q", assetPath, wantAsset)
+	if assetPath != relPath {
+		t.Errorf("asset path = %q, want %q", assetPath, relPath)
 	}
 }
 
