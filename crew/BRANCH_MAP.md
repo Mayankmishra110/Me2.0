@@ -1,4 +1,4 @@
-# Branch map ? owned by ship, overlooked by lead
+﻿# Branch map ? owned by ship, overlooked by lead
 
 Every branch that has existed in this repo, which ticket/feature it maps to, and what happened to it.
 **Ship updates this file in the same commit as every merge** (into a phase branch or into `main`) ? see
@@ -40,8 +40,19 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-108 | `m2/M2-108` | Scheduler and daily summary | be | `6f5f09d`, `7978deb`, `b14ddf6`, `4411da0`, `9eb9c00` | `a485988` | merged, done, QA+SEC pass |
 | M2-204 | `m2/M2-204` | Script writer (native EN and HI) | ai | `ba40b2e`, `b12417d`, `e5c3849` | `d69dcae` | merged, done, QA+SEC pass |
 | M2-209 | `m2/M2-209` | Render long/short/thumb/subs | be | `efd68a4`, `8e5ba45`, `4040c67`, `f109dbd`, `1b9eebd`, `755f696`, `21804f1` | `878ccb7` | merged, done, QA+SEC pass |
-| M2-205 | `m2/M2-205` | Compliance script gates G1-G7 | be, then ai (fix), qa (re-review) | `52f0fa3`..`f84318e` original + `51ace9e` fix (G7 real English heuristic) + `5bd90b0` independent qa re-review, `QA: pass` | `1d219dd` (fix merge into phase branch) | merged, done, QA pass (independent re-review); needs-sec: no confirmed |
+| M2-205 | `m2/M2-205` | Compliance script gates G1-G7 | be, then ai (fix), qa (re-review) | `52f0fa3`, `3add33a`, `64d05a9`, `6d7eef1`, `c0f8eb5`, `4d5f7f8`, `f84318e` original + `51ace9e` fix (G7 real English heuristic) + `5bd90b0` independent qa re-review, `QA: pass` | `a76a141` (original) / `1d219dd` (fix merge into phase branch) | merged, done, QA+SEC pass (G7 no-op-for-English gap closed by `51ace9e`, re-verified independently) |
 | M2-210 | `m2/M2-210` | Final gates and approval flow | be | `a997223`, `7417577`, `406ac54` | `9646b4b` + `d283fb4` | merged, done, QA+SEC pass |
+| M2-211 | `m2/M2-211` | YouTube uploader for 4 channels | be | (see ticket) | `e88f6f8` | merged, done, QA+SEC pass |
+| M2-212 | `m2/M2-212` | Analytics pull and scores | be | (see ticket) | `904a475` | merged, done, QA+SEC pass |
+| ? | ? | Independent qa+sec audit of M2-201..M2-213 (first review not by ship/self; Cursor's own agents had self-reviewed the whole batch) | qa/sec | (this commit) | (direct to phase branch) | housekeeping, not a ticket — found a real gap in M2-205 (G7 fails open for English with no LLM classifier wired, untested); everything else in the batch independently re-verified pass. See ticket Review sections. |
+| M2-301 | `m2/M2-301` | Instagram Reels publisher | be | `3dc5623`..`681cab8` | `636baff` | merged, done, QA+SEC pass |
+| M2-303 | `m2/M2-303` | X (business) publisher | be-3 | `9249bd7`..`1818f3b` | `53a8b60` | merged, done, QA+SEC pass |
+| M2-304 | `m2/M2-304` | Pinterest video pin publisher | be-4 | `b5c541b`..`9947ace` | `d40a796` | merged, done, QA+SEC pass |
+| M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`8eb3de4` | `e28652a` | merged, done, QA+SEC pass (UploadHosted redact `a6e50d6`) |
+| M2-401 | `m2/M2-401` | Blog draft + merge for Mayankbuilt | be | `9dbb996`, `9f01826` (phase cherry-pick `1b0a9e0`) | `4aec99f` | merged, done, QA+SEC pass |
+| M2-404 | `m2/M2-404` | Medium import-story link prep | be-4 | `0e8d1b3` | `bd09d1c` | merged, done, QA pass / SEC n/a |
+| M2-403 | `m2/M2-403` | X personal thread repurpose + publisher | be-3 | `ebb2a77`, `fe4bede`, `710e35c`, `465693b` | `0e48987` | merged, done, QA+SEC pass (notes+stamp folded from `5fe3733`/`a8ce2d3`) |
+| M2-402 | `m2/M2-402` | LinkedIn repurpose + Posts API publisher | be-2 | `118475d` (+ SourcePost fold) | `84361f9` | merged, done, QA+SEC pass |
 
 **Not a ticket branch:** `phase/p1-foundation` itself - one `--no-ff` merge per ticket, in the order above.
 Full graph: `git log --oneline --graph phase/p1-foundation`.
@@ -53,15 +64,66 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 (compliance G1?G7) merged `a76a141`. **M2-210** (final gates + approval) merged `9646b4b` /
 `d283fb4` (QA+SEC). **M2-211** flipped `ready` (deps 110+210).
 
-## In progress (branched from `phase/p1-foundation`)
+## Phase P3 publishers (on phase branch; awaiting D25 main PRs)
+
+**M2-301** merge `636baff`. **M2-303** merge `53a8b60`. **M2-304** merge `d40a796`.
+**M2-302** merge `e28652a` (SEC fix `a6e50d6`, tip `8eb3de4`).
+
+## Phase P4 blog (complete on phase branch; awaiting D25 main PRs)
+
+**M2-401** merge `4aec99f` (QA+SEC stamp `1b0a9e0`, feat `9dbb996`).
+**M2-404** merge `bd09d1c` (feat `0e8d1b3`; QA pass / SEC n/a).
+**M2-403** merge `0e48987` + dedupe `fe4bede`; notes `710e35c` / Review stamp `465693b`
+(from tip `5fe3733` / `a8ce2d3`).
+**M2-402** merge `84361f9` (feat `118475d`; QA+SEC pass; SourcePost shared-type fold on phase).
+
+## Phase P5 Builder (tickets on phase; branched from `phase/p1-foundation`)
+
+| Ticket | Status | Depends | Touches |
+|---|---|---|---|
+| M2-501 | **done** · merge `1f20dce` | 103, 105 (done) | `internal/builder/planner.go`, `config/config.example.yaml` |
+| M2-502 | **done** · merge `23e708f` | 501 (done) | `internal/builder/implementer.go` |
+| M2-503 | **done** · merge `e6e28f6` | 502 (done) | `internal/builder/auditor.go` |
+| M2-504 | **done** · merge `8729db2` | 503 (done) | `internal/builder/gate.go` |
+| M2-505 | **done** � merge `c10146a` (in-review flip resolved 2026-09-29) | 504 (done), 106 (done) | `internal/builder/pr.go`, Builder dashboard |
+
+**P5 core sequential chain (M2-501 ? M2-502 ? M2-503 ? M2-504 ? M2-505) is now fully merged onto `phase/p1-foundation` and all `done`.** P5 is code-complete (dashboard/PR link no longer blocked); note cmd/mayank2 end-to-end wiring of these jobs is still outstanding per prior review, tracked separately, not part of this ticket's scope.
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-301 | `m2/M2-301` | Instagram Reels publisher | be | (tip) | � | in-review |
-| M2-302 | `m2/M2-302` | Facebook Page publisher | be-2 | `b2c10a9`..`585a033` | � | in-review, QA: pass; needs SEC |
-| M2-303 | `m2/M2-303` | X (business) publisher | be-3 | 25cfd53 | � | in-review, QA: pass; SEC: pass |
-| M2-304 | `m2/M2-304` | Pinterest publisher | be-4 | `4646a1b` | � | in-review, QA: pass; SEC: pass |
-| ? | ? | (none) | ? | ? | ? | ? |
+| M2-501 | `m2/M2-501` | Builder planner | be | `c64c2cf`, `4a38ce5`, `05d922f`, `ae8c68b`, `6bc991c`, `f4e4c91` | `1f20dce` | merged, done, QA+SEC pass |
+| M2-502 | `m2/M2-502` | Builder implementer | be (Cursor) | `c0e480e`, `df5b117`, `53f9b40`, `b4d2f34`, `1db9897`, `72a3d73` | `23e708f` | merged, done, QA+SEC pass (independent qa/sec re-review this session, re-derived from code + real go test/vet/gofmt output) |
+| M2-503 | `m2/M2-503` | Builder auditor (parallel audit thread) | be | `c997653`, +2 review commits (`6058579`, `7e980df`) | `e6e28f6` | merged, done, QA+SEC pass (independent qa/sec re-review, re-derived from code + real go test/vet/gofmt output); reconciled `defaultGitRunner(opts.LookPath)` calls (auditor.go + auditor_test.go, 4 call sites) onto phase's `defaultImplementerGitRunner` rename (M2-502's dedupe vs. M2-505's `pr.go` `defaultGitRunner(ctx, dir, args...)`); post-merge `gofmt -l .` / `go vet ./...` / `go test ./... -count=1` all green |
+| M2-504 | `m2/M2-504` | Builder phase gate (pass/fix-retry decision, timeout, limit pause) | be | `79762bb`, +1 review commit (`cd19fde`) | `8729db2` | merged, done, QA+SEC pass (independent qa/sec re-review, re-derived every AC claim from real code + real go test/vet/gofmt output); reconciled one stale `defaultGitRunner(opts.LookPath)` call in `gate.go` (line 191, built before/without seeing M2-502's rename) onto phase's `defaultImplementerGitRunner`; also added the missing CONTEXT.md D25 row (ship auto-merge decision, commit `400e674`, present on `main` but never in the phase-branch lineage � a pre-existing docs-integrity gap flagged by M2-504's own reviewer, fixed here as a documentation fix, not a product decision), keeping M2-504's own D26 row intact; post-merge `gofmt -l .` / `go vet ./...` / `go test ./... -count=1` all green |
+| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | `c10146a` | merged, done, QA+SEC pass (QA+SEC @ `c7d1fc8`; re-verified fresh 2026-09-29 against final M2-504 `gate.go` � full Go + web check suite green, no `defaultGitRunner`/`defaultImplementerGitRunner` bit rot in `pr.go`) |
+
+## Phase P6 revenue / income (on phase branch)
+
+| Ticket | Status | Depends | Touches |
+|---|---|---|---|
+| M2-601 | **done** � merge `6fac776` | 212, 106 (done) | `internal/revenue/`, `/api/revenue`, Revenue dashboard |
+| M2-602 | **done** · merge `efd8c6a` | 501 (done), 601 (done) | `internal/micro_saas/` |
+| M2-603 | **done** · merge `6c2f61f` | 111 (done), 601 (done) | `internal/agency/` |
+| M2-604 | **done** · merge `77313c2` | 304 (done), 601 (done) | `internal/content/affiliate.go`, `config/affiliate/` |
+
+| Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
+|---|---|---|---|---|---|---|
+| M2-601 | `m2/M2-601` | Revenue tracking: store, API, pull, Revenue dashboard | be | `47bc03f`, `aa4fe3b` | `6fac776` | merged, done, QA+SEC pass |
+| M2-602 | `m2/M2-602` | Micro-SaaS idea → spec → Builder | be | `c5d6aff`, `b68b9a3`, `0a03a34` (pre-rebase `77e2d92`/`f852093`/`ec604db`) | `efd8c6a` | merged, done, QA+SEC pass |
+| M2-603 | `m2/M2-603` | Agency lead list + proposal drafts | be | `f6d192a`, `a5ec68e`, `bddfa67`, `4693b8d`, `bdfdab1` (pre-rebase `d7ee871`/`fcb0801`/`755bc78`) | `6c2f61f` | merged, done, QA+SEC pass |
+| M2-604 | `m2/M2-604` | Pinterest affiliate pin selection and copy | be | `38558ac`, `bc6f728` (pre-rebase `87acc8c`/`5707ad0`) | `77313c2` | merged, done, QA+SEC pass |
+
+## Merged (D25 model — per-feature branch off `dev`/`main`)
+
+| Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
+|---|---|---|---|---|---|---|
+| M2-116 | `m2/M2-116` (worktree `data/worktrees/m2-116`, based on `dev` at `ad545bd`) | Wire the daemon: `cmd/mayank2 run` starts everything (queue+handlers+scheduler+telegram+http under one context) | be | `76c11fe`, `85d1581` | `85e3f21` (merged into `dev`) | merged into `dev`, done, QA+SEC pass (independent qa/sec re-review, re-derived from real code + real go vet/gofmt/go test output). Post-merge on `dev`: `gofmt -l .` clean, `go vet ./...` exit 0, `go test ./... -count=1` all green (2026-09-29). Not yet in `main` — see Open questions in CONTEXT.md re: how the accumulated `dev` branch (built under the old phase-branch model, now spanning P1-P6) reconciles with D25's per-ticket-off-`main` auto-merge model before it lands on `main`. |
+
+## In progress (D25 model — per-feature branch off `dev`/`main`)
+
+| Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
+|---|---|---|---|---|---|---|
+| — | — | — | — | — | — | (none) |
 
 ## How to regenerate/verify this file
 

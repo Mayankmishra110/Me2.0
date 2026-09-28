@@ -57,6 +57,31 @@ npm install -g @anthropic-ai/claude-code   # already installed
 
 Go is currently 1.23.4 on this laptop; upgrade to 1.24+ for the SQLite driver.
 
+## Quick start with one free key
+
+Everything runs with only the keys you have (CONTEXT D24, M2-114): every integration is enabled
+by its own `.env` key, and `doctor` reports a missing one as ⚪ "not configured," never a failure.
+One free [Gemini API key](https://aistudio.google.com/apikey) is enough to run the LLM path end
+to end — nothing else needs to be signed up for first.
+
+```powershell
+copy config\config.example.yaml config\config.yaml   # defaults already point at Gemini's free tier
+copy .env.example .env
+# edit .env: paste your key into GEMINI_API_KEY=
+go run ./cmd/mayank2 doctor                           # ✅ ok · ⚪ not configured · ❌ broken
+go run ./cmd/mayank2 llm ask "Say hello in one sentence."
+go run ./cmd/mayank2 llm ask --task script "Write a 3-beat hook about compound interest."
+```
+
+`doctor` exits non-zero only on ❌ (a core tool missing, or a key that's set but rejected by its
+provider) — a ⚪ for every other provider, Pexels/Pixabay, publish platform, R2, or Telegram is
+expected and does not fail the run. Add more keys to `.env` any time; each one flips its own row
+from ⚪ to ✅ (or ❌ if the provider rejects it) the next time you run `doctor`.
+
+Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey); keep Google
+Cloud billing **off** on that project so usage stays on the free tier. `config.example.yaml`'s
+`llm.providers.gemini.model` comment records which model id is current and where it was checked.
+
 ## Run (available after M2-101 … M2-109)
 
 ```powershell
@@ -65,9 +90,44 @@ copy .env.example .env                               # then fill secrets
 go run ./cmd/mayank2 doctor                          # checks tools, keys, disk, RAM
 go run ./cmd/mayank2 run                             # start the daemon in this console
 cd web; npm install; npm run dev                     # dashboard dev server (proxies /api)
-scripts\build.ps1                                    # builds web + bin\mayank2.exe
-scripts\install-task.ps1                             # start at logon + power settings (run as you, once)
 ```
+
+## Build and start at logon (Windows)
+
+Run from the main checkout (the task points at the folder you run it from). If PowerShell blocks
+scripts, keep the `-ExecutionPolicy Bypass` shown here; it applies to that one process only.
+
+```powershell
+# 1. Build: web\dist (npm ci only if web\node_modules is missing, then npm run build),
+#    then go build -ldflags "-H windowsgui" -o bin\mayank2.exe ./cmd/mayank2
+powershell -ExecutionPolicy Bypass -File scripts\build.ps1
+powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -SkipWeb     # Go only
+
+# 2. Preview the install: prints every action, changes nothing
+powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1 -WhatIf
+
+# 3. Install (as yourself; safe to re-run, it replaces the task in place)
+powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1
+
+# Remove the task (power settings are left as they are)
+powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1 -Uninstall
+
+# Script tests (mocked; never touch the real Task Scheduler or power plan)
+powershell -ExecutionPolicy Bypass -File scripts\tests\install-task.tests.ps1
+```
+
+`install-task.ps1` does exactly this:
+
+- Task Scheduler task **Mayank2** for the current user: at logon → `bin\mayank2.exe run`, working
+  directory = repo root; restart on failure 3× every 5 minutes; no execution time limit; a second start
+  while it runs is ignored; not elevated; also runs on battery.
+- Current power plan, on AC only: sleep = never, hibernate = never, lid close = do nothing
+  (`powercfg /change standby-timeout-ac 0`, `/change hibernate-timeout-ac 0`,
+  `/setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0`, `/setactive SCHEME_CURRENT`).
+- Prints a reminder to set the **80% battery charge limit** in the laptop vendor app (Windows can't set it).
+
+If registering fails with "access denied", run it again from an elevated PowerShell. `bin\mayank2.exe`
+is a windowless build, so it prints nothing in a console; use `go run ./cmd/mayank2 doctor` for output.
 
 ## Repository layout
 

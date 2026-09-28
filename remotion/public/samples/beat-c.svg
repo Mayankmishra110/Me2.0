@@ -1,0 +1,5 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1920" viewBox="0 0 1920 1920">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#064E3B"/><stop offset="100%" stop-color="#0B0D12"/></linearGradient></defs>
+  <rect width="1920" height="1920" fill="url(#g)"/>
+  <polygon points="960,480 1320,1200 600,1200" fill="#4ADE80" opacity="0.9"/>
+</svg>

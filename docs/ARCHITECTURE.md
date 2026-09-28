@@ -54,6 +54,8 @@ Everything runs inside **one Go process** plus short-lived child processes (Pyth
 | `internal/media` | Wrappers for ffmpeg, media-tools, remotion (JSON in / JSON out) |
 | `internal/publish` | One adapter per platform behind a `Publisher` interface |
 | `internal/analytics` | Pull metrics, compute scores, write `metrics` and `topic_scores` |
+| `internal/revenue` | Record ads/affiliate/agency/saas/sponsor entries; `GET/POST /api/revenue`; `revenue.pull` for YouTube estimatedRevenue |
+| `internal/agency` | Lead list + proposal drafts via free-tier LLM (`script` task); approval-gated; no auto-send |
 | `internal/blog` | Blog pipeline into the Mayankbuilt repo |
 | `internal/builder` | Planner, Implementer, Auditor, worktrees, phase gates |
 | `internal/tickets` | Parse/update markdown tickets (exists) |
@@ -160,6 +162,8 @@ All timestamps are UTC ISO-8601 text. IDs are ULIDs (sortable). JSON columns are
 | `builds` | `id, repo, plan_path, phase, subphase, thread(implementer/auditor), status, branch, worktree, session_id, attempts, audit_verdict, pr_url, last_error` |
 | `quotas` | `provider, window_start, used, limit` (YouTube units, X posts, LLM free-tier requests) |
 | `revenue` | `id, line(ads/affiliate/agency/saas/sponsor), source, amount, currency, date, note` |
+| `agency_leads` | `id, company, contact, niche_fit, status(new/contacted/proposal_sent/won/lost), source, created_at` |
+| `agency_proposals` | `id, lead_id, draft_text, status, approval_id, created_at` |
 | `events` | `id, at, actor(agent/user/system), kind, ref, message, data json` (append-only audit) |
 | `settings` | `key, value` (pause flags, PIN hash, telegram offset) |
 
@@ -223,7 +227,7 @@ Mayank2.0/
 ├─ cmd/mayank2/                 main.go
 ├─ internal/                    config, db, queue, scheduler, events, telegram, httpapi, secrets,
 │                               llm, content, compliance, media, publish, analytics, blog, builder,
-│                               tickets, storage
+│                               tickets, storage, revenue, agency
 ├─ migrations/                  001_init.sql …  (embedded)
 ├─ media-tools/                 Python (uv): pyproject.toml, mediatools/{tts,stt}.py
 ├─ remotion/                    Node: package.json, src/compositions/{formats}/, src/brand/

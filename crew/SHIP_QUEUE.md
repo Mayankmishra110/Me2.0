@@ -3,16 +3,42 @@
 Which branches need a PR, where each one stands, and the PR text. Newest at the top.
 Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://github.com/Mayankmishra110/Me2.0/compare/main...<branch>`
 
-**2026-09-28: switched to the phase-branch flow (D23).** The per-ticket-PR entries below (M2-101, 102, 107,
-109, 111, 206, 207, 208) are superseded — all eight are now merged into `phase/p1-foundation` with spec-audit
-docs, instead of six separate PRs. Kept below for the check-output history; do not re-open individual PRs
-for these unless Mayank asks for that instead of the phase flow.
+## D25 main PRs (queued — `gh` not authenticated)
 
-## Phase branches (D23 — the normal path)
+`gh auth status` → not logged in. Ship cannot `gh pr create` / `gh pr merge`. Next for Mayank:
+`"C:\Program Files\GitHub CLI\gh.exe" auth login` then ship resumes D25 per-ticket PRs onto `main`.
+
+| Ticket | Branch | Phase merge | QA | SEC | State |
+|---|---|---|---|---|---|
+| M2-603 | `m2/M2-603` | `6c2f61f` on `phase/p1-foundation` | pass @ `bdfdab1` | pass @ `bdfdab1` / feat `f6d192a` (pre-rebase `fcb0801`/`755bc78`) | **merged-to-phase** · **done** · audit [M2-603.md](../docs/audit/p1-foundation/M2-603.md) · main PR queued |
+| M2-602 | `m2/M2-602` | `efd8c6a` on `phase/p1-foundation` | pass @ `0a03a34` | pass @ `0a03a34` / feat `c5d6aff` (pre-rebase `77e2d92`/`f852093`/`ec604db`) | **merged-to-phase** · **done** · audit [M2-602.md](../docs/audit/p1-foundation/M2-602.md) · main PR queued |
+| M2-604 | `m2/M2-604` | `77313c2` on `phase/p1-foundation` | pass @ `bc6f728` | pass @ `bc6f728` / feat `38558ac` (pre-rebase `87acc8c`/`5707ad0`) | **merged-to-phase** · **done** · audit [M2-604.md](../docs/audit/p1-foundation/M2-604.md) · main PR queued |
+| M2-601 | `m2/M2-601` | `6fac776` on `phase/p1-foundation` | pass @ `aa4fe3b` | pass @ `aa4fe3b` / feat `47bc03f` | **merged-to-phase** · **done** · audit [M2-601.md](../docs/audit/p1-foundation/M2-601.md) · unlocked 602/603/604 · main PR queued |
+| M2-505 | `m2/M2-505` | `c10146a` on `phase/p1-foundation` | pass @ `c7d1fc8` | pass @ `c7d1fc8` | **merged-to-phase** · **done** (M2-504 dep landed) · audit [M2-505.md](../docs/audit/p1-foundation/M2-505.md) · main PR queued |
+| M2-504 | `m2/M2-504` | `8729db2` on `phase/p1-foundation` | pass @ `cd19fde` | pass @ `cd19fde` | **merged-to-phase** · **done** · audit [M2-504.md](../docs/audit/p1-foundation/M2-504.md) · main PR queued |
+| M2-503 | `m2/M2-503` | `e6e28f6` on `phase/p1-foundation` | pass @ `7e980df` | pass @ `7e980df` | **merged-to-phase** · **done** · audit [M2-503.md](../docs/audit/p1-foundation/M2-503.md) · main PR queued |
+| M2-502 | `m2/M2-502` | `23e708f` on `phase/p1-foundation` | pass @ `72a3d73` | pass @ `72a3d73` / feat `1db9897` | **merged-to-phase** · **done** · audit [M2-502.md](../docs/audit/p1-foundation/M2-502.md) · main PR queued |
+| M2-501 | `m2/M2-501` | `1f20dce` on `phase/p1-foundation` | pass @ `f4e4c91` | pass @ `f4e4c91` | **merged-to-phase** · audit [M2-501.md](../docs/audit/p1-foundation/M2-501.md) · main PR queued |
+| M2-402 | `m2/M2-402` | `84361f9` on `phase/p1-foundation` | pass @ phase | pass @ phase | **merged-to-phase** · main PR queued |
+| M2-404 | `m2/M2-404` | `bd09d1c` on `phase/p1-foundation` | pass @ phase | n/a | **merged-to-phase** · main PR queued |
+| M2-403 | `m2/M2-403` | `0e48987` (+ `fe4bede`; fold `710e35c`/`465693b`) | pass @ `5fe3733` | pass @ `a8ce2d3` | **merged-to-phase** · main PR queued |
+| M2-401 | `m2/M2-401` | `4aec99f` on `phase/p1-foundation` | pass @ `9dbb996` | pass @ `9dbb996` | **merged-to-phase** · review stamp `1b0a9e0` · main PR queued |
+| M2-302 | `m2/M2-302` | `e28652a` on `phase/p1-foundation` | pass @ `8eb3de4` | pass @ `a6e50d6` | **merged-to-phase** · main PR queued |
+| M2-301 | `m2/M2-301` | `636baff` on `phase/p1-foundation` | pass | pass | **merged-to-phase** · main PR queued |
+| M2-303 | `m2/M2-303` | `53a8b60` | pass | pass | **merged-to-phase** · main PR queued |
+| M2-304 | `m2/M2-304` | `d40a796` | pass | pass | **merged-to-phase** · main PR queued |
+| M2-101 (migrate) | `m2/M2-101` @ `21d3736` | n/a (D25 onto main) | pass | pass | rebased onto prior main tip; force-with-lease push pending; checks green |
+
+Compare phase: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation
+
+**2026-09-28: D25 supersedes D23 for new landings**, but while `gh` is down, ship keeps merging QA+SEC-ready
+tickets into `phase/p1-foundation` and queues main PRs here.
+
+## Phase branches (D23 backlog still on phase)
 
 | Phase | Branch | Tickets in it | Checks | State |
 |---|---|---|---|---|
-| P1 Foundation | `phase/p1-foundation` | M2-101, 102, 107, 109, 111, 206, 207, 208 (all `done`) | Go/web/remotion/media-tools all green — real output in [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) | **pushed — ready for Mayank to open the PR** |
+| P1 Foundation + P3/P4/P5/P6 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401–404** + **M2-501…505** + **M2-601…604** (all `done`) | P6 revenue complete (601–604) | **pushed** |
 
 PR body: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) (everything below its `---`).
 Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation
