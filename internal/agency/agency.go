@@ -141,10 +141,13 @@ func (s *Service) SetLeadStatus(ctx context.Context, id, status string) (revenue
 }
 
 // DraftProposal generates outreach text via TaskScript and requests approval.
-// Never imports or calls any email/DM sending client.
+// Never imports or calls any email/DM sending client. Approvals is required (D5 fail-closed).
 func (s *Service) DraftProposal(ctx context.Context, leadID, redoNotes string) (proposalID string, err error) {
 	if s == nil || s.DB == nil || s.LLM == nil {
 		return "", errors.New("agency: nil service/llm")
+	}
+	if s.Approvals == nil {
+		return "", errors.New("agency: Approvals is required")
 	}
 	var company, contact, niche string
 	err = s.DB.QueryRowContext(ctx, `
@@ -174,25 +177,28 @@ VALUES (?, ?, ?, ?, ?)`, pid, leadID, resp.Text, PropDrafting, at)
 		return "", err
 	}
 
-	// Approvals table requires content_id FK → seed a lightweight content_items row.
-	if err := s.ensureContentRow(ctx, leadID); err != nil {
+	// Approvals.content_id FK → one content_items row per proposal (not per lead).
+	if err := s.ensureContentRow(ctx, pid, resp.Text); err != nil {
 		return "", err
 	}
-	var approvalID string
-	if s.Approvals != nil {
-		approvalID, err = s.Approvals.Start(ctx, leadID, "agency_proposal",
-			fmt.Sprintf("Agency proposal for %s", company), "")
-		if err != nil {
-			return "", fmt.Errorf("agency: approval: %w", err)
+	summary := fmt.Sprintf("Agency proposal for %s", company)
+	if t := strings.TrimSpace(resp.Text); t != "" {
+		const max = 280
+		if len(t) > max {
+			t = t[:max] + "…"
 		}
+		summary = summary + "\n\n" + t
+	}
+	approvalID, err := s.Approvals.Start(ctx, pid, "agency_proposal", summary, "")
+	if err != nil {
+		return "", fmt.Errorf("agency: approval: %w", err)
 	}
 	_, err = s.DB.ExecContext(ctx, `
 UPDATE agency_proposals SET status=?, approval_id=? WHERE id=?`,
-		PropPendingApproval, nullStr(approvalID), pid)
+		PropPendingApproval, approvalID, pid)
 	if err != nil {
 		return "", err
 	}
-	_ = json.RawMessage(nil) // keep encoding/json for future payload shapes
 	return pid, nil
 }
 
@@ -203,7 +209,7 @@ UPDATE agency_proposals SET status=? WHERE id=?`, PropApproved, proposalID)
 	return err
 }
 
-func (s *Service) ensureContentRow(ctx context.Context, id string) error {
+func (s *Service) ensureContentRow(ctx context.Context, proposalID, draftText string) error {
 	// channel sentinel for agency text approvals
 	_, err := s.DB.ExecContext(ctx, `
 INSERT OR IGNORE INTO channels (id, platform, handle, language, niche, account_ref, status)
@@ -211,18 +217,12 @@ VALUES ('agency', 'agency', '', 'en', 'agency', '', 'active')`)
 	if err != nil {
 		return err
 	}
+	script, _ := json.Marshal(map[string]string{"draft": draftText})
 	_, err = s.DB.ExecContext(ctx, `
-INSERT OR IGNORE INTO content_items (id, channel_id, kind, format, language, stage, created_at)
-VALUES (?, 'agency', 'post', 'agency_proposal', 'en', 'approval', ?)`,
-		id, s.now().Format(time.RFC3339Nano))
+INSERT OR IGNORE INTO content_items (id, channel_id, kind, format, language, stage, script, created_at)
+VALUES (?, 'agency', 'post', 'agency_proposal', 'en', 'approval', ?, ?)`,
+		proposalID, string(script), s.now().Format(time.RFC3339Nano))
 	return err
-}
-
-func nullStr(s string) any {
-	if s == "" {
-		return nil
-	}
-	return s
 }
 
 // Handler returns a queue handler for JobDraftProposal.

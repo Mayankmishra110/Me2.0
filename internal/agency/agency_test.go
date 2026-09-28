@@ -17,10 +17,12 @@ import (
 
 type fakeLLM struct {
 	task llm.Task
+	req  llm.Request
 }
 
-func (f *fakeLLM) Complete(_ context.Context, task llm.Task, _ llm.Request) (llm.Response, error) {
+func (f *fakeLLM) Complete(_ context.Context, task llm.Task, req llm.Request) (llm.Response, error) {
 	f.task = task
+	f.req = req
 	if task == llm.TaskBlog || task == llm.TaskBuilder {
 		return llm.Response{}, errorsNew("must not use Claude tasks")
 	}
@@ -90,6 +92,82 @@ func TestLeadCRUDAndDraftUsesScriptNotClaude(t *testing.T) {
 	nudge, err := svc.SetLeadStatus(ctx, lead.ID, StatusWon)
 	if err != nil || !strings.Contains(nudge, "Revenue") {
 		t.Fatalf("nudge=%q err=%v", nudge, err)
+	}
+}
+
+func TestDraftProposalNilApprovalsFailsClosed(t *testing.T) {
+	ctx := context.Background()
+	sqlH, err := db.Open(ctx, filepath.Join(t.TempDir(), "a.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlH.Close() })
+	if _, err := db.Migrate(ctx, sqlH); err != nil {
+		t.Fatal(err)
+	}
+	svc := &Service{
+		DB: sqlH, LLM: &fakeLLM{}, Approvals: nil,
+		Now:   func() time.Time { return time.Date(2026, 9, 29, 1, 0, 0, 0, time.UTC) },
+		NewID: seq("N"),
+	}
+	lead, err := svc.CreateLead(ctx, "Nil Co", "n@test", "fit", "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.DraftProposal(ctx, lead.ID, "")
+	if err == nil || !strings.Contains(err.Error(), "Approvals is required") {
+		t.Fatalf("want Approvals required, got %v", err)
+	}
+	var n int
+	if err := sqlH.QueryRow(`SELECT COUNT(*) FROM agency_proposals WHERE lead_id=? AND status=?`,
+		lead.ID, PropPendingApproval).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("fail-closed must not leave pending_approval rows, got %d", n)
+	}
+}
+
+func TestDraftProposalRedoWithNote(t *testing.T) {
+	ctx := context.Background()
+	sqlH, err := db.Open(ctx, filepath.Join(t.TempDir(), "a.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlH.Close() })
+	if _, err := db.Migrate(ctx, sqlH); err != nil {
+		t.Fatal(err)
+	}
+	fl := &fakeLLM{}
+	fa := &fakeApproval{}
+	svc := &Service{
+		DB: sqlH, LLM: fl, Approvals: fa,
+		Now:   func() time.Time { return time.Date(2026, 9, 29, 1, 0, 0, 0, time.UTC) },
+		NewID: seq("R"),
+	}
+	lead, err := svc.CreateLead(ctx, "Redo Co", "r@test", "billing", "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const note = "shorter, mention HIPAA"
+	pid, err := svc.DraftProposal(ctx, lead.ID, note)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pid == "" {
+		t.Fatal("empty proposal id")
+	}
+	if fl.task != llm.TaskScript {
+		t.Fatalf("task=%q want script", fl.task)
+	}
+	if len(fl.req.Messages) == 0 || !strings.Contains(fl.req.Messages[0].Content, note) {
+		t.Fatalf("redo notes missing from LLM prompt: %+v", fl.req.Messages)
+	}
+	if !strings.Contains(fl.req.Messages[0].Content, "Redo notes from Mayank") {
+		t.Fatalf("redo framing missing: %q", fl.req.Messages[0].Content)
+	}
+	if fa.kind != "agency_proposal" {
+		t.Fatalf("kind=%q", fa.kind)
 	}
 }
 

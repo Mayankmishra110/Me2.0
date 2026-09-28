@@ -227,11 +227,7 @@ Mayank2.0/
 ├─ cmd/mayank2/                 main.go
 ├─ internal/                    config, db, queue, scheduler, events, telegram, httpapi, secrets,
 │                               llm, content, compliance, media, publish, analytics, blog, builder,
-<<<<<<< HEAD
-│                               tickets, storage, revenue
-=======
-│                               tickets, storage, agency
->>>>>>> a6464fe (feat(M2-603): agency leads and free-tier proposal drafts)
+│                               tickets, storage, revenue, agency
 ├─ migrations/                  001_init.sql …  (embedded)
 ├─ media-tools/                 Python (uv): pyproject.toml, mediatools/{tts,stt}.py
 ├─ remotion/                    Node: package.json, src/compositions/{formats}/, src/brand/
