@@ -28,11 +28,9 @@ import (
 )
 
 const (
-	// PlatformMayankbuilt is publications.platform for the canonical post
-	// (M2-401). PlatformLinkedIn is publications.platform / oauth_tokens.platform
+	// PlatformLinkedIn is publications.platform / oauth_tokens.platform
 	// for this leg (matches internal/publish/linkedin.go's Platform()).
-	PlatformMayankbuilt = "mayankbuilt"
-	PlatformLinkedIn    = "linkedin"
+	PlatformLinkedIn = "linkedin"
 
 	// approvalKindLinkedIn is approvals.kind for this leg's approval row.
 	// approvals.kind has no CHECK constraint (unlike content_items.kind), so
@@ -66,13 +64,6 @@ const (
 // check after all retries.
 var ErrDraftNotOriginal = errors.New("blog: linkedin draft not sufficiently original")
 
-// Completer is the LLM surface this stage needs (satisfied by *llm.Router).
-// Deliberately a local, minimal interface (small-package convention used
-// throughout internal/content) rather than importing internal/content's.
-type Completer interface {
-	Complete(ctx context.Context, task llm.Task, req llm.Request) (llm.Response, error)
-}
-
 // Approver creates the human approval gate for this draft. Satisfied by
 // *internal/content.ApprovalService (its Start method has this exact
 // signature); a minimal local interface keeps this package's tests free of
@@ -81,15 +72,18 @@ type Approver interface {
 	Start(ctx context.Context, contentID, kind, summary, previewPath string) (string, error)
 }
 
-// SourcePost is the live, canonical Mayankbuilt post this leg repurposes.
+// SourcePost is the live, canonical Mayankbuilt post repurposed to LinkedIn
+// or X (M2-402/403). Title is required for the X leg; LinkedIn may leave it
+// empty when loading via LoadSourcePost.
 type SourcePost struct {
 	ContentID string
+	Title     string
 	URL       string // canonical live URL
 	Body      string // plain-text/markdown body (MDX with frontmatter stripped)
 }
 
-// Draft is the produced LinkedIn-native repost, still pending approval.
-type Draft struct {
+// LinkedInDraft is the produced LinkedIn-native repost, still pending approval.
+type LinkedInDraft struct {
 	Text       string // LinkedIn post body, includes the link back to Source.URL
 	ApprovalID string
 }
@@ -185,7 +179,7 @@ type RunInput struct {
 // Run produces a LinkedIn-native draft and opens the approval gate for it.
 // Never calls the LinkedIn API — that only happens after approval, from
 // internal/publish/linkedin.go.
-func (r *Repurposer) Run(ctx context.Context, in RunInput) (*Draft, error) {
+func (r *Repurposer) Run(ctx context.Context, in RunInput) (*LinkedInDraft, error) {
 	if r == nil {
 		return nil, fmt.Errorf("blog: nil repurposer")
 	}
@@ -213,7 +207,7 @@ func (r *Repurposer) Run(ctx context.Context, in RunInput) (*Draft, error) {
 		return nil, fmt.Errorf("blog: start approval for %s: %w", contentID, err)
 	}
 	r.log.Info("blog: linkedin draft pending approval", "content_id", contentID, "approval_id", approvalID)
-	return &Draft{Text: text, ApprovalID: approvalID}, nil
+	return &LinkedInDraft{Text: text, ApprovalID: approvalID}, nil
 }
 
 func (r *Repurposer) complete(ctx context.Context, in RunInput, sourceBody, sourceURL string) (string, error) {
