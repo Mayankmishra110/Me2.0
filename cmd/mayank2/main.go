@@ -16,7 +16,7 @@ Usage:
   mayank2 <command> [flags]
 
 Commands:
-  run       Start the daemon (not implemented yet)
+  run       Start the daemon (queue, scheduler, telegram, http/dashboard)
   status    Show daemon / queue status (not implemented yet)
   doctor    Check tools, secrets presence, disk, RAM, channels
   migrate   Apply database migrations (idempotent)
@@ -65,7 +65,9 @@ func run(args []string) int {
 		return cmdLLM(ctx, rest)
 	case "auth":
 		return cmdAuth(ctx, rest)
-	case "run", "status", "set-pin":
+	case "run":
+		return cmdRun(ctx, rest)
+	case "status", "set-pin":
 		return cmdStub(cmd, rest)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", cmd, usage)

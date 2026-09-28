@@ -67,6 +67,12 @@ An **income pipeline** that grows into an **agency across many domains**:
 4. Is Hindi content written natively (assumed **yes** — never literal translation) and voiced with Kokoro Hindi?
 5. OK to add YouTube OAuth scope `yt-analytics-monetary.readonly` (requires re-consent) so M2-601 can auto-pull `estimatedRevenue`? Current M2-211/M2-212 scopes are upload + yt-analytics.readonly only. Meta Page ad revenue stays manual (no clean Insights path).
 6. Amazon Associates account + Pinterest affiliate board(s) for M2-604 (and which software affiliate programs)?
+7. `blog.draft`/`blog.merge`/`blog.repurpose` need a `config.Config.Blog` section to be handler-constructible
+   (found while wiring M2-116: `internal/config.Config` has no `Blog` field today, unlike `Content`/`Builder`),
+   and none of the three blog job-type packages currently exposes a `Handler()`/`RegisterHandler(s)` method
+   to wire in the first place (M2-401/M2-402/M2-403/M2-404 built the publish/repurpose logic itself but not
+   the daemon-wiring surface) — a future ticket needs to add both before `cmd/mayank2/run.go` can register
+   these three job types. Left deliberately unregistered in M2-116; see that ticket's Notes.
 
 ## 6. External accounts Mayank must set up (real waiting time)
 

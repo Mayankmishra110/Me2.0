@@ -52,6 +52,19 @@ func (n *fakeNotify) Notify(ctx context.Context, text string) error {
 	return nil
 }
 
+// registerFakeAnalyticsPull stands in for internal/analytics.Service's real
+// "analytics.pull" registration (M2-116: scheduler.RegisterHandlers no
+// longer registers a placeholder for this type itself, since cmd/mayank2's
+// run.go is now the single place that wires the real handler — see
+// handlers.go's RegisterHandlers doc comment). The scheduler's own cron
+// trigger for JobAnalyticsPull still needs *something* registered so
+// Enqueue/catch-up succeed in these package-local tests.
+func registerFakeAnalyticsPull(q *queue.Queue) {
+	q.Register(JobAnalyticsPull, queue.ResourceNet, 5, func(context.Context, queue.Job) (json.RawMessage, error) {
+		return nil, nil
+	})
+}
+
 func TestParseHHMMAndCronSpec(t *testing.T) {
 	h, m, err := parseHHMM("22:30")
 	if err != nil || h != 22 || m != 30 {
@@ -94,6 +107,7 @@ func TestCatchUp_firstBootNoEnqueue(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.RegisterHandlers()
+	registerFakeAnalyticsPull(q)
 	if err := s.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -133,6 +147,7 @@ func TestCatchUp_missedOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.RegisterHandlers()
+	registerFakeAnalyticsPull(q)
 	if err := s.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -33,6 +35,43 @@ func TestRegister_invalidArgsPanic(t *testing.T) {
 			tc.fn(q)
 		})
 	}
+}
+
+// TestRegister_duplicateJobTypePanics proves M2-116's duplicate-registration
+// guard: registering the same jobType twice is a programmer error (the
+// analytics.pull collision between internal/scheduler's old placeholder and
+// internal/analytics' real handler) and must fail loudly instead of the
+// second Register silently overwriting the first via plain map assignment.
+// Two distinct types must still both register fine.
+func TestRegister_duplicateJobTypePanics(t *testing.T) {
+	t.Run("same type twice panics", func(t *testing.T) {
+		q, _ := testQueue(t)
+		q.Register("t.dup", ResourceLight, 3, noopHandler)
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatalf("expected panic on duplicate Register")
+			}
+			msg := fmt.Sprintf("%v", r)
+			if !strings.Contains(msg, "t.dup") {
+				t.Errorf("panic message %q does not mention job type", msg)
+			}
+		}()
+		q.Register("t.dup", ResourceNet, 5, noopHandler)
+	})
+
+	t.Run("two distinct types both register", func(t *testing.T) {
+		q, _ := testQueue(t)
+		q.Register("t.one", ResourceLight, 3, noopHandler)
+		q.Register("t.two", ResourceNet, 5, noopHandler)
+
+		if _, ok := q.lookup("t.one"); !ok {
+			t.Errorf("t.one not registered")
+		}
+		if _, ok := q.lookup("t.two"); !ok {
+			t.Errorf("t.two not registered")
+		}
+	})
 }
 
 func TestEnqueue_requiresRegisteredType(t *testing.T) {

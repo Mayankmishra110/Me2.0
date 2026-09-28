@@ -139,6 +139,9 @@ func (q *Queue) Register(jobType string, res Resource, maxAttempts int, h Handle
 	}
 	q.regMu.Lock()
 	defer q.regMu.Unlock()
+	if _, exists := q.types[jobType]; exists {
+		panic(fmt.Sprintf("queue: Register %s: already registered (duplicate registration)", jobType))
+	}
 	q.types[jobType] = registration{resource: res, maxAttempts: maxAttempts, handler: h}
 }
 
