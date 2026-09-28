@@ -85,6 +85,16 @@ func TestPlannerHappyPathWritesPlanAndApproval(t *testing.T) {
 	if fc.calls != 1 || fc.lastTask != llm.TaskBuilder {
 		t.Fatalf("completer calls=%d task=%q", fc.calls, fc.lastTask)
 	}
+	prompt := ""
+	if len(fc.lastReq.Messages) > 0 {
+		prompt = fc.lastReq.Messages[0].Content
+	}
+	if !strings.Contains(prompt, "ARCHITECTURE.md") || !strings.Contains(prompt, "Builder plans worktrees") {
+		t.Fatalf("prompt missing architecture data: %q", prompt)
+	}
+	if !strings.Contains(prompt, "T-1") {
+		t.Fatalf("prompt missing ticket id: %q", prompt)
+	}
 	if len(fa.calls) != 1 || fa.calls[0].Kind != approvalKindPlan {
 		t.Fatalf("approval calls=%+v", fa.calls)
 	}
