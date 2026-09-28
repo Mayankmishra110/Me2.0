@@ -143,19 +143,29 @@ func (f *Facebook) Publish(ctx context.Context, p PublishRequest) (PublishResult
 	if err != nil {
 		msg := fbRedact(err.Error())
 		_ = f.failPublication(ctx, p, msg)
-		return zero, fmt.Errorf("publish/facebook: start: %w", err)
+		if errors.Is(err, ErrReauthNeeded) {
+			return zero, fmt.Errorf("%w: %s", ErrReauthNeeded, msg)
+		}
+		return zero, fmt.Errorf("publish/facebook: start: %s", msg)
 	}
 	if err := api.UploadHosted(ctx, tok, videoID, fileURL); err != nil {
+		// err from UploadHosted/fbWrapGraph is already redacted; scrub again for defense in depth.
 		msg := fbRedact(err.Error())
 		_ = f.failPublication(ctx, p, msg)
-		return zero, fmt.Errorf("publish/facebook: upload: %w", err)
+		if errors.Is(err, ErrReauthNeeded) {
+			return zero, fmt.Errorf("%w: %s", ErrReauthNeeded, msg)
+		}
+		return zero, fmt.Errorf("publish/facebook: upload: %s", msg)
 	}
 	desc := fbCaption(p.Description, p.PaidPromotion, p.ContainsSynthetic)
 	postID, err := api.FinishReel(ctx, tok, p.Account, videoID, p.Title, desc)
 	if err != nil {
 		msg := fbRedact(err.Error())
 		_ = f.failPublication(ctx, p, msg)
-		return zero, fmt.Errorf("publish/facebook: finish: %w", err)
+		if errors.Is(err, ErrReauthNeeded) {
+			return zero, fmt.Errorf("%w: %s", ErrReauthNeeded, msg)
+		}
+		return zero, fmt.Errorf("publish/facebook: finish: %s", msg)
 	}
 	if postID == "" {
 		postID = videoID
@@ -393,7 +403,9 @@ func fbRedact(s string) string {
 // 190 is the well-documented one, the others are a reasonable but unverified
 // best guess (ticket Notes).
 func fbWrapGraph(code int, message string) error {
-	msg := strings.TrimSpace(message)
+	// Redact before wrapping so returned errors (and jobs.last_error via err.Error())
+	// never carry echoed tokens — same standard as Instagram's igDoJSON/igRedact path.
+	msg := fbRedact(strings.TrimSpace(message))
 	if code == 190 || code == 102 || code == 10 || code == 200 || code == 283 {
 		return fmt.Errorf("%w: graph code=%d message=%s", ErrReauthNeeded, code, msg)
 	}
@@ -487,6 +499,9 @@ func (a *HTTPFacebookAPI) UploadHosted(ctx context.Context, tok *oauth2.Token, v
 	}
 	defer res.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+	// Mirror fbDoJSON: redact before any JSON parse or error string construction so
+	// echoed Authorization / file_url never land in returned errors or jobs.last_error.
+	body = []byte(fbRedact(string(body)))
 	if res.StatusCode >= 400 {
 		var ge struct {
 			Error *struct {
@@ -498,7 +513,7 @@ func (a *HTTPFacebookAPI) UploadHosted(ctx context.Context, tok *oauth2.Token, v
 		if ge.Error != nil {
 			return fbWrapGraph(ge.Error.Code, ge.Error.Message)
 		}
-		return fmt.Errorf("rupload http %d: %s", res.StatusCode, fbRedact(string(body)))
+		return fmt.Errorf("rupload http %d: %s", res.StatusCode, string(body))
 	}
 	return nil
 }

@@ -208,6 +208,67 @@ func TestFacebook_RedactOAuthMessage(t *testing.T) {
 	}
 }
 
+// TestFacebook_UploadHostedRedactsErrorBody proves the SEC gap: rupload 4xx bodies that
+// echo Authorization / access_token must never appear in UploadHosted's returned error
+// (which becomes jobs.last_error via the queue worker).
+func TestFacebook_UploadHostedRedactsErrorBody(t *testing.T) {
+	const secret = "PAGE_TOKEN_LEAK_XYZ999"
+	mux := http.NewServeMux()
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		// Echo shapes Meta has been known to return: OAuth header fragment + access_token=.
+		_, _ = w.Write([]byte(`{"error":{"code":190,"message":"Invalid OAuth ` + secret + ` access_token=` + secret + `"}}`))
+	})
+
+	api := &HTTPFacebookAPI{HTTP: srv.Client(), GraphBase: srv.URL, UploadBase: srv.URL}
+	tok := &oauth2.Token{AccessToken: secret}
+	err := api.UploadHosted(context.Background(), tok, "vid-leak", "https://r2.example/v.mp4")
+	if err == nil {
+		t.Fatal("want error")
+	}
+	if !errors.Is(err, ErrReauthNeeded) {
+		t.Fatalf("want ErrReauthNeeded, got %v", err)
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("UploadHosted error contains raw token: %v", err)
+	}
+}
+
+// tokenLeakFBAPI returns an upload error embedding a token-shaped substring.
+type tokenLeakFBAPI struct{ fakeFBAPI }
+
+func (f *tokenLeakFBAPI) UploadHosted(ctx context.Context, tok *oauth2.Token, videoID, fileURL string) error {
+	return fbWrapGraph(190, "Invalid OAuth "+tok.AccessToken+" access_token="+tok.AccessToken)
+}
+
+func TestFacebook_UploadErrorNeverLeaksToken(t *testing.T) {
+	fb := seedFB(t, "c-fb-leak", "page-leak", "pub-fb-leak", "c-fb-leak:facebook:page-leak")
+	fb.API = &tokenLeakFBAPI{}
+	_, err := fb.Publish(context.Background(), PublishRequest{
+		PublicationID: "pub-fb-leak", ContentID: "c-fb-leak", Account: "page-leak",
+		IdempotencyKey: "c-fb-leak:facebook:page-leak", VideoPath: "renders/a.mp4", Title: "t", Description: "d",
+	})
+	if err == nil {
+		t.Fatal("want error")
+	}
+	token := "test-access-page-leak"
+	if strings.Contains(err.Error(), token) {
+		t.Fatalf("Publish error contains raw token: %v", err)
+	}
+	if !errors.Is(err, ErrReauthNeeded) {
+		t.Fatalf("want errors.Is(err, ErrReauthNeeded), got %v", err)
+	}
+	var lastErr string
+	if scanErr := fb.DB.QueryRow(`SELECT COALESCE(error,'') FROM publications WHERE id='pub-fb-leak'`).Scan(&lastErr); scanErr != nil {
+		t.Fatalf("query publications.error: %v", scanErr)
+	}
+	if strings.Contains(lastErr, token) {
+		t.Fatalf("publications.error contains raw token: %q", lastErr)
+	}
+}
+
 func TestFacebook_HTTPHappyPath(t *testing.T) {
 	var finishes atomic.Int32
 	mux := http.NewServeMux()
