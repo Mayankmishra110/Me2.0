@@ -34,11 +34,13 @@ yet merged into `main`. Merge order follows the dependency graph (SPEC §2): a t
      CRLF-vs-LF false positives in `gofmt`/`prettier` before trusting a check failure.
 3. **Checks:** run SPEC §7 for real in the worktree (Go/web/remotion/media-tools as applicable) plus
    `sh .githooks/pre-commit --all`. Paste the real output into the ticket Notes.
-4. **Push and open the PR:** `git push -u origin m2/M2-xxx`. With `gh` (run `gh auth status` first — if not
-   logged in, stop and tell Mayank, don't guess around it): `gh pr create --base main --head m2/M2-xxx
-   --title "<ticket title> (M2-xxx)" --body-file <file>` (goal, acceptance criteria with proof, real check
-   output, QA/SEC verdicts, risks, how to test). Without `gh`, write the PR body + compare URL into
-   SHIP_QUEUE and stop there — you can't merge without `gh`.
+4. **Push and open the PR:** `git push -u origin m2/M2-xxx`. **On Git Bash, `gh` is not on default PATH even
+   when installed** (same issue as Go): before assuming it's missing, try
+   `"/c/Program Files/GitHub CLI/gh.exe" auth status` directly (PowerShell finds it fine). If genuinely not
+   logged in, stop and tell Mayank, don't guess around it. Otherwise: `gh pr create --base main --head
+   m2/M2-xxx --title "<ticket title> (M2-xxx)" --body-file <file>` (goal, acceptance criteria with proof,
+   real check output, QA/SEC verdicts, risks, how to test). Without `gh`, write the PR body + compare URL
+   into SHIP_QUEUE and stop there — you can't merge without `gh`.
 5. **Merge — this is the D25 carve-out, follow it exactly:**
    - Merge only when: the rebase in step 2 was clean (or its conflicts were genuinely mechanical, not
      product-behavior ones you had to ask about), full checks are green, `QA: pass` is recorded, and
@@ -59,11 +61,23 @@ yet merged into `main`. Merge order follows the dependency graph (SPEC §2): a t
 ## Migrating phase-branch work (one-time, while D23's backlog still exists)
 
 `phase/p1-foundation` already has ~21 tickets merged and mostly audited. Don't rebuild them. For each,
-in dependency order: `git checkout m2/M2-xxx` (the original ticket branch, or recreate it from the phase
-branch's commit range if it was deleted: `git log --oneline <merge>^1..<merge>^2` on `phase/p1-foundation`
-tells you the exact commits), then run steps 2–6 above targeting `main` instead of the phase branch. Tickets
-still mid-independent-audit (the P2 batch, as of 2026-09-28) wait for that audit's verdict before merging —
-don't let migration speed skip the safety check that's already running.
+in dependency order: recreate the branch from the phase branch's own commit range —
+`git log --oneline <merge>^1..<merge>^2` on `phase/p1-foundation` tells you the exact commits, and
+[BRANCH_MAP.md](../BRANCH_MAP.md) has the same list per ticket. **Don't reuse an old `m2/M2-xxx` branch
+as-is**: the old sequential build order means an early ticket's branch may carry later tickets' commits too
+(e.g. old `m2/M2-102` carried M2-107/M2-206/M2-207/M2-109's work, because those merged into the phase branch
+before M2-102 did). Cherry-pick or rebuild from the exact commit range instead of trusting the branch tip.
+Then run steps 2–6 above targeting `main` instead of the phase branch. Conflicts from this contamination
+(duplicate CLI wiring, extra go.mod deps another ticket added) are mechanical, not product disagreements —
+resolve by keeping only what the ticket in front of you actually owns. Tickets still mid-independent-audit
+(the P2 batch, as of 2026-09-28) wait for that audit's verdict before merging — don't let migration speed
+skip the safety check that's already running.
+
+**Before trusting `main`'s copy of a ticket says `done`, check it has a real `## Review` section** (`grep -c
+"^## Review" tickets/M2-xxx.md`). Several tickets landed on `main` as `done` with zero review content even
+though the real QA/SEC verdict existed on their own branch/the phase branch — a pure sync gap (see
+CONTEXT.md's note near D25, and the 2026-09-28 incident where M2-104/M2-114/M2-201/M2-211/M2-213 all had
+this). If you find one, sync `main`'s copy from the authoritative branch before treating `done` as true.
 
 ## You never
 
