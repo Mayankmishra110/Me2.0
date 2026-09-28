@@ -85,9 +85,9 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | M2-502 | **done** Â· merge `23e708f` | 501 (done) | `internal/builder/implementer.go` |
 | M2-503 | **done** Â· merge `e6e28f6` | 502 (done) | `internal/builder/auditor.go` |
 | M2-504 | **done** Â· merge `8729db2` | 503 (done) | `internal/builder/gate.go` |
-| M2-505 | merged on phase, **in-review** (QA+SEC pass; unblocked now that M2-504 is done) | 504 (done), 106 (done) | `internal/builder/pr.go`, Builder dashboard |
+| M2-505 | **done** · merge `c10146a` (in-review flip resolved 2026-09-29) | 504 (done), 106 (done) | `internal/builder/pr.go`, Builder dashboard |
 
-**P5 core sequential chain (M2-501 → M2-502 → M2-503 → M2-504) is now fully merged onto `phase/p1-foundation`.** Only M2-505 (dashboard/PR link) remains in-review, no longer blocked on a dependency.
+**P5 core sequential chain (M2-501 → M2-502 → M2-503 → M2-504 → M2-505) is now fully merged onto `phase/p1-foundation` and all `done`.** P5 is code-complete (dashboard/PR link no longer blocked); note cmd/mayank2 end-to-end wiring of these jobs is still outstanding per prior review, tracked separately, not part of this ticket's scope.
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
@@ -95,7 +95,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | M2-502 | `m2/M2-502` | Builder implementer | be (Cursor) | `c0e480e`, `df5b117`, `53f9b40`, `b4d2f34`, `1db9897`, `72a3d73` | `23e708f` | merged, done, QA+SEC pass (independent qa/sec re-review this session, re-derived from code + real go test/vet/gofmt output) |
 | M2-503 | `m2/M2-503` | Builder auditor (parallel audit thread) | be | `c997653`, +2 review commits (`6058579`, `7e980df`) | `e6e28f6` | merged, done, QA+SEC pass (independent qa/sec re-review, re-derived from code + real go test/vet/gofmt output); reconciled `defaultGitRunner(opts.LookPath)` calls (auditor.go + auditor_test.go, 4 call sites) onto phase's `defaultImplementerGitRunner` rename (M2-502's dedupe vs. M2-505's `pr.go` `defaultGitRunner(ctx, dir, args...)`); post-merge `gofmt -l .` / `go vet ./...` / `go test ./... -count=1` all green |
 | M2-504 | `m2/M2-504` | Builder phase gate (pass/fix-retry decision, timeout, limit pause) | be | `79762bb`, +1 review commit (`cd19fde`) | `8729db2` | merged, done, QA+SEC pass (independent qa/sec re-review, re-derived every AC claim from real code + real go test/vet/gofmt output); reconciled one stale `defaultGitRunner(opts.LookPath)` call in `gate.go` (line 191, built before/without seeing M2-502's rename) onto phase's `defaultImplementerGitRunner`; also added the missing CONTEXT.md D25 row (ship auto-merge decision, commit `400e674`, present on `main` but never in the phase-branch lineage — a pre-existing docs-integrity gap flagged by M2-504's own reviewer, fixed here as a documentation fix, not a product decision), keeping M2-504's own D26 row intact; post-merge `gofmt -l .` / `go vet ./...` / `go test ./... -count=1` all green |
-| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | `c10146a` | merged on phase, in-review (QA+SEC @ c7d1fc8; no longer blocked, M2-504 now done) |
+| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | `c10146a` | merged, done, QA+SEC pass (QA+SEC @ `c7d1fc8`; re-verified fresh 2026-09-29 against final M2-504 `gate.go` — full Go + web check suite green, no `defaultGitRunner`/`defaultImplementerGitRunner` bit rot in `pr.go`) |
 
 ## In progress (branched from `phase/p1-foundation`)
 
