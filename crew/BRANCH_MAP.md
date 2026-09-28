@@ -81,17 +81,17 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Status | Depends | Touches |
 |---|---|---|---|
-| M2-501 | in-progress (crew-be) | 103, 105 (done) | `internal/builder/planner.go` |
-| M2-502 | todo | 501 | `internal/builder/implementer.go` |
-| M2-503 | todo | 502 | `internal/builder/auditor.go` |
-| M2-504 | todo | 503 | `internal/builder/gate.go` |
-| M2-505 | todo | 504, 106 | `internal/builder/pr.go`, Builder dashboard |
+| M2-501 | in-review (crew-be) | 103, 105 (done) | `internal/builder/planner.go`, `config/config.example.yaml` |
+| M2-502 | ready | 501 | `internal/builder/implementer.go` |
+| M2-503 | ready | 502 | `internal/builder/auditor.go` |
+| M2-504 | ready | 503 | `internal/builder/gate.go` |
+| M2-505 | ready | 504, 106 | `internal/builder/pr.go`, Builder dashboard |
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-501 | `m2/M2-501` | Builder planner | be | (building) | — | in-progress |
+| M2-501 | `m2/M2-501` | Builder planner | be | `cbcaded`..`ae8c68b` | — | in-review |
 
 ## How to regenerate/verify this file
 
