@@ -1,0 +1,14 @@
+programs:
+  - id: amazon
+    name: Amazon Associates
+    disclosure: "#ad This pin contains affiliate links."
+    # Plain tagged URLs only — never cloaked/shortened (COMPLIANCE §1, M2-304).
+  - id: software
+    name: Software affiliate (placeholder)
+    disclosure: "#ad This pin contains affiliate links."
+
+boards:
+  - id: TBD_BOARD_ID
+    name: money-tools
+    program: amazon
+    # Max one pin per destination URL per calendar day (COMPLIANCE §4).
