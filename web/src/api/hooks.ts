@@ -5,6 +5,7 @@ import type {
   AgentsResponse,
   ApprovalDetail,
   ApprovalsListResponse,
+  BuilderResponse,
   ContentResponse,
   DecisionRequest,
   DecisionResponse,
@@ -22,6 +23,7 @@ export const queryKeys = {
   approval: (id: string) => ['approvals', id] as const,
   content: (params?: { channel?: string; stage?: string }) =>
     ['content', params?.channel ?? 'all', params?.stage ?? 'all'] as const,
+  builder: ['builder'] as const,
 }
 
 export function useHealth() {
@@ -70,6 +72,13 @@ export function useContent(params?: { channel?: string; stage?: string }) {
   return useQuery({
     queryKey: queryKeys.content(params),
     queryFn: () => apiFetch<ContentResponse>(`/api/content${qs}`),
+  })
+}
+
+export function useBuilder() {
+  return useQuery({
+    queryKey: queryKeys.builder,
+    queryFn: () => apiFetch<BuilderResponse>('/api/builder'),
   })
 }
 

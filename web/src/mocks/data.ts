@@ -1,6 +1,7 @@
 ﻿import type {
   Agent,
   ApprovalDetail,
+  BuilderResponse,
   ContentItem,
   HealthResponse,
   Job,
@@ -16,6 +17,7 @@ export const db: {
   content: ContentItem[]
   approvals: ApprovalDetail[]
   events: StreamEvent[]
+  builder: BuilderResponse
 } = {
   health: {
     ok: true,
@@ -242,6 +244,9 @@ export const db: {
     },
   ],
   events: [],
+  // Default empty — matches live GET /api/builder stub until builder jobs land.
+  // Tests override with server.use(...) for populated fixtures.
+  builder: { plans: [], threads: [], audits: [] },
 }
 
 export function pushEvent(kind: StreamEvent['kind'], payload: Record<string, unknown>) {

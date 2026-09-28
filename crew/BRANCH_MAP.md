@@ -85,14 +85,14 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | M2-502 | todo | 501 | `internal/builder/implementer.go` |
 | M2-503 | todo | 502 | `internal/builder/auditor.go` |
 | M2-504 | todo | 503 | `internal/builder/gate.go` |
-| M2-505 | in-progress (crew-fe) | 504, 106 | `internal/builder/pr.go`, Builder dashboard |
+| M2-505 | in-review (crew-fe) | 504, 106 | `internal/builder/pr.go`, Builder dashboard |
 
 ## In progress (branched from `phase/p1-foundation`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
 | M2-501 | `m2/M2-501` | Builder planner | be | (building) | — | in-progress |
-| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | (building) | — | in-progress |
+| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | (building→in-review) | — | in-review |
 
 ## How to regenerate/verify this file
 

@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import type { StreamEvent } from '@/api/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { ApprovalDetailPage, ApprovalsPage } from '@/pages/ApprovalsPage'
+import { BuilderPage } from '@/pages/BuilderPage'
 import { HomePage } from '@/pages/HomePage'
 import { LogsPage } from '@/pages/LogsPage'
 import { MorePage } from '@/pages/MorePage'
@@ -36,6 +37,7 @@ export function App() {
             <Route index element={<HomePage />} />
             <Route path="approvals" element={<ApprovalsPage />} />
             <Route path="approvals/:id" element={<ApprovalDetailPage />} />
+            <Route path="builder" element={<BuilderPage />} />
             <Route path="logs" element={<LogsPage events={events} />} />
             <Route path="more" element={<MorePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
