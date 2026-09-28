@@ -1,4 +1,4 @@
-﻿# Branch map ? owned by ship, overlooked by lead
+# Branch map ? owned by ship, overlooked by lead
 
 Every branch that has existed in this repo, which ticket/feature it maps to, and what happened to it.
 **Ship updates this file in the same commit as every merge** (into a phase branch or into `main`) ? see
@@ -44,7 +44,7 @@ Phase branch: `phase/p1-foundation` (pushed). Base for every ticket branch below
 | M2-210 | `m2/M2-210` | Final gates and approval flow | be | `a997223`, `7417577`, `406ac54` | `9646b4b` + `d283fb4` | merged, done, QA+SEC pass |
 | M2-211 | `m2/M2-211` | YouTube uploader for 4 channels | be | (see ticket) | `e88f6f8` | merged, done, QA+SEC pass |
 | M2-212 | `m2/M2-212` | Analytics pull and scores | be | (see ticket) | `904a475` | merged, done, QA+SEC pass |
-| ? | ? | Independent qa+sec audit of M2-201..M2-213 (first review not by ship/self; Cursor's own agents had self-reviewed the whole batch) | qa/sec | (this commit) | (direct to phase branch) | housekeeping, not a ticket â€” found a real gap in M2-205 (G7 fails open for English with no LLM classifier wired, untested); everything else in the batch independently re-verified pass. See ticket Review sections. |
+| ? | ? | Independent qa+sec audit of M2-201..M2-213 (first review not by ship/self; Cursor's own agents had self-reviewed the whole batch) | qa/sec | (this commit) | (direct to phase branch) | housekeeping, not a ticket — found a real gap in M2-205 (G7 fails open for English with no LLM classifier wired, untested); everything else in the batch independently re-verified pass. See ticket Review sections. |
 | M2-301 | `m2/M2-301` | Instagram Reels publisher | be | `3dc5623`..`681cab8` | `636baff` | merged, done, QA+SEC pass |
 | M2-303 | `m2/M2-303` | X (business) publisher | be-3 | `9249bd7`..`1818f3b` | `53a8b60` | merged, done, QA+SEC pass |
 | M2-304 | `m2/M2-304` | Pinterest video pin publisher | be-4 | `b5c541b`..`9947ace` | `d40a796` | merged, done, QA+SEC pass |
@@ -81,28 +81,28 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Status | Depends | Touches |
 |---|---|---|---|
-| M2-501 | **done** Â· merge `1f20dce` | 103, 105 (done) | `internal/builder/planner.go`, `config/config.example.yaml` |
-| M2-502 | **done** Â· merge `23e708f` | 501 (done) | `internal/builder/implementer.go` |
-| M2-503 | **done** Â· merge `e6e28f6` | 502 (done) | `internal/builder/auditor.go` |
-| M2-504 | **done** Â· merge `8729db2` | 503 (done) | `internal/builder/gate.go` |
-| M2-505 | **done** · merge `c10146a` (in-review flip resolved 2026-09-29) | 504 (done), 106 (done) | `internal/builder/pr.go`, Builder dashboard |
+| M2-501 | **done** · merge `1f20dce` | 103, 105 (done) | `internal/builder/planner.go`, `config/config.example.yaml` |
+| M2-502 | **done** · merge `23e708f` | 501 (done) | `internal/builder/implementer.go` |
+| M2-503 | **done** · merge `e6e28f6` | 502 (done) | `internal/builder/auditor.go` |
+| M2-504 | **done** · merge `8729db2` | 503 (done) | `internal/builder/gate.go` |
+| M2-505 | **done** � merge `c10146a` (in-review flip resolved 2026-09-29) | 504 (done), 106 (done) | `internal/builder/pr.go`, Builder dashboard |
 
-**P5 core sequential chain (M2-501 → M2-502 → M2-503 → M2-504 → M2-505) is now fully merged onto `phase/p1-foundation` and all `done`.** P5 is code-complete (dashboard/PR link no longer blocked); note cmd/mayank2 end-to-end wiring of these jobs is still outstanding per prior review, tracked separately, not part of this ticket's scope.
+**P5 core sequential chain (M2-501 ? M2-502 ? M2-503 ? M2-504 ? M2-505) is now fully merged onto `phase/p1-foundation` and all `done`.** P5 is code-complete (dashboard/PR link no longer blocked); note cmd/mayank2 end-to-end wiring of these jobs is still outstanding per prior review, tracked separately, not part of this ticket's scope.
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
 | M2-501 | `m2/M2-501` | Builder planner | be | `c64c2cf`, `4a38ce5`, `05d922f`, `ae8c68b`, `6bc991c`, `f4e4c91` | `1f20dce` | merged, done, QA+SEC pass |
 | M2-502 | `m2/M2-502` | Builder implementer | be (Cursor) | `c0e480e`, `df5b117`, `53f9b40`, `b4d2f34`, `1db9897`, `72a3d73` | `23e708f` | merged, done, QA+SEC pass (independent qa/sec re-review this session, re-derived from code + real go test/vet/gofmt output) |
 | M2-503 | `m2/M2-503` | Builder auditor (parallel audit thread) | be | `c997653`, +2 review commits (`6058579`, `7e980df`) | `e6e28f6` | merged, done, QA+SEC pass (independent qa/sec re-review, re-derived from code + real go test/vet/gofmt output); reconciled `defaultGitRunner(opts.LookPath)` calls (auditor.go + auditor_test.go, 4 call sites) onto phase's `defaultImplementerGitRunner` rename (M2-502's dedupe vs. M2-505's `pr.go` `defaultGitRunner(ctx, dir, args...)`); post-merge `gofmt -l .` / `go vet ./...` / `go test ./... -count=1` all green |
-| M2-504 | `m2/M2-504` | Builder phase gate (pass/fix-retry decision, timeout, limit pause) | be | `79762bb`, +1 review commit (`cd19fde`) | `8729db2` | merged, done, QA+SEC pass (independent qa/sec re-review, re-derived every AC claim from real code + real go test/vet/gofmt output); reconciled one stale `defaultGitRunner(opts.LookPath)` call in `gate.go` (line 191, built before/without seeing M2-502's rename) onto phase's `defaultImplementerGitRunner`; also added the missing CONTEXT.md D25 row (ship auto-merge decision, commit `400e674`, present on `main` but never in the phase-branch lineage — a pre-existing docs-integrity gap flagged by M2-504's own reviewer, fixed here as a documentation fix, not a product decision), keeping M2-504's own D26 row intact; post-merge `gofmt -l .` / `go vet ./...` / `go test ./... -count=1` all green |
-| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | `c10146a` | merged, done, QA+SEC pass (QA+SEC @ `c7d1fc8`; re-verified fresh 2026-09-29 against final M2-504 `gate.go` — full Go + web check suite green, no `defaultGitRunner`/`defaultImplementerGitRunner` bit rot in `pr.go`) |
+| M2-504 | `m2/M2-504` | Builder phase gate (pass/fix-retry decision, timeout, limit pause) | be | `79762bb`, +1 review commit (`cd19fde`) | `8729db2` | merged, done, QA+SEC pass (independent qa/sec re-review, re-derived every AC claim from real code + real go test/vet/gofmt output); reconciled one stale `defaultGitRunner(opts.LookPath)` call in `gate.go` (line 191, built before/without seeing M2-502's rename) onto phase's `defaultImplementerGitRunner`; also added the missing CONTEXT.md D25 row (ship auto-merge decision, commit `400e674`, present on `main` but never in the phase-branch lineage � a pre-existing docs-integrity gap flagged by M2-504's own reviewer, fixed here as a documentation fix, not a product decision), keeping M2-504's own D26 row intact; post-merge `gofmt -l .` / `go vet ./...` / `go test ./... -count=1` all green |
+| M2-505 | `m2/M2-505` | Builder dashboard + PR link | fe | `48a9881`, `853f6bb`, `c7d1fc8` | `c10146a` | merged, done, QA+SEC pass (QA+SEC @ `c7d1fc8`; re-verified fresh 2026-09-29 against final M2-504 `gate.go` � full Go + web check suite green, no `defaultGitRunner`/`defaultImplementerGitRunner` bit rot in `pr.go`) |
 
 ## Phase P6 revenue / income (on phase branch)
 
 | Ticket | Status | Depends | Touches |
 |---|---|---|---|
-| M2-601 | **done** · merge `6fac776` | 212, 106 (done) | `internal/revenue/`, `/api/revenue`, Revenue dashboard |
-| M2-602 | **ready** (claimable) | 501 (done), 601 (done) | `internal/micro_saas/` |
+| M2-601 | **done** � merge `6fac776` | 212, 106 (done) | `internal/revenue/`, `/api/revenue`, Revenue dashboard |
+| M2-602 | **in-review** � `m2/M2-602` | 501 (done), 601 (done) | `internal/micro_saas/` |
 | M2-603 | **ready** (claimable) | 111 (done), 601 (done) | `internal/agency/` |
 | M2-604 | **done** · merge `77313c2` | 304 (done), 601 (done) | `internal/content/affiliate.go`, `config/affiliate/` |
 
@@ -115,7 +115,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| - | - | (none open) | - | - | - | - |
+| M2-602 | `m2/M2-602` | Micro-SaaS idea ? spec ? Builder | be | (tip) | � | in-review |
 
 ## How to regenerate/verify this file
 
