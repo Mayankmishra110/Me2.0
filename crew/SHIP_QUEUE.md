@@ -10,7 +10,10 @@ Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://gith
 
 | Ticket | Branch | Phase merge | QA | SEC | State |
 |---|---|---|---|---|---|
-| M2-505 | `m2/M2-505` | `c10146a` on `phase/p1-foundation` | pass @ `c7d1fc8` | pass @ `c7d1fc8` | **merged-to-phase** · ticket stays **in-review** (depends M2-504) · audit [M2-505.md](../docs/audit/p1-foundation/M2-505.md) |
+| M2-505 | `m2/M2-505` | `c10146a` on `phase/p1-foundation` | pass @ `c7d1fc8` | pass @ `c7d1fc8` | **merged-to-phase** · **done** (M2-504 dep landed) · audit [M2-505.md](../docs/audit/p1-foundation/M2-505.md) · main PR queued |
+| M2-504 | `m2/M2-504` | `8729db2` on `phase/p1-foundation` | pass @ `cd19fde` | pass @ `cd19fde` | **merged-to-phase** · **done** · audit [M2-504.md](../docs/audit/p1-foundation/M2-504.md) · main PR queued |
+| M2-503 | `m2/M2-503` | `e6e28f6` on `phase/p1-foundation` | pass @ `7e980df` | pass @ `7e980df` | **merged-to-phase** · **done** · audit [M2-503.md](../docs/audit/p1-foundation/M2-503.md) · main PR queued |
+| M2-502 | `m2/M2-502` | `23e708f` on `phase/p1-foundation` | pass @ `72a3d73` | pass @ `72a3d73` / feat `1db9897` | **merged-to-phase** · **done** · audit [M2-502.md](../docs/audit/p1-foundation/M2-502.md) · main PR queued |
 | M2-501 | `m2/M2-501` | `1f20dce` on `phase/p1-foundation` | pass @ `f4e4c91` | pass @ `f4e4c91` | **merged-to-phase** · audit [M2-501.md](../docs/audit/p1-foundation/M2-501.md) · main PR queued |
 | M2-402 | `m2/M2-402` | `84361f9` on `phase/p1-foundation` | pass @ phase | pass @ phase | **merged-to-phase** · main PR queued |
 | M2-404 | `m2/M2-404` | `bd09d1c` on `phase/p1-foundation` | pass @ phase | n/a | **merged-to-phase** · main PR queued |
@@ -31,7 +34,7 @@ tickets into `phase/p1-foundation` and queues main PRs here.
 
 | Phase | Branch | Tickets in it | Checks | State |
 |---|---|---|---|---|
-| P1 Foundation + P3/P4/P5 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401–404** + **M2-501** + **M2-505** (in-review) | M2-505 integrated; done blocked on M2-504 | **pushed** (tip after M2-505 merge) |
+| P1 Foundation + P3/P4/P5 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401–404** + **M2-501…505** (all `done`) | P5 chain complete; audits for 502/503/504 added | **pushed** |
 
 PR body: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) (everything below its `---`).
 Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation
