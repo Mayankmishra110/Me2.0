@@ -10,6 +10,8 @@ Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://gith
 
 | Ticket | Branch | Phase merge | QA | SEC | State |
 |---|---|---|---|---|---|
+| M2-402 | `m2/M2-402` | `84361f9` on `phase/p1-foundation` | pass @ phase | pass @ phase | **merged-to-phase** · main PR queued |
+| M2-404 | `m2/M2-404` | `bd09d1c` on `phase/p1-foundation` | pass @ phase | n/a | **merged-to-phase** · main PR queued |
 | M2-403 | `m2/M2-403` | `0e48987` (+ `fe4bede`; fold `710e35c`/`465693b`) | pass @ `5fe3733` | pass @ `a8ce2d3` | **merged-to-phase** · main PR queued |
 | M2-401 | `m2/M2-401` | `4aec99f` on `phase/p1-foundation` | pass @ `9dbb996` | pass @ `9dbb996` | **merged-to-phase** · review stamp `1b0a9e0` · main PR queued |
 | M2-302 | `m2/M2-302` | `e28652a` on `phase/p1-foundation` | pass @ `8eb3de4` | pass @ `a6e50d6` | **merged-to-phase** · main PR queued |
@@ -27,7 +29,7 @@ tickets into `phase/p1-foundation` and queues main PRs here.
 
 | Phase | Branch | Tickets in it | Checks | State |
 |---|---|---|---|---|
-| P1 Foundation + P3/P4 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401/403** (+404) | blog+publish green after M2-403 fold | **pushed** @ `615ba16` |
+| P1 Foundation + P3/P4 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401–404** | blog+publish green; P4 complete | **ahead of origin** (push phase when ready) |
 
 PR body: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) (everything below its `---`).
 Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation
