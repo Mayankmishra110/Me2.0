@@ -1,4 +1,4 @@
-# Branch map ? owned by ship, overlooked by lead
+﻿# Branch map ? owned by ship, overlooked by lead
 
 Every branch that has existed in this repo, which ticket/feature it maps to, and what happened to it.
 **Ship updates this file in the same commit as every merge** (into a phase branch or into `main`) ? see
@@ -103,13 +103,14 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 |---|---|---|---|
 | M2-601 | **done** � merge `6fac776` | 212, 106 (done) | `internal/revenue/`, `/api/revenue`, Revenue dashboard |
 | M2-602 | **done** · merge `efd8c6a` | 501 (done), 601 (done) | `internal/micro_saas/` |
-| M2-603 | **ready** (claimable) | 111 (done), 601 (done) | `internal/agency/` |
+| M2-603 | **done** · merge `6c2f61f` | 111 (done), 601 (done) | `internal/agency/` |
 | M2-604 | **done** · merge `77313c2` | 304 (done), 601 (done) | `internal/content/affiliate.go`, `config/affiliate/` |
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
 | M2-601 | `m2/M2-601` | Revenue tracking: store, API, pull, Revenue dashboard | be | `47bc03f`, `aa4fe3b` | `6fac776` | merged, done, QA+SEC pass |
 | M2-602 | `m2/M2-602` | Micro-SaaS idea → spec → Builder | be | `c5d6aff`, `b68b9a3`, `0a03a34` (pre-rebase `77e2d92`/`f852093`/`ec604db`) | `efd8c6a` | merged, done, QA+SEC pass |
+| M2-603 | `m2/M2-603` | Agency lead list + proposal drafts | be | `f6d192a`, `a5ec68e`, `bddfa67`, `4693b8d`, `bdfdab1` (pre-rebase `d7ee871`/`fcb0801`/`755bc78`) | `6c2f61f` | merged, done, QA+SEC pass |
 | M2-604 | `m2/M2-604` | Pinterest affiliate pin selection and copy | be | `38558ac`, `bc6f728` (pre-rebase `87acc8c`/`5707ad0`) | `77313c2` | merged, done, QA+SEC pass |
 
 ## In progress (branched from `phase/p1-foundation`)

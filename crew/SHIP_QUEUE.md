@@ -10,9 +10,10 @@ Remote: `https://github.com/Mayankmishra110/Me2.0` · Compare URL: `https://gith
 
 | Ticket | Branch | Phase merge | QA | SEC | State |
 |---|---|---|---|---|---|
+| M2-603 | `m2/M2-603` | `6c2f61f` on `phase/p1-foundation` | pass @ `bdfdab1` | pass @ `bdfdab1` / feat `f6d192a` (pre-rebase `fcb0801`/`755bc78`) | **merged-to-phase** · **done** · audit [M2-603.md](../docs/audit/p1-foundation/M2-603.md) · main PR queued |
 | M2-602 | `m2/M2-602` | `efd8c6a` on `phase/p1-foundation` | pass @ `0a03a34` | pass @ `0a03a34` / feat `c5d6aff` (pre-rebase `77e2d92`/`f852093`/`ec604db`) | **merged-to-phase** · **done** · audit [M2-602.md](../docs/audit/p1-foundation/M2-602.md) · main PR queued |
 | M2-604 | `m2/M2-604` | `77313c2` on `phase/p1-foundation` | pass @ `bc6f728` | pass @ `bc6f728` / feat `38558ac` (pre-rebase `87acc8c`/`5707ad0`) | **merged-to-phase** · **done** · audit [M2-604.md](../docs/audit/p1-foundation/M2-604.md) · main PR queued |
-| M2-601 | `m2/M2-601` | `6fac776` on `phase/p1-foundation` | pass @ `aa4fe3b` | pass @ `aa4fe3b` / feat `47bc03f` | **merged-to-phase** · **done** · audit [M2-601.md](../docs/audit/p1-foundation/M2-601.md) · unlocks M2-603 (ready/claimable) · main PR queued |
+| M2-601 | `m2/M2-601` | `6fac776` on `phase/p1-foundation` | pass @ `aa4fe3b` | pass @ `aa4fe3b` / feat `47bc03f` | **merged-to-phase** · **done** · audit [M2-601.md](../docs/audit/p1-foundation/M2-601.md) · unlocked 602/603/604 · main PR queued |
 | M2-505 | `m2/M2-505` | `c10146a` on `phase/p1-foundation` | pass @ `c7d1fc8` | pass @ `c7d1fc8` | **merged-to-phase** · **done** (M2-504 dep landed) · audit [M2-505.md](../docs/audit/p1-foundation/M2-505.md) · main PR queued |
 | M2-504 | `m2/M2-504` | `8729db2` on `phase/p1-foundation` | pass @ `cd19fde` | pass @ `cd19fde` | **merged-to-phase** · **done** · audit [M2-504.md](../docs/audit/p1-foundation/M2-504.md) · main PR queued |
 | M2-503 | `m2/M2-503` | `e6e28f6` on `phase/p1-foundation` | pass @ `7e980df` | pass @ `7e980df` | **merged-to-phase** · **done** · audit [M2-503.md](../docs/audit/p1-foundation/M2-503.md) · main PR queued |
@@ -37,7 +38,7 @@ tickets into `phase/p1-foundation` and queues main PRs here.
 
 | Phase | Branch | Tickets in it | Checks | State |
 |---|---|---|---|---|
-| P1 Foundation + P3/P4/P5/P6 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401–404** + **M2-501…505** + **M2-601** + **M2-602** + **M2-604** (all `done`) | P6 revenue + micro-SaaS + affiliate; 603 claimable | **pushed** |
+| P1 Foundation + P3/P4/P5/P6 | `phase/p1-foundation` | M2-101…212 + **301–304** + **401–404** + **M2-501…505** + **M2-601…604** (all `done`) | P6 revenue complete (601–604) | **pushed** |
 
 PR body: [docs/audit/p1-foundation/README.md](../docs/audit/p1-foundation/README.md) (everything below its `---`).
 Compare: https://github.com/Mayankmishra110/Me2.0/compare/main...phase/p1-foundation
