@@ -84,6 +84,22 @@ An **income pipeline** that grows into an **agency across many domains**:
    2026-09-29 (M2-121):** M2-117 has since added `config.Config.Blog` and wired all three; this entry is
    stale but left as-is (not this ticket's scope to retroactively edit M2-117's own history) rather than
    silently deleted — a future editor should feel free to remove it once confirmed fully superseded.
+10. (M2-122) Instagram/Facebook/Pinterest's `R2KeyResolver` field is documented as "nil → use local
+    `VideoPath` as the R2 key" (M2-116's own Notes call this a safe default). That's true of the field
+    itself, but the end-to-end assumption behind it does not hold: **nothing in the repo ever uploads a
+    render to R2** (`git grep "\.Upload(ctx" -- internal cmd` finds exactly one hit, a test in
+    `internal/storage/r2_test.go` — no production code path calls `(*storage.R2Client).Upload`).
+    `internal/content/render.go`'s `Renderer` writes finished MP4s to the local
+    `storage.KindRenders` directory only. So even with M2-122's fix wiring a real, configured
+    `R2Client.PresignGET` into Instagram/Facebook/Pinterest, presigning `VideoPath` as the key points at
+    an object that was never uploaded — Meta/Pinterest's fetch of that presigned URL will 404 once a
+    real publish is attempted with real R2 credentials. Needs a product decision on where in the
+    pipeline an R2 upload belongs (at render time in `content.Renderer`? A new step between
+    `compliance.final`/approval and `publish.*`? Inside each publisher just before presigning?) before
+    Instagram/Facebook/Pinterest can actually publish end-to-end, even once every other piece
+    (approval, tokens, R2 credentials) is in place. Not fixed by M2-122 (crash-prevention/wiring scope
+    only) — flagging here per this file's own "write the question here instead of guessing on product
+    behavior" rule.
 
 ## 6. External accounts Mayank must set up (real waiting time)
 

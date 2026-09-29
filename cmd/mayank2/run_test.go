@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"mayank2/internal/config"
+	"mayank2/internal/db"
 	"mayank2/internal/queue"
 )
 
@@ -118,6 +119,160 @@ func TestRunDaemon_integration(t *testing.T) {
 	// we're back near the pre-run baseline instead of climbing with every
 	// call to runDaemon.
 	assertNoGoroutineLeak(t, baseline)
+}
+
+// TestRunDaemon_PublishInstagramWithR2Unconfigured_NoPanic is the M2-122
+// regression test at the daemon level: before this ticket,
+// registerPublishHandlers never assigned Instagram/Facebook/Pinterest's
+// Presign field at all (left nil), and — separately — nothing in the repo
+// ever built a real *storage.R2Client to wire in even when R2_* env keys
+// were present, so every real publish attempt to those three platforms was
+// guaranteed to fail. This drives a publish.instagram job through the exact
+// wiring `mayank2 run` uses (runDaemon -> registerPublishHandlers ->
+// buildPresigner) with R2_* and the Meta OAuth env explicitly unset, and
+// confirms: no panic anywhere in the worker pool (queue.worker recovers
+// handler panics per-job, but a wiring-level nil-interface panic would still
+// surface as a hung/failed test here), the job reaches a terminal 'failed'
+// state with a real error message (not silently dropped, not stuck
+// 'publishing' forever), and runDaemon itself drains cleanly on shutdown —
+// i.e. one broken publish job never takes the daemon down.
+//
+// Note: with Meta OAuth also unconfigured (the realistic "nothing set up
+// yet" default), Instagram.Publish's own token() check fails before it ever
+// reaches resolvePublicURL/Presign — so this test's specific failure reason
+// is "oauth token unavailable", not an R2 message. That's fine for what
+// this test proves (daemon-level: no panic, clean terminal failure,
+// drains); internal/publish/presign_notconfigured_test.go covers the
+// Presign-specific "R2 not configured" error message directly, with a
+// valid token so execution actually reaches resolvePublicURL.
+func TestRunDaemon_PublishInstagramWithR2Unconfigured_NoPanic(t *testing.T) {
+	t.Setenv("DASHBOARD_TOKEN", "test-dashboard-token")
+	t.Setenv("TELEGRAM_BOT_TOKEN", "")
+	t.Setenv("TELEGRAM_USER_ID", "")
+	t.Setenv("TELEGRAM_CHAT_ID", "")
+	// R2 fully unconfigured (CONTEXT D24) — the exact condition the crash
+	// risk this ticket fixes was reported under.
+	t.Setenv("R2_ACCOUNT_ID", "")
+	t.Setenv("R2_ACCESS_KEY_ID", "")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "")
+	t.Setenv("R2_BUCKET", "")
+	// Meta OAuth also unconfigured, so this is the realistic "nothing set
+	// up yet" default state, not a hand-picked partial config.
+	t.Setenv("META_CLIENT_ID", "")
+	t.Setenv("META_CLIENT_SECRET", "")
+
+	cfg := testConfig(t)
+	dbPath := filepath.Join(t.TempDir(), "run-ig-r2.db")
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	const contentID, channelID, pubID = "c-ig-r2", "ch-ig-r2", "pub-ig-r2"
+	const idemKey = "c-ig-r2:instagram:ig-biz-r2"
+
+	// Seed + enqueue from inside extraRegister, not from a second connection
+	// polling the DB file from outside: extraRegister is guaranteed by
+	// runDaemon's own contract to run after db.Migrate and after every real
+	// handler (including publish.instagram) is registered, but before
+	// StartWorkers — so this is race-free (no "table doesn't exist yet" /
+	// SQLITE_BUSY-under-load flake from a second connection racing
+	// migration) and lets this enqueue through the *same* `q` that actually
+	// has publish.instagram registered, via the real q.Enqueue rather than
+	// a hand-built jobs-table INSERT.
+	seeded := make(chan *sql.DB, 1)
+	extra := func(q *queue.Queue) {
+		conn, err := db.Open(context.Background(), dbPath)
+		if err != nil {
+			t.Errorf("open verify db: %v", err)
+			seeded <- nil
+			return
+		}
+
+		warmup := time.Now().UTC().Add(-48 * time.Hour).Format(time.RFC3339Nano)
+		now := time.Now().UTC().Format(time.RFC3339Nano)
+		execOrFail(t, conn, `
+INSERT INTO channels (id, platform, handle, language, niche, account_ref, status, warmup_started_at)
+VALUES (?, 'instagram', 'h', 'en', 'money', 'ig-biz-r2', 'active', ?)`, channelID, warmup)
+		execOrFail(t, conn, `
+INSERT INTO content_items (id, channel_id, kind, language, stage, created_at)
+VALUES (?, ?, 'short', 'en', 'approved', ?)`, contentID, channelID, now)
+		execOrFail(t, conn, `
+INSERT INTO approvals (id, content_id, kind, summary, status, nonce, decided_at)
+VALUES (?, ?, 'short', 'ok', 'approved', '', ?)`, "ap-"+contentID, contentID, now)
+		execOrFail(t, conn, `
+INSERT INTO publications (id, content_id, platform, account, scheduled_at, status, idempotency_key)
+VALUES (?, ?, 'instagram', 'ig-biz-r2', ?, 'scheduled', ?)`, pubID, contentID, now, idemKey)
+
+		if _, err := q.Enqueue(context.Background(), "publish.instagram", map[string]any{
+			"publication_id":  pubID,
+			"content_id":      contentID,
+			"account":         "ig-biz-r2",
+			"idempotency_key": idemKey,
+			"video_path":      "renders/short.mp4",
+			"description":     "M2-122 regression",
+		}); err != nil {
+			t.Errorf("enqueue publish.instagram: %v", err)
+		}
+		seeded <- conn
+	}
+
+	runErrCh := make(chan error, 1)
+	go func() {
+		runErrCh <- runDaemon(ctx, cfg, dbPath, log, extra)
+	}()
+
+	var verifyDB *sql.DB
+	select {
+	case verifyDB = <-seeded:
+		if verifyDB == nil {
+			t.Fatal("extraRegister failed to open its verify db (see prior t.Errorf)")
+		}
+	case err := <-runErrCh:
+		t.Fatalf("runDaemon exited early before extraRegister ran: %v", err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("extraRegister (seed+enqueue) never ran within 10s")
+	}
+	t.Cleanup(func() { _ = verifyDB.Close() })
+
+	// Instagram.Publish marks the publications row 'failed' itself
+	// (failPublication) the moment resolvePublicURL errors — independent of
+	// the jobs table's own retry/backoff state (a plain, non-Permanent
+	// handler error goes back to jobs.status='queued' with backoff, not
+	// 'failed'/'dead', so this polls the publications row directly rather
+	// than waiting on jobs to exhaust retries).
+	var pubStatus, pubErr string
+	deadline2 := time.Now().Add(10 * time.Second)
+	for {
+		err := verifyDB.QueryRow(`SELECT status, COALESCE(error,'') FROM publications WHERE id=?`, pubID).Scan(&pubStatus, &pubErr)
+		if err == nil && pubStatus == "failed" {
+			break
+		}
+		if time.Now().After(deadline2) {
+			t.Fatalf("publications row never reached status='failed' (last status=%q, err=%v)", pubStatus, err)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if pubErr == "" {
+		t.Fatal("want a non-empty publications.error explaining why, got empty")
+	}
+	t.Logf("publish.instagram failed cleanly as expected: %s", pubErr)
+
+	cancel()
+	select {
+	case err := <-runErrCh:
+		if err != nil {
+			t.Fatalf("runDaemon returned an error on shutdown: %v", err)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("runDaemon did not shut down within 15s of context cancellation")
+	}
+}
+
+func execOrFail(t *testing.T, sqlDB *sql.DB, q string, args ...any) {
+	t.Helper()
+	if _, err := sqlDB.Exec(q, args...); err != nil {
+		t.Fatalf("exec: %v\n%s", err, q)
+	}
 }
 
 // goroutineCountStable returns a settled NumGoroutine() reading (a couple of
