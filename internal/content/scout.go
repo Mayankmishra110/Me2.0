@@ -250,9 +250,9 @@ func (s *Scout) Run(ctx context.Context, channel Channel, warmupStartedAt *time.
 		return nil, fmt.Errorf("scout: no keywords for niche %q", channel.Niche)
 	}
 
-	cands := map[string]*candidate{} // key = normalizeTitle
+	cands := map[string]*candidate{} // key = NormalizeTopicTitle
 	add := func(c candidate) {
-		key := normalizeTitle(c.title)
+		key := NormalizeTopicTitle(c.title)
 		if key == "" {
 			return
 		}
@@ -305,7 +305,7 @@ func (s *Scout) Run(ctx context.Context, channel Channel, warmupStartedAt *time.
 			if err != nil {
 				return nil, fmt.Errorf("scout trends %q: %w", kw, err)
 			}
-			key := normalizeTitle(kw)
+			key := NormalizeTopicTitle(kw)
 			if c, ok := cands[key]; ok {
 				c.demand = clamp01(math.Max(c.demand, interest))
 				c.sources = appendUnique(c.sources, "trends")
@@ -343,10 +343,10 @@ func (s *Scout) Run(ctx context.Context, channel Channel, warmupStartedAt *time.
 		sig.BaseScore = base
 		score := base
 		if analyticsOn {
-			if a, ok := analyticsScores[normalizeTitle(c.title)]; ok {
+			if a, ok := analyticsScores[NormalizeTopicTitle(c.title)]; ok {
 				sig.Analytics = a
 				score = (1-analyticsBlendWeight)*base + analyticsBlendWeight*a
-			} else if a, ok := analyticsScores[normalizeTitle(c.keyword)]; ok {
+			} else if a, ok := analyticsScores[NormalizeTopicTitle(c.keyword)]; ok {
 				sig.Analytics = a
 				score = (1-analyticsBlendWeight)*base + analyticsBlendWeight*a
 			}
@@ -367,7 +367,7 @@ func (s *Scout) Run(ctx context.Context, channel Channel, warmupStartedAt *time.
 
 	var fresh []scoredRow
 	for _, r := range ranked {
-		if recent[normalizeTitle(r.cand.title)] {
+		if recent[NormalizeTopicTitle(r.cand.title)] {
 			continue
 		}
 		fresh = append(fresh, r)
@@ -411,7 +411,7 @@ func (s *Scout) AddManual(ctx context.Context, channelID, title, sourceURL strin
 	now := s.opts.Now().UTC()
 	if recent, err := s.recentTitles(ctx, channelID, now.Add(-s.opts.DedupWindow)); err != nil {
 		return Topic{}, err
-	} else if recent[normalizeTitle(title)] {
+	} else if recent[NormalizeTopicTitle(title)] {
 		return Topic{}, fmt.Errorf("scout manual: topic %q already suggested recently", title)
 	}
 
@@ -600,12 +600,12 @@ func pickWithExploration(ranked []scoredRow, limit int, rate float64, randFloat 
 	for i := 0; i < exploitN; i++ {
 		r := ranked[i]
 		out = append(out, pickedCand{cand: r.cand, score: r.score, sig: r.sig, exploration: false})
-		used[normalizeTitle(r.cand.title)] = true
+		used[NormalizeTopicTitle(r.cand.title)] = true
 	}
 	exploreN := limit - len(out)
 	var pool []scoredRow
 	for i := exploitN; i < len(ranked); i++ {
-		if used[normalizeTitle(ranked[i].cand.title)] {
+		if used[NormalizeTopicTitle(ranked[i].cand.title)] {
 			continue
 		}
 		pool = append(pool, ranked[i])
@@ -620,18 +620,18 @@ func pickWithExploration(ranked []scoredRow, limit int, rate float64, randFloat 
 		}
 		r := pool[idx]
 		out = append(out, pickedCand{cand: r.cand, score: r.score, sig: r.sig, exploration: true})
-		used[normalizeTitle(r.cand.title)] = true
+		used[NormalizeTopicTitle(r.cand.title)] = true
 		pool = append(pool[:idx], pool[idx+1:]...)
 		exploreN--
 	}
 	for len(out) < limit {
 		added := false
 		for _, r := range ranked {
-			if used[normalizeTitle(r.cand.title)] {
+			if used[NormalizeTopicTitle(r.cand.title)] {
 				continue
 			}
 			out = append(out, pickedCand{cand: r.cand, score: r.score, sig: r.sig, exploration: false})
-			used[normalizeTitle(r.cand.title)] = true
+			used[NormalizeTopicTitle(r.cand.title)] = true
 			added = true
 			break
 		}
@@ -664,7 +664,17 @@ func appendUnique(ss []string, s string) []string {
 var nonAlpha = regexp.MustCompile(`[^a-z0-9\s]+`)
 var spaceRun = regexp.MustCompile(`\s+`)
 
-func normalizeTitle(s string) string {
+// NormalizeTopicTitle lowercases, strips punctuation (replaced with a space),
+// and collapses whitespace so title comparisons (dedup, keyword matching)
+// ignore case, spacing, and punctuation differences. This is the single
+// source of truth for topic-title normalization: Scout's own dedup/ranking
+// logic uses it directly, and internal/httpapi's manual-topic dedup
+// (POST /api/topics) calls this same function so both entry points into the
+// shared `topics` table treat "AI Tools: 2024!" and "AI Tools 2024" as the
+// same title (M2-120 QA re-review, 2026-09-29 — previously topics.go had its
+// own weaker whitespace-only normalizer that let punctuation-only variants
+// through as non-duplicates).
+func NormalizeTopicTitle(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	s = nonAlpha.ReplaceAllString(s, " ")
 	s = spaceRun.ReplaceAllString(s, " ")
@@ -721,13 +731,13 @@ func KeywordsForNiche(niche string, lang Language) []string {
 }
 
 func nicheFit(title string, keywords []string) float64 {
-	n := normalizeTitle(title)
+	n := NormalizeTopicTitle(title)
 	if n == "" {
 		return 0
 	}
 	best := 0.0
 	for _, kw := range keywords {
-		k := normalizeTitle(kw)
+		k := NormalizeTopicTitle(kw)
 		if k == "" {
 			continue
 		}
@@ -1215,7 +1225,7 @@ WHERE channel_id = ? AND created_at >= ?`, channelID, since.UTC().Format(time.RF
 		if err := rows.Scan(&title); err != nil {
 			return nil, err
 		}
-		out[normalizeTitle(title)] = true
+		out[NormalizeTopicTitle(title)] = true
 	}
 	return out, rows.Err()
 }
@@ -1235,7 +1245,7 @@ WHERE scope = 'topic' AND channel_id = ?`, channelID)
 		if err := rows.Scan(&key, &score); err != nil {
 			return nil, err
 		}
-		out[normalizeTitle(key)] = clamp01(score)
+		out[NormalizeTopicTitle(key)] = clamp01(score)
 	}
 	return out, rows.Err()
 }

@@ -143,6 +143,58 @@ VALUES ('ch1', 'youtube', 'test', 'en', 'money_side_hustles', 'active')`); err !
 	}
 }
 
+// TestTopicsCreateDuplicatePunctuation is a regression test for the QA
+// re-review finding (M2-120, 2026-09-29): topics.go's dedup normalization
+// previously only lowercased and collapsed whitespace (strings.Fields), never
+// stripping punctuation, so "AI Tools: 2024!" and "AI Tools 2024" were not
+// caught as duplicates even though content.Scout.AddManual's real
+// normalizeTitle (regex-stripped) would catch them. Both handlers now share
+// content.NormalizeTopicTitle, so a title differing from an existing one only
+// by punctuation must be rejected as a duplicate.
+func TestTopicsCreateDuplicatePunctuation(t *testing.T) {
+	sqlDB := testDB(t)
+	ctx := context.Background()
+	if _, err := sqlDB.ExecContext(ctx, `
+INSERT INTO channels (id, platform, handle, language, niche, status)
+VALUES ('ch1', 'youtube', 'test', 'en', 'money_side_hustles', 'active')`); err != nil {
+		t.Fatalf("seed channel: %v", err)
+	}
+
+	bus := events.New(sqlDB)
+	h := testServer(t, sqlDB, bus).Handler()
+	cookie := login(t, h)
+
+	// First topic, no punctuation.
+	rr := httptest.NewRecorder()
+	body, _ := json.Marshal(map[string]any{"channel_id": "ch1", "title": "AI Tools 2024"})
+	req := httptest.NewRequest(http.MethodPost, "/api/topics", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("first create status=%d body=%s", rr.Code, rr.Body.String())
+	}
+
+	// Same topic, re-typed with punctuation -> must be caught as a duplicate.
+	rr = httptest.NewRecorder()
+	body, _ = json.Marshal(map[string]any{"channel_id": "ch1", "title": "AI Tools: 2024!"})
+	req = httptest.NewRequest(http.MethodPost, "/api/topics", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("punctuation-variant duplicate status=%d body=%s (want 400 — punctuation-only titles must normalize the same as scout.go's normalizeTitle)", rr.Code, rr.Body.String())
+	}
+
+	var count int
+	if err := sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM topics WHERE channel_id='ch1'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected only the first topic to be persisted, got count=%d", count)
+	}
+}
+
 func TestTopicsCreateValidation(t *testing.T) {
 	sqlDB := testDB(t)
 	ctx := context.Background()

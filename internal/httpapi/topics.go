@@ -261,7 +261,11 @@ func (s *Server) channelExists(ctx context.Context, channelID string) (bool, err
 // recentDuplicateTopic mirrors content.Scout's dedup window (same channel,
 // same normalized title, within content.DefaultScoutDedupWindow) so a
 // manually re-typed topic gets the same "already suggested recently" refusal
-// a rediscovered one would.
+// a rediscovered one would. Title comparison uses content.NormalizeTopicTitle
+// (the exact function content.Scout's own dedup/ranking uses), not a local
+// reimplementation, so punctuation-only variants (e.g. "AI Tools: 2024!" vs
+// "AI Tools 2024") are caught the same way here as they would be by
+// content.Scout.AddManual (M2-120 QA re-review fix, 2026-09-29).
 func (s *Server) recentDuplicateTopic(ctx context.Context, channelID, title string) (bool, error) {
 	since := time.Now().UTC().Add(-content.DefaultScoutDedupWindow).Format(time.RFC3339Nano)
 	rows, err := s.db.QueryContext(ctx,
@@ -270,21 +274,17 @@ func (s *Server) recentDuplicateTopic(ctx context.Context, channelID, title stri
 		return false, err
 	}
 	defer rows.Close()
-	want := normalizeTopicTitle(title)
+	want := content.NormalizeTopicTitle(title)
 	for rows.Next() {
 		var t string
 		if err := rows.Scan(&t); err != nil {
 			return false, err
 		}
-		if normalizeTopicTitle(t) == want {
+		if content.NormalizeTopicTitle(t) == want {
 			return true, nil
 		}
 	}
 	return false, rows.Err()
-}
-
-func normalizeTopicTitle(s string) string {
-	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(s))), " ")
 }
 
 // hasControlChars rejects raw control bytes (including NUL) so a topic title
