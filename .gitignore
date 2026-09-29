@@ -6,6 +6,11 @@
 !.env.example
 node_modules/
 web/dist/
+
+# built dashboard copied into internal/httpapi/dist by scripts/build.ps1
+# (M2-118); the placeholder lives in internal/httpapi/distfallback instead.
+internal/httpapi/dist/*
+!internal/httpapi/dist/.gitkeep
 remotion/out/
 media-tools/.venv/
 __pycache__/

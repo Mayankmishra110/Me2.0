@@ -99,9 +99,13 @@ scripts, keep the `-ExecutionPolicy Bypass` shown here; it applies to that one p
 
 ```powershell
 # 1. Build: web\dist (npm ci only if web\node_modules is missing, then npm run build),
+#    copy web\dist -> internal\httpapi\dist (go:embed cannot reach outside its own
+#    package directory, so the built dashboard is copied in as a build step; that
+#    copy is gitignored — a committed placeholder in internal\httpapi\distfallback
+#    is served instead until you build web\ at least once — see M2-118),
 #    then go build -ldflags "-H windowsgui" -o bin\mayank2.exe ./cmd/mayank2
 powershell -ExecutionPolicy Bypass -File scripts\build.ps1
-powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -SkipWeb     # Go only
+powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -SkipWeb     # Go only (dashboard stays whatever dist/ already has, or the placeholder)
 
 # 2. Preview the install: prints every action, changes nothing
 powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1 -WhatIf

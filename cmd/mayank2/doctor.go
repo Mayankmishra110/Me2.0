@@ -94,6 +94,7 @@ func cmdDoctor(ctx context.Context, args []string) int {
 		checkPythonUV(ctx),
 		checkLookPath(ctx, "claude CLI", "claude", "--version"),
 		checkLookPath(ctx, "git", "git", "--version"),
+		checkTailscale(ctx),
 	}
 
 	if cfg != nil {
@@ -141,6 +142,31 @@ func cmdDoctor(ctx context.Context, args []string) int {
 	}
 	fmt.Println("\ndoctor: all checks passed")
 	return 0
+}
+
+// checkTailscale reports the dashboard's optional Tailscale listener
+// (M2-118): the binary not being on PATH is a feature switched off (⚪), not
+// broken — ResolveListen skips the "tailscale" sentinel address cleanly and
+// the dashboard still serves on 127.0.0.1. Only an installed binary that
+// exists but never resolves an IP (e.g. not logged in / not running yet) is
+// also reported ⚪ for the same reason; the daemon retries it periodically
+// once running. Never ❌ for a plain "not installed".
+func checkTailscale(ctx context.Context) checkResult {
+	path, err := exec.LookPath("tailscale")
+	if err != nil {
+		return offResult("tailscale", "not configured (feature off): binary not found in PATH; dashboard still binds 127.0.0.1")
+	}
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(cctx, "tailscale", "ip", "-4").CombinedOutput()
+	if err != nil {
+		return offResult("tailscale", fmt.Sprintf("not configured (feature off): %s present but `tailscale ip -4` failed (%v) — not logged in / not running?", path, err))
+	}
+	ip := firstLine(string(out))
+	if ip == "" {
+		return offResult("tailscale", fmt.Sprintf("not configured (feature off): %s present but returned no IP", path))
+	}
+	return okResult("tailscale", fmt.Sprintf("%s — ip %s", path, ip))
 }
 
 func checkLookPath(ctx context.Context, label, bin string, versionArgs ...string) checkResult {

@@ -23,60 +23,117 @@ func SetTailscaleIPForTest(fn func() (string, error)) {
 	tailscaleIPFn = fn
 }
 
-// ResolveListen expands dashboard.listen entries into concrete host:port
-// addresses. Allowed hosts are 127.0.0.1 and the machine's Tailscale IP
-// (ARCHITECTURE.md §7). The sentinel host "tailscale" is replaced with that
-// IP. Anything else (0.0.0.0, LAN IP, public IP) is rejected.
-func ResolveListen(addrs []string) ([]string, error) {
-	if len(addrs) == 0 {
-		return nil, fmt.Errorf("httpapi: dashboard.listen is empty")
+// SkippedAddr is one configured dashboard.listen entry that could not be
+// resolved to a bindable address on this attempt. It is not by itself fatal
+// (CONTEXT D24 "run with only the keys/tools you have") — ResolveListen only
+// errors when every entry is skipped.
+type SkippedAddr struct {
+	Input  string // the raw config entry, e.g. "tailscale:7070"
+	Reason string
+}
+
+// ResolveResult is the outcome of resolving dashboard.listen. Addrs are ready
+// to bind now; Skipped entries could not be resolved this time.
+type ResolveResult struct {
+	Addrs   []string
+	Skipped []SkippedAddr
+}
+
+// NeedsTailscaleRetry reports whether any skipped entry was a "tailscale"
+// sentinel, meaning a background retry could add it once Tailscale comes up.
+func (r ResolveResult) NeedsTailscaleRetry() bool {
+	for _, s := range r.Skipped {
+		if isTailscaleSentinel(s.Input) {
+			return true
+		}
 	}
-	var tsIP string
+	return false
+}
+
+func isTailscaleSentinel(addr string) bool {
+	host, _, err := splitHostPort(addr)
+	return err == nil && host == "tailscale"
+}
+
+// ResolveListen expands dashboard.listen entries into concrete host:port
+// addresses, resolving each one independently. Allowed hosts are 127.0.0.1
+// and the machine's Tailscale IP (ARCHITECTURE.md §7). The sentinel host
+// "tailscale" is replaced with that IP; if Tailscale is not installed or not
+// running, that one entry is skipped (not fatal) rather than failing every
+// address in the list. Anything else (0.0.0.0, LAN IP, public IP, malformed
+// address) is also skipped with a reason. It is an error only when every
+// entry is skipped — ResolveListen never falls back to a wildcard or a
+// non-loopback/non-Tailscale address (the loopback lock from M2-101/M2-106
+// is unchanged).
+func ResolveListen(addrs []string) (ResolveResult, error) {
+	if len(addrs) == 0 {
+		return ResolveResult{}, fmt.Errorf("httpapi: dashboard.listen is empty")
+	}
+
 	needTS := false
 	for _, a := range addrs {
-		host, _, err := splitHostPort(a)
-		if err != nil {
-			return nil, err
-		}
-		if host == "tailscale" {
+		if isTailscaleSentinel(a) {
 			needTS = true
 			break
 		}
 	}
+	var tsIP string
+	var tsErr error
 	if needTS {
-		ip, err := tailscaleIPFn()
-		if err != nil {
-			return nil, fmt.Errorf("httpapi: resolve tailscale IP: %w", err)
-		}
-		tsIP = ip
+		tsIP, tsErr = tailscaleIPFn()
 	}
 
-	out := make([]string, 0, len(addrs))
+	var result ResolveResult
 	seen := map[string]bool{}
 	for _, a := range addrs {
-		host, port, err := splitHostPort(a)
-		if err != nil {
-			return nil, err
+		resolved, skipReason := resolveOne(a, tsIP, tsErr)
+		if skipReason != "" {
+			result.Skipped = append(result.Skipped, SkippedAddr{Input: a, Reason: skipReason})
+			continue
 		}
-		switch host {
-		case "127.0.0.1":
-			// ok
-		case "tailscale":
-			host = tsIP
-		default:
-			if tsIP != "" && host == tsIP {
-				break
-			}
-			return nil, fmt.Errorf("httpapi: listen host %q not allowed (want 127.0.0.1 or tailscale)", host)
-		}
-		resolved := net.JoinHostPort(host, port)
 		if seen[resolved] {
 			continue
 		}
 		seen[resolved] = true
-		out = append(out, resolved)
+		result.Addrs = append(result.Addrs, resolved)
 	}
-	return out, nil
+
+	if len(result.Addrs) == 0 {
+		return result, fmt.Errorf("httpapi: no dashboard.listen address could be resolved: %s", summarizeSkipped(result.Skipped))
+	}
+	return result, nil
+}
+
+// resolveOne resolves a single configured address. It returns either a
+// bindable "host:port" or a non-empty skip reason, never both.
+func resolveOne(addr, tsIP string, tsErr error) (resolved, skipReason string) {
+	host, port, err := splitHostPort(addr)
+	if err != nil {
+		return "", err.Error()
+	}
+	switch host {
+	case "127.0.0.1":
+		// ok
+	case "tailscale":
+		if tsErr != nil {
+			return "", fmt.Sprintf("tailscale not available: %s", tsErr)
+		}
+		host = tsIP
+	default:
+		if tsIP == "" || host != tsIP {
+			return "", fmt.Sprintf("listen host %q not allowed (want 127.0.0.1 or tailscale)", host)
+		}
+		// explicit literal that happens to equal the resolved Tailscale IP: allowed
+	}
+	return net.JoinHostPort(host, port), ""
+}
+
+func summarizeSkipped(skipped []SkippedAddr) string {
+	parts := make([]string, len(skipped))
+	for i, s := range skipped {
+		parts[i] = fmt.Sprintf("%s (%s)", s.Input, s.Reason)
+	}
+	return strings.Join(parts, "; ")
 }
 
 func splitHostPort(addr string) (host, port string, err error) {

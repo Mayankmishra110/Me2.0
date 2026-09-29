@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -69,6 +71,36 @@ func login(t *testing.T, h http.Handler) *http.Cookie {
 	}
 	t.Fatal("no session cookie")
 	return nil
+}
+
+// freePort asks the OS for an unused loopback TCP port, for tests that need
+// to bind a real listener (ListenAndServe tests can't use httptest.Server
+// since ListenAndServe owns its own net.Listen calls).
+func freePort(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("freePort: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+	return strconv.Itoa(port)
+}
+
+// waitForServer polls addr until it accepts TCP connections or the test
+// deadline (5s) is hit.
+func waitForServer(t *testing.T, addr string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("server at %s did not come up in time", addr)
 }
 
 func seedApproval(t *testing.T, sqlDB *sql.DB, id, status string) {
