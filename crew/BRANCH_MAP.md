@@ -128,7 +128,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| — | — | (none) | — | — | — | — |
+| M2-122 | `m2/M2-122` (worktree `data/worktrees/m2-122`, off `origin/main` at `141096b`) | Wire R2 presign into Instagram/Facebook/Pinterest publishers (was nil, always failed) | be | (pushed, see ticket) | — | in-review, not yet merged, `needs-sec: yes` |
 
 ## How to regenerate/verify this file
 
