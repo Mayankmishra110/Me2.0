@@ -167,7 +167,7 @@ var specJobTypes = []string{
 	"voice.tts", "visuals.fetch", "render.long", "render.short", "render.thumbnail",
 	"compliance.final",
 	"publish.youtube", "publish.instagram", "publish.facebook", "publish.x", "publish.pinterest", "publish.linkedin",
-	"blog.draft", "blog.merge", "blog.repurpose",
+	"blog.draft", "blog.merge", "blog.repurpose", "blog.medium",
 	"analytics.pull", "storage.cleanup", "summary.daily",
 	"builder.plan", "builder.implement", "builder.audit", "builder.gate",
 }
@@ -175,12 +175,18 @@ var specJobTypes = []string{
 // TestRunDaemon_everySpecJobTypeRegistered is M2-117's acceptance test: every
 // SPEC §5 job type (minus approval.request, see specJobTypes) must resolve
 // through queue.Queue.Enqueue once runDaemon has finished registering
-// handlers — including the six this ticket adds (research.brief,
-// script.write, visuals.fetch, blog.draft, blog.merge, blog.repurpose).
-// queue.Queue.Enqueue itself is the source of truth for "is this type
+// handlers — including the six M2-117 added (research.brief, script.write,
+// visuals.fetch, blog.draft, blog.merge, blog.repurpose) plus blog.medium
+// (M2-121; not in docs/SPEC.md §5's own literal list — see
+// internal/blog/medium.go's JobBlogMedium doc comment — but registered by
+// the same registerBlogHandlers this test exercises, so it belongs here
+// too). queue.Queue.Enqueue itself is the source of truth for "is this type
 // registered" (it returns an explicit "job type not registered" error when
 // not), so this test needs no access to the queue's unexported registration
-// map.
+// map. TELEGRAM_BOT_TOKEN is unset below, so blog.medium registers with a
+// nil Sender (registerBlogHandlers' doc comment) — Enqueue only checks
+// registration, not whether the job would actually succeed if run, so that
+// nil Sender doesn't affect this assertion.
 func TestRunDaemon_everySpecJobTypeRegistered(t *testing.T) {
 	t.Setenv("DASHBOARD_TOKEN", "test-dashboard-token")
 	t.Setenv("TELEGRAM_BOT_TOKEN", "")

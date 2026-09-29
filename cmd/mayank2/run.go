@@ -153,13 +153,26 @@ func runDaemon(ctx context.Context, cfg *config.Config, dbPath string, log *slog
 		ChannelsDir: cfg.Content.ChannelsDir,
 	}
 
+	// Built here (not down by buildTelegramBot's original call site, after
+	// StartWorkers) because registerBlogHandlers (below, still before
+	// StartWorkers) needs it: blog.medium (M2-121) sends its Medium import
+	// link through this same Bot rather than a second Telegram client (see
+	// registerBlogHandlers' doc comment and internal/telegram/bot.go's
+	// SendMessage doc comment). Bot.RegisterHandlers (owns approval.request)
+	// and Bot.Run's long-poll loop are still started later, after workers —
+	// only construction moved up.
+	bot, err := buildTelegramBot(cfg, sqlDB, q, approvals, log)
+	if err != nil {
+		return fmt.Errorf("run: build telegram bot: %w", err)
+	}
+
 	// Single point of registration (ticket AC): every real job handler is
 	// registered exactly once, from here, before StartWorkers runs.
 	if err := registerComplianceAndContent(q, sqlDB, router, approvals, layout, cfg, log); err != nil {
 		return fmt.Errorf("run: register compliance/content handlers: %w", err)
 	}
 	registerPublishHandlers(q, sqlDB, secretsStore, log)
-	if err := registerBlogHandlers(q, sqlDB, router, approvals, secretsStore, cfg, log); err != nil {
+	if err := registerBlogHandlers(q, sqlDB, bus, router, approvals, secretsStore, bot, cfg, log); err != nil {
 		return fmt.Errorf("run: register blog handlers: %w", err)
 	}
 	analyticsSvc := &analytics.Service{
@@ -246,10 +259,8 @@ func runDaemon(ctx context.Context, cfg *config.Config, dbPath string, log *slog
 
 	var extraWG sync.WaitGroup
 
-	bot, err := buildTelegramBot(cfg, sqlDB, q, approvals, log)
-	if err != nil {
-		return fmt.Errorf("run: build telegram bot: %w", err)
-	}
+	// bot was already constructed above (before StartWorkers), so
+	// registerBlogHandlers could wire blog.medium's Telegram sender.
 	if bot == nil {
 		log.Info("run: telegram disabled (no TELEGRAM_BOT_TOKEN) — daemon stays up without it (CONTEXT D24)")
 	} else {
@@ -404,17 +415,29 @@ func registerComplianceAndContent(
 	return nil
 }
 
-// registerBlogHandlers wires blog.draft / blog.merge / blog.repurpose
-// (M2-117; M2-401/402/403 built the stages with no daemon wiring — see
-// tickets/M2-117.md). CONTEXT D24: when cfg.Blog.RepoPath is empty, none of
-// these are registered — an enqueued blog.* job would fail loudly with
-// "job type not registered" (queue.Queue.Enqueue) rather than the daemon
-// silently no-op-ing every blog job forever, and nothing currently enqueues
-// one automatically (no scheduler trigger fires blog.draft — it is manual,
-// e.g. a future Telegram /blog command), so leaving it unregistered is safe.
-func registerBlogHandlers(q *queue.Queue, sqlDB *sql.DB, router *llm.Router, approvals *content.ApprovalService, store *secrets.Store, cfg *config.Config, log *slog.Logger) error {
+// registerBlogHandlers wires blog.draft / blog.merge / blog.repurpose /
+// blog.medium (M2-117 built draft/merge/repurpose; M2-121 adds blog.medium —
+// M2-401/402/403/404 built the stages with no daemon wiring — see
+// tickets/M2-117.md, tickets/M2-121.md). CONTEXT D24: when cfg.Blog.RepoPath
+// is empty, none of these are registered — an enqueued blog.* job would fail
+// loudly with "job type not registered" (queue.Queue.Enqueue) rather than
+// the daemon silently no-op-ing every blog job forever, and nothing
+// currently enqueues one automatically (no scheduler trigger fires
+// blog.draft — it is manual, e.g. a future Telegram /blog command), so
+// leaving it unregistered is safe.
+//
+// bot may be nil (Telegram disabled, no TELEGRAM_BOT_TOKEN — CONTEXT D24):
+// blog.medium is still registered whenever Blog itself is enabled (same
+// gate as draft/merge/repurpose above), but with a nil Sender, so
+// blog.Medium.Handle's own nil check fails that job cleanly at run time —
+// the same "registered, fails cleanly at use time" pattern
+// registerComplianceAndContent already uses for visuals.fetch when no stock
+// provider key is set — instead of leaving blog.medium unregistered and
+// making blog.merge's non-fatal enqueue-failure warning (merge.go) the only
+// signal that Medium links never go out.
+func registerBlogHandlers(q *queue.Queue, sqlDB *sql.DB, bus *events.Bus, router *llm.Router, approvals *content.ApprovalService, store *secrets.Store, bot *telegram.Bot, cfg *config.Config, log *slog.Logger) error {
 	if !cfg.Blog.Enabled() {
-		log.Info("run: blog pipeline not configured (blog.repo_path empty) — blog.draft/blog.merge/blog.repurpose not registered (CONTEXT D24)")
+		log.Info("run: blog pipeline not configured (blog.repo_path empty) — blog.draft/blog.merge/blog.repurpose/blog.medium not registered (CONTEXT D24)")
 		return nil
 	}
 
@@ -486,6 +509,26 @@ func registerBlogHandlers(q *queue.Queue, sqlDB *sql.DB, router *llm.Router, app
 		return fmt.Errorf("build blog repurpose dispatcher: %w", err)
 	}
 	dispatcher.RegisterHandler(q)
+
+	// blog.medium (M2-404 built the stage; M2-121 wires it): reuses the
+	// already-constructed Telegram bot's own SendMessage/ChatID accessors
+	// (internal/telegram/bot.go) rather than a second Telegram client —
+	// resolves CONTEXT open question 6. See this function's doc comment for
+	// the nil-bot (Telegram disabled) behavior.
+	var sender blog.TelegramSender
+	var chatID int64
+	if bot != nil {
+		sender = bot
+		chatID = bot.ChatID()
+	}
+	medium := &blog.Medium{
+		DB:     sqlDB,
+		Bus:    bus,
+		Sender: sender,
+		ChatID: chatID,
+		Log:    log,
+	}
+	medium.RegisterHandler(q)
 
 	return nil
 }

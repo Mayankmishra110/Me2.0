@@ -195,15 +195,19 @@ UPDATE content_items SET stage=? WHERE id=?`, "published", contentID); err != ni
 		m.log.Warn("blog: merge: update stage failed (non-fatal)", "content_id", contentID, "error", err.Error())
 	}
 
-	// blog.medium (M2-404) is deliberately not chained here: it needs a
-	// *telegram.Client sender (internal/blog/medium.go's TelegramSender),
-	// which internal/telegram.Bot does not currently expose publicly, and
-	// wiring that is outside this ticket's touches (cmd/mayank2/,
-	// internal/config/, internal/content/, internal/media/,
-	// internal/blog/{draft,merge,repurpose*}.go) — flagged in CONTEXT.md.
+	// blog.medium (M2-404) now chains here too (M2-121, closing CONTEXT
+	// open question 6): same idempotency guard as blog.repurpose below —
+	// this whole block only runs on a genuinely new merge, since an
+	// already-merged content_id returns early above via lookupPublished,
+	// before either Enqueue call is reached. A failed enqueue is logged and
+	// swallowed, not fatal: the merge itself already succeeded and must not
+	// be undone or retried just because a follow-up chain link failed.
 	if m.opts.Enqueue != nil {
 		if _, err := m.opts.Enqueue.Enqueue(ctx, JobRepurpose, RepurposePayload{ContentID: contentID}, queue.ContentID(contentID)); err != nil {
 			m.log.Warn("blog: merge: enqueue blog.repurpose failed (non-fatal)", "content_id", contentID, "error", err.Error())
+		}
+		if _, err := m.opts.Enqueue.Enqueue(ctx, JobBlogMedium, MediumPayload{ContentID: contentID}, queue.ContentID(contentID)); err != nil {
+			m.log.Warn("blog: merge: enqueue blog.medium failed (non-fatal)", "content_id", contentID, "error", err.Error())
 		}
 	}
 

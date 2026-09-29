@@ -147,6 +147,43 @@ func (b *Bot) RegisterHandlers(q *queue.Queue) {
 	q.Register("approval.request", queue.ResourceNet, 5, b.handleApprovalRequest)
 }
 
+// SendMessage sends a plain-text message to chatID over the same raw Bot
+// API client Bot itself uses for previews/replies (one token, one HTTP
+// client, one place any future retry/rate-limit behavior would live).
+//
+// M2-121 (CONTEXT §5 open question 6, `internal/blog/medium.go`'s
+// TelegramSender): this is the narrow accessor this ticket adds instead of
+// exposing Bot's unexported *Client wholesale. A hypothetical `Bot.Client()`
+// would also hand out Client.GetUpdates, SendPhoto/SendVideo,
+// EditMessageText/Caption and AnswerCallbackQuery — in particular
+// GetUpdates is unsafe to expose: Bot.Run's own long-poll loop is the only
+// thing that should ever advance the stored offset (settings
+// telegram:offset), and the allowlist check (Bot.handleMessage's allowed())
+// lives entirely in Bot, not in Client. A second, uncoordinated GetUpdates
+// caller could steal/skip updates out from under Bot.Run, which would look
+// like inbound approval taps or commands silently going missing — a real
+// safety regression for a control surface CLAUDE.md/D5 depend on. Exposing
+// only SendMessage (which every caller needs the same way: fire a message,
+// no polling, no state) avoids that risk entirely while still centralizing
+// on the one bot token / HTTP client, per CLAUDE.md's "Telegram bot" being
+// the one place Telegram access should live.
+func (b *Bot) SendMessage(ctx context.Context, chatID int64, text string, markup *InlineKeyboardMarkup) (int64, error) {
+	if b == nil || b.client == nil {
+		return 0, fmt.Errorf("telegram: SendMessage: bot not configured")
+	}
+	return b.client.SendMessage(ctx, chatID, text, markup)
+}
+
+// ChatID returns Mayank's allowlisted chat id (TELEGRAM_CHAT_ID) this Bot
+// was constructed with, so a caller that needs to address him directly
+// (e.g. blog.medium, M2-121) doesn't have to re-read the env var itself.
+func (b *Bot) ChatID() int64 {
+	if b == nil {
+		return 0
+	}
+	return b.chatID
+}
+
 // Run long-polls getUpdates until ctx is cancelled. Offset is stored in
 // settings under telegram:offset.
 func (b *Bot) Run(ctx context.Context) error {

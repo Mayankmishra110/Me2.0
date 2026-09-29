@@ -414,7 +414,7 @@ func TestMedium_RegisterHandler(t *testing.T) {
 	m.RegisterHandler(q)
 
 	contentID := seedContentWithPublication(t, sqlDB, "https://mayankbuilt.com/blog/via-queue")
-	if _, err := q.Enqueue(context.Background(), JobBlogMedium, payload{ContentID: contentID}); err != nil {
+	if _, err := q.Enqueue(context.Background(), JobBlogMedium, MediumPayload{ContentID: contentID}); err != nil {
 		t.Fatalf("Enqueue: %v", err)
 	}
 	// RegisterHandler is exercised for wiring; running the job through the

@@ -44,9 +44,10 @@ import (
 // blog.repurpose's LinkedIn/X drafts, immediately after blog.merge. Ticket
 // M2-404 Notes says either wiring (own trigger off blog.merge, or a
 // blog.repurpose destination case) satisfies the acceptance criteria and to
-// pick whichever is simplest. This file registers its own job type,
-// triggered directly by a successful blog.merge (M2-401 wiring is out of
-// this ticket's `touches` and left for that ticket/daemon startup).
+// pick whichever is simplest. This file registers its own job type;
+// M2-121 wires the actual trigger (blog.merge enqueues it directly,
+// internal/blog/merge.go's Run, mirroring the existing blog.repurpose
+// chain) and the daemon registration (cmd/mayank2/run.go).
 const JobBlogMedium = "blog.medium"
 
 // stageMediumLinkSent is the content_items.stage value this file uses to
@@ -134,8 +135,11 @@ type TelegramSender interface {
 	SendMessage(ctx context.Context, chatID int64, text string, markup *telegram.InlineKeyboardMarkup) (int64, error)
 }
 
-// payload is the blog.medium job body.
-type payload struct {
+// MediumPayload is the blog.medium job body (exported, matching
+// MergePayload/RepurposePayload/DraftPayload's naming convention, so
+// blog.merge — M2-121 — can construct one directly when chaining into this
+// job type after a live merge).
+type MediumPayload struct {
 	ContentID string `json:"content_id"`
 }
 
@@ -186,7 +190,7 @@ func (m *Medium) Handle(ctx context.Context, job queue.Job) (json.RawMessage, er
 		return nil, queue.Permanent(fmt.Errorf("blog: medium: nil telegram sender"))
 	}
 
-	var p payload
+	var p MediumPayload
 	if err := json.Unmarshal(job.Payload, &p); err != nil {
 		return nil, queue.Permanent(fmt.Errorf("blog: medium: decode payload: %w", err))
 	}
