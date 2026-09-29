@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -175,8 +176,37 @@ func runDaemon(ctx context.Context, cfg *config.Config, dbPath string, log *slog
 	}
 	_ = buildHandlers
 
-	// scheduler.RegisterHandlers owns summary.daily/storage.cleanup/scout.topics
-	// (scout.topics stays a placeholder until M2-202 lands real content).
+	// scout.topics (M2-119): M2-202's real Niche Scout (internal/content/scout.go)
+	// existed with no queue adapter — the scheduler's daily cron trigger hit a
+	// no-op placeholder instead, so the topic -> research -> ... pipeline never
+	// actually started on its own. Same "not configured" shape as visuals.fetch
+	// above: NewScoutFromEnv needs YOUTUBE_API_KEY (or RSSFeeds, not exposed via
+	// config yet) or it returns *ScoutNotConfiguredError (D24). Unlike blog.*,
+	// scout.topics is still always registered even when unconfigured: the
+	// scheduler's cron trigger enqueues it unconditionally every day, so leaving
+	// the job type unregistered would mean a real "job type not registered"
+	// error every day instead of a clean, expected skip.
+	scout, err := content.NewScoutFromEnv(sqlDB, content.ScoutOptions{
+		ChannelsDir: cfg.Content.ChannelsDir,
+		Logger:      log,
+	}, nil)
+	if err != nil {
+		var notConfigured *content.ScoutNotConfiguredError
+		if !errors.As(err, &notConfigured) {
+			return fmt.Errorf("run: build scout: %w", err)
+		}
+		log.Info("run: scout.topics niche scout not configured (CONTEXT D24)", "missing_env", notConfigured.MissingEnv)
+		q.Register(content.JobScoutTopics, queue.ResourceNet, 3, func(ctx context.Context, job queue.Job) (json.RawMessage, error) {
+			log.Info("run: scout.topics skipped (niche scout not configured, CONTEXT D24)")
+			return json.Marshal(map[string]string{"status": "skipped", "reason": "not configured"})
+		})
+	} else {
+		scout.RegisterHandler(q)
+	}
+
+	// scheduler.RegisterHandlers owns summary.daily/storage.cleanup only —
+	// analytics.pull (M2-116) and scout.topics (M2-119) are registered above
+	// by their own real services, not the scheduler's placeholder.
 	sched, err := scheduler.New(sqlDB, q, scheduler.Config{
 		Location:       cfg.Location,
 		DailySummaryAt: cfg.Telegram.DailySummaryAt,
