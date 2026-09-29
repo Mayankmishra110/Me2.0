@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -146,6 +147,106 @@ func assertNoGoroutineLeak(t *testing.T, baseline int) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	t.Fatalf("possible goroutine leak: baseline=%d, still at %d after shutdown", baseline, last)
+}
+
+// specJobTypes is docs/SPEC.md §5's job-type list, kept as one literal here
+// (rather than duplicated across every package that registers one) so a
+// registration gap reopening — a type SPEC lists that cmd/mayank2/run.go
+// stops registering — fails this test immediately instead of silently
+// reappearing (exactly the class of gap M2-116 and M2-117 both closed).
+//
+// "approval.request" is deliberately excluded: internal/telegram.Bot (and
+// therefore its RegisterHandlers call, which owns that job type) is only
+// built when TELEGRAM_BOT_TOKEN is set (CONTEXT D24) — TestRunDaemon_integration
+// already covers that conditional wiring by disabling it outright, and
+// standing up a fake bot here would mean its Run() goroutine making real
+// outbound calls to api.telegram.org in a test. That is an M2-116 concern,
+// not a gap this ticket introduced.
+var specJobTypes = []string{
+	"scout.topics", "research.brief", "script.write", "compliance.script",
+	"voice.tts", "visuals.fetch", "render.long", "render.short", "render.thumbnail",
+	"compliance.final",
+	"publish.youtube", "publish.instagram", "publish.facebook", "publish.x", "publish.pinterest", "publish.linkedin",
+	"blog.draft", "blog.merge", "blog.repurpose",
+	"analytics.pull", "storage.cleanup", "summary.daily",
+	"builder.plan", "builder.implement", "builder.audit", "builder.gate",
+}
+
+// TestRunDaemon_everySpecJobTypeRegistered is M2-117's acceptance test: every
+// SPEC §5 job type (minus approval.request, see specJobTypes) must resolve
+// through queue.Queue.Enqueue once runDaemon has finished registering
+// handlers — including the six this ticket adds (research.brief,
+// script.write, visuals.fetch, blog.draft, blog.merge, blog.repurpose).
+// queue.Queue.Enqueue itself is the source of truth for "is this type
+// registered" (it returns an explicit "job type not registered" error when
+// not), so this test needs no access to the queue's unexported registration
+// map.
+func TestRunDaemon_everySpecJobTypeRegistered(t *testing.T) {
+	t.Setenv("DASHBOARD_TOKEN", "test-dashboard-token")
+	t.Setenv("TELEGRAM_BOT_TOKEN", "")
+	t.Setenv("TELEGRAM_USER_ID", "")
+	t.Setenv("TELEGRAM_CHAT_ID", "")
+
+	cfg := testConfig(t)
+	// Enable the blog pipeline for this assertion only (CONTEXT D24: off by
+	// default). NewDraft/NewMerge/NewDispatcher never touch the filesystem
+	// or git at construction time, so a bare temp dir is enough to prove
+	// registration without a real Mayankbuilt clone.
+	cfg.Blog.RepoPath = t.TempDir()
+	dbPath := filepath.Join(t.TempDir(), "run-jobtypes.db")
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	type checkResult struct {
+		jobType string
+		err     error
+	}
+	checked := make(chan []checkResult, 1)
+	extra := func(q *queue.Queue) {
+		results := make([]checkResult, 0, len(specJobTypes))
+		for _, jt := range specJobTypes {
+			_, err := q.Enqueue(context.Background(), jt, nil)
+			results = append(results, checkResult{jobType: jt, err: err})
+		}
+		checked <- results
+	}
+
+	runErrCh := make(chan error, 1)
+	go func() { runErrCh <- runDaemon(ctx, cfg, dbPath, log, extra) }()
+
+	var results []checkResult
+	select {
+	case results = <-checked:
+	case err := <-runErrCh:
+		t.Fatalf("runDaemon exited before the registration check ran: %v", err)
+	case <-time.After(15 * time.Second):
+		t.Fatal("timed out waiting for the registration check")
+	}
+
+	for _, r := range results {
+		if r.err != nil && strings.Contains(r.err.Error(), "not registered") {
+			t.Errorf("SPEC §5 job type %q has no registered handler: %v", r.jobType, r.err)
+		}
+	}
+
+	// The extraRegister hook runs before StartWorkers/sched.Start/http
+	// ListenAndServe (runDaemon's own startup order) — give the rest of
+	// startup a moment to finish and reach the blocking <-ctx.Done() before
+	// cancelling, so shutdown races a running daemon rather than one still
+	// mid-startup (which would otherwise surface as a startup error, e.g.
+	// scheduler.Start seeing an already-cancelled context).
+	time.Sleep(200 * time.Millisecond)
+	cancel()
+	select {
+	case err := <-runErrCh:
+		if err != nil {
+			t.Fatalf("runDaemon returned an error on shutdown: %v", err)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("runDaemon did not shut down within 15s of context cancellation")
+	}
 }
 
 func waitForJobStatus(t *testing.T, sqlDB *sql.DB, jobType, want string) {

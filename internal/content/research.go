@@ -6,6 +6,7 @@ package content
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -22,7 +23,11 @@ import (
 	"unicode"
 
 	"mayank2/internal/llm"
+	"mayank2/internal/queue"
 )
+
+// JobResearchBrief is the queue job type (SPEC §5).
+const JobResearchBrief = "research.brief"
 
 // Defaults for Research. Override through ResearchOptions.
 const (
@@ -56,6 +61,28 @@ type ResearchOptions struct {
 	// FetchTranscript handles video URLs. When nil, video URLs error.
 	FetchTranscript TranscriptFunc
 	Logger          *slog.Logger
+
+	// DB, when set, lets the research.brief queue handler create a new
+	// content_items row (kind="short", stage="researching") when a job
+	// payload has no ContentID yet — see RegisterHandler. Optional: a
+	// caller-supplied ContentID always skips this.
+	DB ResearchDB
+	// Enqueue, when set, lets the research.brief handler chain to
+	// script.write on success (ARCHITECTURE §3.1: research.brief ->
+	// script.write). Optional — nil just skips the chain.
+	Enqueue ResearchEnqueuer
+	NewID   func() string
+}
+
+// ResearchDB is the subset of *sql.DB the research.brief handler needs to
+// create a content_items row when a job doesn't already carry a ContentID.
+type ResearchDB interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+// ResearchEnqueuer enqueues the follow-up script.write job.
+type ResearchEnqueuer interface {
+	Enqueue(ctx context.Context, jobType string, payload any, opts ...queue.EnqueueOpt) (id string, err error)
 }
 
 // Research builds a sourced brief for one topic.
@@ -528,6 +555,110 @@ func stripMarkdownFence(s string) string {
 		s = s[:i]
 	}
 	return strings.TrimSpace(s)
+}
+
+// --- research.brief queue handler (M2-117) ----------------------------------
+
+// ResearchJobPayload is the research.brief job body. ChannelID + Language
+// are required so the handler can create a content_items row (when
+// ContentID is empty) and build the script.write payload it chains to.
+type ResearchJobPayload struct {
+	ContentID string   `json:"content_id,omitempty"` // reuse an existing row (e.g. redo); empty -> create one
+	ChannelID string   `json:"channel_id"`
+	Language  string   `json:"language"` // "en" | "hi"
+	Topic     string   `json:"topic"`
+	URLs      []string `json:"urls,omitempty"`
+	VideoURL  string   `json:"video_url,omitempty"`
+	// Allowed is forwarded to script.write's format picker. Empty -> the
+	// handler falls back to every format in the catalog (formats.Catalog).
+	Allowed []string `json:"allowed,omitempty"`
+}
+
+// RegisterHandler registers research.brief on the net resource class (LLM +
+// HTTP source fetches — not a local model or render, so CLAUDE.md's "heavy"
+// rule does not apply).
+func (r *Research) RegisterHandler(q *queue.Queue) {
+	if q == nil || r == nil {
+		return
+	}
+	q.Register(JobResearchBrief, queue.ResourceNet, 3, r.handleJob)
+}
+
+func (r *Research) newID() string {
+	if r.opts.NewID != nil {
+		return r.opts.NewID()
+	}
+	return newRenderULID(time.Now)
+}
+
+func (r *Research) handleJob(ctx context.Context, job queue.Job) (json.RawMessage, error) {
+	var p ResearchJobPayload
+	if err := json.Unmarshal(job.Payload, &p); err != nil {
+		return nil, queue.Permanent(fmt.Errorf("content research.brief payload: %w", err))
+	}
+	contentID := firstNonEmpty(p.ContentID, deref(job.ContentID))
+	channelID := strings.TrimSpace(p.ChannelID)
+	if channelID == "" {
+		return nil, queue.Permanent(fmt.Errorf("content research.brief: channel_id required"))
+	}
+	lang := strings.TrimSpace(p.Language)
+	if lang == "" {
+		return nil, queue.Permanent(fmt.Errorf("content research.brief: language required"))
+	}
+	if strings.TrimSpace(p.Topic) == "" {
+		return nil, queue.Permanent(fmt.Errorf("content research.brief: topic required"))
+	}
+	if contentID != "" && (contentID != filepath.Base(contentID) || strings.Contains(contentID, "..")) {
+		return nil, queue.Permanent(fmt.Errorf("content research.brief: unsafe content_id %q", contentID))
+	}
+
+	if contentID == "" {
+		if r.opts.DB == nil {
+			return nil, queue.Permanent(fmt.Errorf("content research.brief: content_id required (no DB configured to create one)"))
+		}
+		id := r.newID()
+		if _, err := r.opts.DB.ExecContext(ctx, `
+INSERT INTO content_items (id, channel_id, kind, format, language, stage, created_at)
+VALUES (?, ?, 'short', '', ?, 'researching', ?)`,
+			id, channelID, lang, time.Now().UTC().Format(time.RFC3339Nano),
+		); err != nil {
+			return nil, fmt.Errorf("content research.brief: create content_items %s: %w", id, err)
+		}
+		contentID = id
+	}
+
+	// Run against a per-content_id subdirectory of the shared OutDir, not
+	// OutDir itself: r.opts.OutDir is one fixed path set at construction
+	// (single Options.OutDir field), and concurrent research.brief jobs
+	// (net resource class runs 2 workers, config.example.yaml) would
+	// otherwise overwrite each other's brief.json/sources/.
+	perJob := &Research{client: r.client, opts: r.opts, log: r.log}
+	perJob.opts.OutDir = filepath.Join(r.opts.OutDir, contentID)
+	brief, err := perJob.Run(ctx, ResearchInput{Topic: p.Topic, URLs: p.URLs, VideoURL: p.VideoURL})
+	if err != nil {
+		return nil, fmt.Errorf("content research.brief: %w", err)
+	}
+
+	if r.opts.Enqueue != nil {
+		allowed := p.Allowed
+		if len(allowed) == 0 {
+			allowed = allCatalogFormatIDs()
+		}
+		_, err := r.opts.Enqueue.Enqueue(ctx, JobScriptWrite, map[string]any{
+			"content_id": contentID,
+			"channel_id": channelID,
+			"language":   lang,
+			"topic":      p.Topic,
+			"brief":      brief,
+			"allowed":    allowed,
+		}, queue.ContentID(contentID))
+		if err != nil {
+			return nil, fmt.Errorf("content research.brief: enqueue script.write: %w", err)
+		}
+	}
+
+	out := map[string]any{"content_id": contentID, "brief": brief}
+	return json.Marshal(out)
 }
 
 // NormalizeForShingle is exported for future G1 use: lowercases and collapses space.

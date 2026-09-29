@@ -348,6 +348,39 @@ func TestLoad_exampleConfig(t *testing.T) {
 	}
 }
 
+// TestLoad_blogSectionOptional covers M2-117's Blog config: absent/empty
+// repo_path must leave the pipeline cleanly off (Enabled() false, no
+// error), and a configured repo_path must resolve to an absolute path
+// relative to the config file's directory, same as content.channels_dir.
+func TestLoad_blogSectionOptional(t *testing.T) {
+	dir := t.TempDir()
+	channelsDir := filepath.Join(dir, "config", "channels")
+	writeFile(t, filepath.Join(channelsDir, "ch1.yaml"), validChannelYAML("ch1"))
+
+	cfgPath := filepath.Join(dir, "config", "config.yaml")
+	writeFile(t, cfgPath, validConfigYAML("channels"))
+	c, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load (no blog section): %v", err)
+	}
+	if c.Blog.Enabled() {
+		t.Fatalf("Blog.Enabled() = true with no blog section, want false")
+	}
+
+	withBlog := validConfigYAML("channels") + "blog:\n  repo_path: ../Mayankbuilt\n  posts_dir: content/blog\n"
+	writeFile(t, cfgPath, withBlog)
+	c, err = config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load (with blog section): %v", err)
+	}
+	if !c.Blog.Enabled() {
+		t.Fatal("Blog.Enabled() = false with repo_path set, want true")
+	}
+	if !filepath.IsAbs(c.Blog.RepoPath) {
+		t.Fatalf("Blog.RepoPath = %q, want an absolute path", c.Blog.RepoPath)
+	}
+}
+
 func findRepoRoot(t *testing.T) string {
 	t.Helper()
 	wd, err := os.Getwd()

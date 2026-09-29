@@ -123,7 +123,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| — | — | — | — | — | — | (none) |
+| M2-117 | `m2/M2-117` (worktree `data/worktrees/m2-117`, based on `origin/dev`) | Wire remaining job handlers: research, script, visuals, blog | be | `c509601` (+ review commit) | not yet merged | in-review → done, QA+SEC pass (independent qa/sec re-review, re-derived every AC claim from real code + real gofmt/go vet/go test output, incl. `go test ./cmd/mayank2/... -run TestRunDaemon -count=8` clean). Ready for ship. Checked `m2/M2-118` (local branch, no `origin/m2/M2-118` remote ref) — currently identical to `origin/dev` with no ticket file and no divergent commits, so no `run.go` conflict exists yet; re-check when M2-118 actually has work on it.
 
 ## How to regenerate/verify this file
 

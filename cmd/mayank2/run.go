@@ -18,6 +18,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"mayank2/internal/analytics"
+	"mayank2/internal/blog"
 	"mayank2/internal/builder"
 	"mayank2/internal/compliance"
 	"mayank2/internal/config"
@@ -157,6 +158,9 @@ func runDaemon(ctx context.Context, cfg *config.Config, dbPath string, log *slog
 		return fmt.Errorf("run: register compliance/content handlers: %w", err)
 	}
 	registerPublishHandlers(q, sqlDB, secretsStore, log)
+	if err := registerBlogHandlers(q, sqlDB, router, approvals, secretsStore, cfg, log); err != nil {
+		return fmt.Errorf("run: register blog handlers: %w", err)
+	}
 	analyticsSvc := &analytics.Service{
 		DB:     sqlDB,
 		Tokens: analytics.TokenSourceFor(tokenSourceFor(secretsStore, "youtube", redirectURL())),
@@ -293,6 +297,157 @@ func registerComplianceAndContent(
 		Log:           log,
 	}
 	renderer.RegisterHandlers(q)
+
+	// research.brief / script.write (M2-117): M2-203/M2-204's stages
+	// (internal/content/research.go, script.go) existed with no queue
+	// adapter until this ticket. TaskResearch/TaskScript both route through
+	// config's llm.routes to free hosted tiers -> local Ollama last resort
+	// (internal/llm/llm.go, ARCHITECTURE §6) — never Claude (CLAUDE.md
+	// "Claude is for Builder and blog only"). Resource class: net (an LLM
+	// API call / HTTP fetch, not a local model load or a render — CLAUDE.md's
+	// "heavy" rule is specifically about those).
+	researchDir, err := layout.Path(storage.KindWork, "research")
+	if err != nil {
+		return fmt.Errorf("run: research outdir: %w", err)
+	}
+	research, err := content.NewResearch(content.ResearchOptions{
+		OutDir:    researchDir,
+		Completer: router,
+		DB:        sqlDB,
+		Enqueue:   q,
+		Logger:    log,
+	})
+	if err != nil {
+		return fmt.Errorf("run: build research stage: %w", err)
+	}
+	research.RegisterHandler(q)
+
+	scriptDir, err := layout.Path(storage.KindWork, "script")
+	if err != nil {
+		return fmt.Errorf("run: script outdir: %w", err)
+	}
+	script, err := content.NewScript(content.ScriptOptions{
+		OutDir:    scriptDir,
+		Completer: router,
+		DB:        sqlDB,
+		Enqueue:   q,
+		Logger:    log,
+	})
+	if err != nil {
+		return fmt.Errorf("run: build script stage: %w", err)
+	}
+	script.RegisterHandler(q)
+
+	// visuals.fetch (M2-117): M2-207's Stock fetcher (internal/media/stock.go)
+	// existed with no queue adapter. Stock is enabled only when
+	// PEXELS_API_KEY/PIXABAY_API_KEY are set (D24); with neither key,
+	// NewStockFromEnv returns *NotConfiguredError and the handler is still
+	// registered (so an enqueued job fails cleanly at run time, not at
+	// startup) with a nil Stock. Resource class: net (HTTP downloads).
+	stock, err := media.NewStockFromEnv(os.LookupEnv, media.StockOptions{Logger: log})
+	if err != nil {
+		var notConfigured *media.NotConfiguredError
+		if !errors.As(err, &notConfigured) {
+			return fmt.Errorf("run: build stock fetcher: %w", err)
+		}
+		log.Info("run: visuals.fetch stock providers not configured (CONTEXT D24)", "missing_env", notConfigured.MissingEnv)
+		stock = nil
+	}
+	visuals := &media.VisualsFetcher{
+		DB:            sqlDB,
+		Stock:         stock,
+		Layout:        layout,
+		RetentionDays: cfg.Content.RetentionDays,
+		Log:           log,
+	}
+	visuals.RegisterHandler(q)
+
+	return nil
+}
+
+// registerBlogHandlers wires blog.draft / blog.merge / blog.repurpose
+// (M2-117; M2-401/402/403 built the stages with no daemon wiring — see
+// tickets/M2-117.md). CONTEXT D24: when cfg.Blog.RepoPath is empty, none of
+// these are registered — an enqueued blog.* job would fail loudly with
+// "job type not registered" (queue.Queue.Enqueue) rather than the daemon
+// silently no-op-ing every blog job forever, and nothing currently enqueues
+// one automatically (no scheduler trigger fires blog.draft — it is manual,
+// e.g. a future Telegram /blog command), so leaving it unregistered is safe.
+func registerBlogHandlers(q *queue.Queue, sqlDB *sql.DB, router *llm.Router, approvals *content.ApprovalService, store *secrets.Store, cfg *config.Config, log *slog.Logger) error {
+	if !cfg.Blog.Enabled() {
+		log.Info("run: blog pipeline not configured (blog.repo_path empty) — blog.draft/blog.merge/blog.repurpose not registered (CONTEXT D24)")
+		return nil
+	}
+
+	gitTimeout, err := time.ParseDuration(cfg.Blog.GitTimeout)
+	if err != nil || cfg.Blog.GitTimeout == "" {
+		gitTimeout = 2 * time.Minute
+	}
+	blogCfg := blog.Config{
+		RepoPath:           cfg.Blog.RepoPath,
+		PostsDir:           cfg.Blog.PostsDir,
+		BaseBranch:         cfg.Blog.BaseBranch,
+		Remote:             cfg.Blog.Remote,
+		ChannelID:          cfg.Blog.ChannelID,
+		SiteBaseURL:        cfg.Blog.SiteBaseURL,
+		GitTimeout:         gitTimeout,
+		PreviewURLTemplate: cfg.Blog.PreviewURLTemplate,
+	}
+	cred := blog.SecretsToken{Store: store, Platform: "mayankbuilt", Account: "git"}
+	gitRepo := blog.NewLocalGitRepo(blogCfg, cred, nil)
+
+	draft, err := blog.NewDraft(blog.DraftOptions{
+		Config:      blogCfg,
+		Completer:   router,
+		Git:         gitRepo,
+		DB:          sqlDB,
+		Approvals:   approvals,
+		BacklogPath: cfg.Blog.BacklogPath,
+		Logger:      log,
+	})
+	if err != nil {
+		return fmt.Errorf("build blog draft stage: %w", err)
+	}
+	q.Register(blog.JobDraft, queue.ResourceNet, 3, draft.Handler())
+
+	merge, err := blog.NewMerge(blog.MergeOptions{
+		Config:  blogCfg,
+		Git:     gitRepo,
+		DB:      sqlDB,
+		Enqueue: q,
+		Logger:  log,
+	})
+	if err != nil {
+		return fmt.Errorf("build blog merge stage: %w", err)
+	}
+	q.Register(blog.JobMerge, queue.ResourceNet, 3, merge.Handler())
+
+	// blog.repurpose (M2-117 dispatcher, internal/blog/repurpose.go): fans
+	// out to the LinkedIn (M2-402) and X-personal (M2-403) legs, both of
+	// which use llm.TaskBlog — Claude via claude_cli — the one deliberate
+	// exception to "content tasks never use Claude" (CLAUDE.md, CONTEXT D13).
+	linkedin, err := blog.NewRepurposer(blog.Options{Completer: router, Approver: approvals, Logger: log})
+	if err != nil {
+		return fmt.Errorf("build blog linkedin repurposer: %w", err)
+	}
+	xRepurposer := &blog.XRepurposer{
+		DB:        sqlDB,
+		LLM:       router,
+		Approval:  approvals,
+		ChannelID: cfg.Blog.ChannelID,
+		Log:       log,
+	}
+	dispatcher, err := blog.NewDispatcher(blog.RepurposeOptions{
+		DB:       sqlDB,
+		LinkedIn: linkedin,
+		X:        xRepurposer,
+		Logger:   log,
+	})
+	if err != nil {
+		return fmt.Errorf("build blog repurpose dispatcher: %w", err)
+	}
+	dispatcher.RegisterHandler(q)
+
 	return nil
 }
 
