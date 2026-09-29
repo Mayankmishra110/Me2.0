@@ -124,7 +124,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| — | — | — | — | — | — | queue empty |
+| M2-118 | `m2/M2-118` (worktree `data/worktrees/m2-118`, rebased onto `origin/main` after M2-116/M2-117) | httpapi: per-address bind resilience + serve built dashboard | be, then qa/sec (independent re-review) | `2f07f80` (feat, includes fix commit) | (not yet merged) | in-review → done, QA+SEC pass (independent qa/sec re-review this session, re-derived from real code + real go vet/gofmt/go test + web lint/typecheck/test/build + a real manual run: built binary, confirmed loopback-only bind with tailscale absent, real dashboard served at `/`, SPA fallback at `/approvals`, `doctor` ⚪ for tailscale, `git check-ignore` on a freshly-populated `internal/httpapi/dist/`). Loopback-lock security property (no `0.0.0.0`/wildcard fallback) confirmed intact — see ticket `## Review`. Awaiting ship to merge.
 
 ## How to regenerate/verify this file
 
