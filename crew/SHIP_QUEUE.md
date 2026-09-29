@@ -55,6 +55,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | Ticket | Branch | QA | SEC | State |
 |---|---|---|---|---|
 | M2-117 | `m2/M2-117` | pass @ `d067b4a` (independent re-review) | pass @ `d067b4a` (`needs-sec: yes`, satisfied) | **merged** · PR [#2](https://github.com/Mayankmishra110/Me2.0/pull/2) · rebased onto `origin/main` (`e236e5d`, clean, no conflicts) · force-with-lease pushed as `f4b85cc`/`d067b4a` · `--merge` commit `14312b7` on `main` (2026-09-29) |
+| M2-118 | `m2/M2-118` | pass @ `1fe7abb` (independent re-review) | pass @ `1fe7abb` (loopback-lock confirmed intact) | **merged** · PR [#4](https://github.com/Mayankmishra110/Me2.0/pull/4) · rebased onto `origin/main` (`0c89460`, first rebase since M2-116/117 landed; `run.go` auto-merged clean, only `crew/BRANCH_MAP.md` conflicted) · force-with-lease pushed as `403bbe6`/`1fe7abb` · `--merge` commit `f43371d` on `main` (2026-09-29) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -94,6 +95,57 @@ public `*telegram.Client` accessor) — not blockers, not resolved by this ticke
 **How to test** `mayank2 run` with `config.Blog.Enabled()` true, then drive `research.brief` →
 `script.write` → `compliance.script` → … and `blog.draft` → `blog.merge` → `blog.repurpose` through the
 queue; confirm no "not registered" errors and approval gates still fire.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-118 — httpapi per-address bind resilience and serve built dashboard
+Branch: `m2/M2-118` · PR: https://github.com/Mayankmishra110/Me2.0/pull/4 · Merge commit: `f43371d`
+
+**Goal** Fix two bugs: (1) the httpapi server failed to start entirely when its configured Tailscale
+address wasn't available, instead of falling back to loopback; (2) the daemon served a placeholder page
+instead of the real built `web/` dashboard. Full detail in `tickets/M2-118.md`.
+
+**Rebase** `git rebase origin/main` (main at `0c89460`) — first rebase since M2-116/M2-117 landed, both of
+which also touch `cmd/mayank2/run.go`. `run.go` itself auto-merged with **no conflicts**: M2-118's
+`httpapi.New(...)` construction changes and M2-116/M2-117's job-handler registrations (research, script,
+visuals, blog, analytics, etc.) coexist. The only real conflict was in `crew/BRANCH_MAP.md` (this
+tracking file, not product code) — resolved by keeping M2-118's in-progress row rather than the
+just-emptied queue placeholder.
+
+**Checks** (real output, post-rebase, `data/worktrees/m2-118`, 2026-09-29)
+```
+$ export GOROOT="/c/Program Files/Go" PATH="/c/Program Files/Go/bin:$PATH"
+$ gofmt -l .
+(no output — clean)
+$ go vet ./...
+(no output — clean)
+$ go test ./... -count=1
+ok all 22 packages (cmd/mayank2, internal/agency, analytics, blog, builder, compliance, config,
+content, content/formats, db, events, httpapi, llm, media, micro_saas, publish, queue, revenue,
+scheduler, secrets, storage, telegram, tickets); migrations has no test files
+$ go test ./cmd/mayank2/... -run TestRunDaemon -v
+--- PASS: TestRunDaemon_integration (0.23s)
+--- PASS: TestRunDaemon_everySpecJobTypeRegistered (0.33s)
+PASS
+$ sh .githooks/pre-commit --all
+pre-commit: all checks passed
+  (remotion/node_modules was missing in this worktree — a pre-existing environment gap unrelated to
+   this ticket's touches; ran `npm install` in remotion/ to unblock the hook, no code change)
+```
+
+**Review** QA: pass @ `1fe7abb` — independent re-review, re-derived from real code + real gofmt/go
+vet/go test + web lint/typecheck/test/build + a manual run (built binary, confirmed loopback-only bind
+with Tailscale absent, real dashboard served at `/`, SPA fallback at `/approvals`, `doctor` correctly
+flags Tailscale unavailable, `git check-ignore` confirmed on a freshly-populated
+`internal/httpapi/dist/`). SEC: pass @ `1fe7abb` — specific check confirmed the per-address fallback
+never introduces a wildcard/`0.0.0.0` bind; loopback-lock property held throughout.
+
+**Risks / follow-ups** None new. Same `-race` sandbox limitation disclosed on M2-116/M2-117 applies
+repo-wide (no cgo toolchain here).
+
+**How to test** Run `mayank2 run` with and without Tailscale present; confirm the dashboard is reachable
+on loopback either way and never on a wildcard address, and that `/` serves the real built SPA (not a
+placeholder) with `/approvals` falling back correctly.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
