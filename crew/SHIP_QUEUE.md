@@ -58,6 +58,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-118 | `m2/M2-118` | pass @ `1fe7abb` (independent re-review) | pass @ `1fe7abb` (loopback-lock confirmed intact) | **merged** · PR [#4](https://github.com/Mayankmishra110/Me2.0/pull/4) · rebased onto `origin/main` (`0c89460`, first rebase since M2-116/117 landed; `run.go` auto-merged clean, only `crew/BRANCH_MAP.md` conflicted) · force-with-lease pushed as `403bbe6`/`1fe7abb` · `--merge` commit `f43371d` on `main` (2026-09-29) |
 | M2-119 | `m2/M2-119` | pass @ `d858ab0` (independent re-review) | n/a (`needs-sec: no`) | **merged** · PR [#6](https://github.com/Mayankmishra110/Me2.0/pull/6) · already rebased onto `origin/main` (`39d88d7`, clean, no conflicts; main hadn't moved) · ship found+fixed a real startup/shutdown race in the same worktree, pushed as `4ecbcf1` · `--merge` commit `8004df6` on `main` (2026-09-29) |
 | M2-120 | `m2/M2-120` | pass @ `64a6c78` (independent re-review; found dedup-normalization gap, fixed `09f85ff`) | n/a (`needs-sec: no`) | **merged** · PR [#8](https://github.com/Mayankmishra110/Me2.0/pull/8) · rebased onto `origin/main` (`8004df6`, after M2-119/M2-118 landed) · `--merge` commit `ad1e20b` on `main` (2026-09-29) |
+| M2-121 | `m2/M2-121` | pass @ `ead8983` (independent re-review) | pass @ `ead8983` (`needs-sec: yes`, satisfied) | **merged** · PR [#10](https://github.com/Mayankmishra110/Me2.0/pull/10) · already up to date with `origin/main` (`0adbdb7`, no rebase needed) · `--merge` commit `6374358` on `main` (2026-09-29) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -245,6 +246,90 @@ toolchain here) — re-run with `-race` on a cgo-enabled machine before producti
 real `topics` row is written (`source='manual', status='new'`) and returned, a punctuation-variant
 duplicate within the dedup window is refused with 400, and `GET /api/topics` lists it back filterable by
 `channel_id`/`status`.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-121 — Wire blog.medium into the daemon
+Branch: `m2/M2-121` · PR: https://github.com/Mayankmishra110/Me2.0/pull/10 · Merge commit: `6374358`
+
+**Goal** M2-117 wired `blog.draft`/`blog.merge`/`blog.repurpose` into `cmd/mayank2/run.go` and left
+`blog.medium` (M2-404, `internal/blog/medium.go`) as the one remaining SPEC §5 job type still
+unregistered, because `medium.go`'s `TelegramSender` needed a way to send a Telegram message and
+`internal/telegram.Bot` exposed no public surface to do that (CONTEXT open question 6). This ticket wires
+`blog.medium` end to end: registered in the daemon, chained from `blog.merge` the same way it already
+chains into `blog.repurpose`, and gives `internal/telegram.Bot` the minimal accessor it needs. This closes
+out SPEC §5's job-type list — every job type is now wired into the daemon.
+
+**Design decision** Added `Bot.SendMessage(ctx, chatID, text, markup) (int64, error)` and `Bot.ChatID()
+int64` directly on `internal/telegram.Bot`, not a `Bot.Client()` accessor and not a second Telegram client
+inside `internal/blog/medium.go`. A `Bot.Client()` accessor would also have handed out
+`Client.GetUpdates`, letting a second caller poll concurrently with `Bot.Run`'s own long-poll loop and
+race/steal inbound updates — Telegram's `getUpdates` offset semantics mean whichever caller processes an
+update first advances past it for both, so approval-button taps and `/pause`/`/resume` commands could
+silently go missing, entirely bypassing `Bot.handleMessage`'s allowlist check (which only runs on updates
+`Bot.Run` itself receives). The narrow accessors are send-only, delegate only to `Client.SendMessage`, and
+never touch `GetUpdates`, offset state, or the allowlist.
+
+**Acceptance criteria / proof**
+- `Bot.SendMessage`/`Bot.ChatID` added, both nil-receiver-safe (`TestBot_SendMessage_NilBot`), matching
+  `blog.TelegramSender`'s interface exactly so `*telegram.Bot` satisfies it directly.
+- `blog.merge`'s `Run` enqueues `blog.medium` right after `blog.repurpose`, same idempotency guard (early
+  `lookupPublished` return on an already-merged `content_id`) — `TestMerge_RunChainsRepurposeAndMedium`
+  asserts exactly 2 enqueues on a real merge, still 2 on replay.
+- `cmd/mayank2/run.go` registers `blog.medium` gated on `cfg.Blog.Enabled()` (D24), with a nil `Sender`
+  when Telegram is disabled rather than left unregistered — fails cleanly at use time
+  (`TestMedium_Handle_NilSenderIsPermanent`), same degrade shape as `visuals.fetch` with no stock key.
+- `TestRunDaemon_everySpecJobTypeRegistered` covers `blog.medium`.
+- CONTEXT.md open question 6 closed with a `D27` decision-log row; a pre-existing duplicate-numbering bug
+  in CONTEXT §5 (two "5"s, two "6"s, two "7"s) cleaned up in the same edit.
+
+**Checks** (real output, worktree `data/worktrees/m2-121`, ship re-run 2026-09-29)
+```
+git fetch origin && git merge-base --is-ancestor origin/main HEAD && echo "up to date"
+  → up to date (origin/main still 0adbdb7, no rebase needed)
+
+gofmt -l .          → (no output)
+go vet ./...        → (no output)
+go test ./... -count=1
+ok  	mayank2/cmd/mayank2	1.690s
+ok  	mayank2/internal/agency	0.897s
+ok  	mayank2/internal/analytics	1.170s
+ok  	mayank2/internal/blog	45.297s
+ok  	mayank2/internal/builder	29.793s
+ok  	mayank2/internal/compliance	2.153s
+ok  	mayank2/internal/config	0.815s
+ok  	mayank2/internal/content	2.012s
+ok  	mayank2/internal/content/formats	0.643s
+ok  	mayank2/internal/db	0.851s
+ok  	mayank2/internal/events	1.834s
+ok  	mayank2/internal/httpapi	3.422s
+ok  	mayank2/internal/llm	1.581s
+ok  	mayank2/internal/media	1.877s
+ok  	mayank2/internal/micro_saas	1.642s
+ok  	mayank2/internal/publish	4.465s
+ok  	mayank2/internal/queue	2.791s
+ok  	mayank2/internal/revenue	2.298s
+ok  	mayank2/internal/scheduler	2.151s
+ok  	mayank2/internal/secrets	0.707s
+ok  	mayank2/internal/storage	1.132s
+ok  	mayank2/internal/telegram	2.092s
+ok  	mayank2/internal/tickets	1.341s
+?   	mayank2/migrations	[no test files]
+```
+
+**Review** QA: pass @ `ead8983` (independent re-review; re-derived Telegram safety, idempotency, and
+startup-ordering claims from source, re-ran all targeted tests) · SEC: pass @ `ead8983` (`needs-sec: yes`
+— touches `internal/telegram/bot.go`'s public surface; accessor confirmed genuinely send-only, no new
+secrets/endpoints, allowlist and poll loop unaffected)
+
+**Risks / follow-ups** Same `-race` sandbox limitation disclosed on M2-116/117/118/119/120 applies (no cgo
+toolchain here) — re-run with `-race` on a cgo-enabled machine before production. `docs/SPEC.md` §5's
+literal job-type list still doesn't enumerate `blog.medium` (pre-existing gap, left as-is — out of this
+ticket's product-decision scope to change the canonical list); the daemon-level test covers it regardless.
+
+**How to test** Enable Telegram + blog config, run a `blog.draft` through to merge for real content, and
+confirm the chain fires `blog.repurpose` and `blog.medium` exactly once each, with a real Telegram message
+sent containing the Medium import-story link; replay the same merge and confirm no double-enqueue.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
