@@ -86,6 +86,7 @@ All four are independent of each other once 210 and 213 are done — safe to run
 | M2-116 | Wire the daemon: `cmd/mayank2 run` starts everything | 103, 104, 105, 106, 108, 110, 111 |
 | M2-117 | Wire remaining job handlers: research, script, visuals, blog | 116, 203, 204, 207, 401, 402, 403 |
 | M2-119 | Wire real `scout.topics` handler onto the scheduler's daily trigger (M2-202) | 116, 202 |
+| M2-120 | Make GET/POST /api/topics real (was a stub) | 106, 102 |
 | M2-201 | Channel + format config, `channels` sync | 102 |
 | M2-202 | Niche Scout | 111, 201, 103 |
 | M2-203 | Research brief with sources | 111, 202 |
