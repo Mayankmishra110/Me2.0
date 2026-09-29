@@ -118,12 +118,13 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
 | M2-116 | `m2/M2-116` (worktree `data/worktrees/m2-116`, based on `dev` at `ad545bd`) | Wire the daemon: `cmd/mayank2 run` starts everything (queue+handlers+scheduler+telegram+http under one context) | be | `76c11fe`, `85d1581` | `85e3f21` (merged into `dev`) | merged into `dev`, done, QA+SEC pass (independent qa/sec re-review, re-derived from real code + real go vet/gofmt/go test output). Post-merge on `dev`: `gofmt -l .` clean, `go vet ./...` exit 0, `go test ./... -count=1` all green (2026-09-29). Not yet in `main` — see Open questions in CONTEXT.md re: how the accumulated `dev` branch (built under the old phase-branch model, now spanning P1-P6) reconciles with D25's per-ticket-off-`main` auto-merge model before it lands on `main`. |
+| M2-117 | `m2/M2-117` (worktree `data/worktrees/m2-117`, rebased onto `origin/main` at `e236e5d`) | Wire remaining job handlers: research, script, visuals, blog | be | `f4b85cc` (feat, rebased from `c509601`), `d067b4a` (qa+sec review, rebased) | `14312b7` (PR #2, `--merge`, into `main`) | **merged into `main`, done**, QA+SEC pass (independent qa/sec re-review, re-derived every AC claim from real code + real gofmt/go vet/go test output, incl. `go test ./cmd/mayank2/... -run TestRunDaemon -count=8` clean). Rebase onto `origin/main` (e236e5d) was clean, no conflicts (only shared-touches overlap was `docs/SPEC.md`, non-conflicting). Post-rebase `gofmt -l .` clean, `go vet ./...` exit 0, `go test ./... -count=1` all green (2026-09-29, ship re-run before push). `-race` still not runnable in this sandbox (no cgo toolchain) — disclosed residual, same as M2-116; re-run on a cgo-enabled machine before production.
 
 ## In progress (D25 model — per-feature branch off `dev`/`main`)
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-117 | `m2/M2-117` (worktree `data/worktrees/m2-117`, based on `origin/dev`) | Wire remaining job handlers: research, script, visuals, blog | be | `c509601` (+ review commit) | not yet merged | in-review → done, QA+SEC pass (independent qa/sec re-review, re-derived every AC claim from real code + real gofmt/go vet/go test output, incl. `go test ./cmd/mayank2/... -run TestRunDaemon -count=8` clean). Ready for ship. Checked `m2/M2-118` (local branch, no `origin/m2/M2-118` remote ref) — currently identical to `origin/dev` with no ticket file and no divergent commits, so no `run.go` conflict exists yet; re-check when M2-118 actually has work on it.
+| — | — | — | — | — | — | queue empty |
 
 ## How to regenerate/verify this file
 

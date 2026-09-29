@@ -54,7 +54,48 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 
 | Ticket | Branch | QA | SEC | State |
 |---|---|---|---|---|
-| — | — | — | — | queue empty (see phase branch above) |
+| M2-117 | `m2/M2-117` | pass @ `d067b4a` (independent re-review) | pass @ `d067b4a` (`needs-sec: yes`, satisfied) | **merged** · PR [#2](https://github.com/Mayankmishra110/Me2.0/pull/2) · rebased onto `origin/main` (`e236e5d`, clean, no conflicts) · force-with-lease pushed as `f4b85cc`/`d067b4a` · `--merge` commit `14312b7` on `main` (2026-09-29) |
+
+### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
+Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
+
+**Goal** Register the 6 SPEC §5 job types M2-116 left unwired (`research.brief`, `script.write`,
+`visuals.fetch`, `blog.draft`, `blog.merge`, `blog.repurpose`) so the P2 content pipeline and P4 blog
+pipeline run end to end in the daemon. Full detail in `tickets/M2-117.md`.
+
+**Rebase** `git rebase origin/main` (main at `e236e5d`) — clean, no conflicts. Only shared-touches overlap
+with concurrent main activity was `docs/SPEC.md`; no colliding lines.
+
+**Checks** (real output, post-rebase, `data/worktrees/m2-117`, 2026-09-29)
+```
+$ export GOROOT="/c/Program Files/Go" PATH="/c/Program Files/Go/bin:$PATH"
+$ gofmt -l .
+(no output — clean)
+$ go vet ./...
+(no output — clean)
+$ go test ./... -count=1
+ok all 22 packages (cmd/mayank2, internal/agency, analytics, blog, builder, compliance, config,
+content, content/formats, db, events, httpapi, llm, media, micro_saas, publish, queue, revenue,
+scheduler, secrets, storage, telegram, tickets); migrations has no test files
+```
+
+**Review** QA: pass @ `d067b4a` — independent re-review, 8 points traced against real line numbers and
+re-run tests (`go test ./cmd/mayank2/... -run TestRunDaemon -count=8` clean, no flake). SEC: pass @
+`d067b4a` (`needs-sec: yes`) — no secret/token logging in new handlers; path-traversal guard on
+`content_id` confirmed real+tested; both blog-repurpose legs gated behind `ApprovalStarter.Start` before
+publish.
+
+**Risks / follow-ups** `-race` not runnable in this sandbox (`CGO_ENABLED=0`, no cgo toolchain) — same
+disclosed residual as M2-116; re-run `go test -race ./cmd/mayank2/... ./internal/content/...
+./internal/media/... ./internal/blog/... -count=1` on a cgo-enabled machine before production. Two open
+questions flagged to `docs/CONTEXT.md` §5 (per-channel `Allowed` formats fallback; `blog.medium` needing a
+public `*telegram.Client` accessor) — not blockers, not resolved by this ticket.
+
+**How to test** `mayank2 run` with `config.Blog.Enabled()` true, then drive `research.brief` →
+`script.write` → `compliance.script` → … and `blog.draft` → `blog.merge` → `blog.repurpose` through the
+queue; confirm no "not registered" errors and approval gates still fire.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 <!--
 Entry template — copy under "PR bodies", fill in, and add a row above:
