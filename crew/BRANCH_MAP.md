@@ -128,7 +128,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| M2-122 | `m2/M2-122` (worktree `data/worktrees/m2-122`, off `origin/main` at `141096b`) | Wire R2 presign into Instagram/Facebook/Pinterest publishers (was nil, always failed) | be | (pushed, see ticket) | — | in-review, not yet merged, `needs-sec: yes` |
+| M2-122 | `m2/M2-122` (worktree `data/worktrees/m2-122`, off `origin/main` at `141096b`, still up to date on arrival at qa/sec, no rebase needed) | Wire R2 presign into Instagram/Facebook/Pinterest publishers (was nil, always failed) | be, then qa/sec | `cb7c3f9` (fix, `needs-sec: yes`) | — | **done, ready for ship**, QA+SEC pass (independently re-derived: nil-guards precede use in all three publishers, `buildPresigner` matches `internal/scheduler/cleanup.go`'s `storage.NewR2FromEnv` call byte-for-byte, `notConfiguredPresigner` never nil/never panics, `presign_notconfigured_test.go`'s 4 tests and `TestRunDaemon_PublishInstagramWithR2Unconfigured_NoPanic` re-run 5x with no flake, the `extraRegister` SQLITE_BUSY race fix confirmed real, and the "renders never upload to R2" gap independently confirmed via `git grep "\.Upload(ctx"` — only hit repo-wide is a test file — and confirmed honestly documented in `docs/CONTEXT.md` §5 #10 and the ticket, not glossed over). `gofmt -l .`/`go vet ./...`/`go build ./...` clean, `go test ./... -count=1` green (23 packages). Not merged — qa/sec does not run `gh merge`; ship picks this up next. |
 
 ## How to regenerate/verify this file
 
