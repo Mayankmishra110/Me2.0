@@ -109,6 +109,7 @@ All four are independent of each other once 210 and 213 are done — safe to run
 | M2-402 | Repurpose blog post to LinkedIn | 401 |
 | M2-403 | Repurpose blog post to X (personal account) | 401 |
 | M2-404 | Medium import-story link prep | 401 |
+| M2-121 | Wire `blog.medium` into the daemon; chain it off `blog.merge` | 105, 116, 117 |
 | M2-501 | Builder planner: spec/architecture → ordered subphase plan | 103, 105 |
 | M2-502 | Builder implementer: worktree + headless Opus, never main | 501 |
 | M2-503 | Builder auditor: parallel audit against architecture/design | 502 |

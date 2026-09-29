@@ -710,3 +710,62 @@ func TestNewFromEnvDisabled(t *testing.T) {
 		t.Fatalf("want ErrDisabled, got %v", err)
 	}
 }
+
+// TestBot_SendMessage is M2-121's accessor: internal/blog's blog.medium
+// sends its Medium import link through Bot.SendMessage rather than a
+// second Telegram client (CONTEXT open question 6). Proves it reaches the
+// same Bot API sendMessage path bot.reply/approval previews already use,
+// with no allowlist check on the way out (outbound messages to the
+// configured chat are not subject to the inbound-allowlist, which only
+// gates messages/updates coming from Telegram).
+func TestBot_SendMessage(t *testing.T) {
+	sqlDB := testDB(t)
+	api := &fakeAPI{}
+	bot, _ := newTestBot(t, sqlDB, api)
+
+	msgID, err := bot.SendMessage(context.Background(), testChatID, "medium import link", nil)
+	if err != nil {
+		t.Fatalf("SendMessage: %v", err)
+	}
+	if msgID == 0 {
+		t.Fatalf("want non-zero message id, got 0")
+	}
+	api.mu.Lock()
+	defer api.mu.Unlock()
+	if len(api.messages) != 1 {
+		t.Fatalf("want 1 sendMessage call, got %d", len(api.messages))
+	}
+	if text, _ := api.messages[0]["text"].(string); text != "medium import link" {
+		t.Errorf("sent text = %q", text)
+	}
+	if chatID, _ := api.messages[0]["chat_id"].(float64); int64(chatID) != testChatID {
+		t.Errorf("sent chat_id = %v, want %d", api.messages[0]["chat_id"], testChatID)
+	}
+}
+
+// TestBot_ChatID proves the accessor returns exactly the ChatID Bot was
+// constructed with (TELEGRAM_CHAT_ID), so a caller like blog.medium doesn't
+// have to re-read the env var itself.
+func TestBot_ChatID(t *testing.T) {
+	sqlDB := testDB(t)
+	api := &fakeAPI{}
+	bot, _ := newTestBot(t, sqlDB, api)
+	if got := bot.ChatID(); got != testChatID {
+		t.Errorf("ChatID() = %d, want %d", got, testChatID)
+	}
+}
+
+// TestBot_SendMessage_NilBot proves the accessor fails cleanly (no panic)
+// rather than dereferencing a nil Bot — matters because
+// cmd/mayank2/run.go's registerBlogHandlers only calls this when bot != nil,
+// but a future caller shouldn't get a nil-pointer panic if that guard is
+// ever missed.
+func TestBot_SendMessage_NilBot(t *testing.T) {
+	var bot *Bot
+	if _, err := bot.SendMessage(context.Background(), testChatID, "x", nil); err == nil {
+		t.Fatal("want error for nil bot, got nil")
+	}
+	if got := bot.ChatID(); got != 0 {
+		t.Errorf("nil bot ChatID() = %d, want 0", got)
+	}
+}

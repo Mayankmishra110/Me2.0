@@ -127,7 +127,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| — | — | (none) | — | — | — |
+| M2-121 | `m2/M2-121` | Wire `blog.medium` into the daemon | be | (pushed, see branch) | — | in-review, pushed off `origin/main` @ `0adbdb7` |
 
 ## How to regenerate/verify this file
 

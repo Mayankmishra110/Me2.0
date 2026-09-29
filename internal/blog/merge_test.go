@@ -196,3 +196,76 @@ func TestMerge_HandlerAdaptsToQueue(t *testing.T) {
 		t.Errorf("result = %+v", out)
 	}
 }
+
+// fakeEnqueuer records every Enqueue call so tests can assert exactly what
+// blog.merge chains into, without a real queue.Queue/DB-backed queue table.
+type fakeEnqueuer struct {
+	calls []fakeEnqueueCall
+}
+
+type fakeEnqueueCall struct {
+	JobType string
+	Payload any
+}
+
+func (f *fakeEnqueuer) Enqueue(_ context.Context, jobType string, payload any, _ ...queue.EnqueueOpt) (string, error) {
+	f.calls = append(f.calls, fakeEnqueueCall{JobType: jobType, Payload: payload})
+	return "fake-" + jobType, nil
+}
+
+// TestMerge_RunChainsRepurposeAndMedium is M2-121's acceptance test: a
+// genuinely new merge chains into both blog.repurpose (pre-existing,
+// M2-117) and blog.medium (this ticket) exactly once each, with the same
+// idempotency guard — a replayed/already-merged run enqueues neither again.
+func TestMerge_RunChainsRepurposeAndMedium(t *testing.T) {
+	_, cloneDir := newTestMayankbuiltRepo(t)
+	cfg := Config{RepoPath: cloneDir, BaseBranch: "main", Remote: "origin", PostsDir: "content/blog", SiteBaseURL: "https://example.test"}
+	git := NewLocalGitRepo(cfg, nil, nil)
+	sqlDB := openBlogDB(t)
+	draft, err := NewDraft(DraftOptions{
+		Config: cfg, Completer: &fakeCompleter{body: "Chain body."}, Git: git, DB: sqlDB,
+		Approvals: &fakeApproval{nextID: seqIDs("appr-")}, NewID: seqIDs("ID"),
+	})
+	if err != nil {
+		t.Fatalf("NewDraft: %v", err)
+	}
+	dres, err := draft.Run(context.Background(), DraftPayload{Topic: "Chain Test Topic", TopicsSource: "manual"})
+	if err != nil {
+		t.Fatalf("draft: %v", err)
+	}
+	seedApproval(t, sqlDB, "appr-chain", dres.ContentID, "approved")
+
+	enq := &fakeEnqueuer{}
+	merge, err := NewMerge(MergeOptions{Config: cfg, Git: git, DB: sqlDB, NewID: seqIDs("PUB"), Enqueue: enq})
+	if err != nil {
+		t.Fatalf("NewMerge: %v", err)
+	}
+
+	if _, err := merge.Run(context.Background(), MergePayload{ContentID: dres.ContentID}); err != nil {
+		t.Fatalf("merge 1: %v", err)
+	}
+	if len(enq.calls) != 2 {
+		t.Fatalf("first merge: got %d enqueue calls, want 2: %+v", len(enq.calls), enq.calls)
+	}
+	if enq.calls[0].JobType != JobRepurpose {
+		t.Errorf("call[0].JobType = %q, want %q", enq.calls[0].JobType, JobRepurpose)
+	}
+	if got, ok := enq.calls[0].Payload.(RepurposePayload); !ok || got.ContentID != dres.ContentID {
+		t.Errorf("call[0].Payload = %#v, want RepurposePayload{ContentID: %q}", enq.calls[0].Payload, dres.ContentID)
+	}
+	if enq.calls[1].JobType != JobBlogMedium {
+		t.Errorf("call[1].JobType = %q, want %q", enq.calls[1].JobType, JobBlogMedium)
+	}
+	if got, ok := enq.calls[1].Payload.(MediumPayload); !ok || got.ContentID != dres.ContentID {
+		t.Errorf("call[1].Payload = %#v, want MediumPayload{ContentID: %q}", enq.calls[1].Payload, dres.ContentID)
+	}
+
+	// A replayed/already-merged run must not re-chain either job (same
+	// idempotency guard as the publications row itself).
+	if _, err := merge.Run(context.Background(), MergePayload{ContentID: dres.ContentID}); err != nil {
+		t.Fatalf("merge 2: %v", err)
+	}
+	if len(enq.calls) != 2 {
+		t.Fatalf("re-merge must not re-chain: got %d enqueue calls, want still 2: %+v", len(enq.calls), enq.calls)
+	}
+}
