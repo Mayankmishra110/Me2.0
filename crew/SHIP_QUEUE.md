@@ -56,6 +56,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 |---|---|---|---|---|
 | M2-117 | `m2/M2-117` | pass @ `d067b4a` (independent re-review) | pass @ `d067b4a` (`needs-sec: yes`, satisfied) | **merged** · PR [#2](https://github.com/Mayankmishra110/Me2.0/pull/2) · rebased onto `origin/main` (`e236e5d`, clean, no conflicts) · force-with-lease pushed as `f4b85cc`/`d067b4a` · `--merge` commit `14312b7` on `main` (2026-09-29) |
 | M2-118 | `m2/M2-118` | pass @ `1fe7abb` (independent re-review) | pass @ `1fe7abb` (loopback-lock confirmed intact) | **merged** · PR [#4](https://github.com/Mayankmishra110/Me2.0/pull/4) · rebased onto `origin/main` (`0c89460`, first rebase since M2-116/117 landed; `run.go` auto-merged clean, only `crew/BRANCH_MAP.md` conflicted) · force-with-lease pushed as `403bbe6`/`1fe7abb` · `--merge` commit `f43371d` on `main` (2026-09-29) |
+| M2-119 | `m2/M2-119` | pass @ `d858ab0` (independent re-review) | n/a (`needs-sec: no`) | **merged** · PR [#6](https://github.com/Mayankmishra110/Me2.0/pull/6) · already rebased onto `origin/main` (`39d88d7`, clean, no conflicts; main hadn't moved) · ship found+fixed a real startup/shutdown race in the same worktree, pushed as `4ecbcf1` · `--merge` commit `8004df6` on `main` (2026-09-29) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -146,6 +147,68 @@ repo-wide (no cgo toolchain here).
 **How to test** Run `mayank2 run` with and without Tailscale present; confirm the dashboard is reachable
 on loopback either way and never on a wildcard address, and that `/` serves the real built SPA (not a
 placeholder) with `/approvals` falling back correctly.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-119 — Wire real scout.topics handler onto the scheduler's daily trigger (M2-202)
+Branch: `m2/M2-119` · PR: https://github.com/Mayankmishra110/Me2.0/pull/6 · Merge commit: `8004df6`
+
+**Goal** The scheduler's daily cron trigger has fired `scout.topics` since M2-108/116, but it always hit
+`internal/scheduler/handlers.go`'s `placeholderHandler` — a no-op returning
+`{"status":"placeholder","type":"scout.topics"}`. M2-202 (Niche Scout, `internal/content/scout.go`) built
+the real topic-discovery service, but nobody wired the scheduler onto it, so the product's core
+end-to-end loop (SPEC §1 P2 exit check: "Topic → published YouTube Short") never actually started on its
+own. This ticket wires the real handler in, and along the way closes a channel-sync prerequisite gap
+(`Scout.Run` requires the channel already exist in the `channels` table via `SyncChannels`, which nothing
+in `cmd/mayank2` outside tests called before). Full detail in `tickets/M2-119.md`.
+
+**Rebase** Arrived at ship already rebased onto `origin/main` (`39d88d7`) with zero conflicts by the
+independent QA+SEC re-review pass. Re-verified in ship: `git fetch origin && git ls-remote origin main`
+still `39d88d7`; `git merge-base --is-ancestor origin/main HEAD` confirmed up to date — no further rebase
+needed.
+
+**Found and fixed in ship: a startup/shutdown race** Re-running the full check suite surfaced a real
+~1-in-5 flake in the ticket's own acceptance test, `TestRunDaemon_scoutTopicsIsRealHandler` (one repro
+also hit `storage.cleanup`):
+```
+runDaemon returned an error on shutdown: run: start scheduler: scheduler: write last fire scout.topics: context canceled
+```
+Root cause: `cmd/mayank2/run.go` started queue workers (`q.StartWorkers`) before `sched.Start(ctx)`
+finished. `sched.Start` runs `catchUpLocked`'s `ctx`-scoped watermark writes; workers could drain an
+already-enqueued job to success fast enough that a caller cancels `ctx` right after observing success,
+racing `Start`'s own writes on the same `ctx` and turning a clean shutdown into a fatal error. Fixed by
+starting the scheduler before the workers (commit `4ecbcf1`, on top of the reviewed `d858ab0`) — `Start`
+now always completes before any job can run, so no shutdown can race it.
+
+**Checks** (real output, post-fix, `data/worktrees/m2-119`, 2026-09-29)
+```
+$ export GOROOT="/c/Program Files/Go" PATH="/c/Program Files/Go/bin:$PATH"
+$ gofmt -l .
+(no output — clean)
+$ go vet ./...
+(no output — clean)
+$ go test ./... -count=1
+ok all 22 packages (cmd/mayank2, internal/agency, analytics, blog, builder, compliance, config,
+content, content/formats, db, events, httpapi, llm, media, micro_saas, publish, queue, revenue,
+scheduler, secrets, storage, telegram, tickets); migrations has no test files
+$ go test ./cmd/mayank2/... -run TestRunDaemon_scoutTopicsIsRealHandler -count=20
+ok (20/20 — was ~1-in-5 flaky before 4ecbcf1)
+$ sh .githooks/pre-commit --all
+pre-commit: all checks passed
+  (web/ and remotion/ node_modules were missing in this worktree — a pre-existing environment gap
+   unrelated to this ticket's touches; ran `npm install` in both to unblock the hook, no code change)
+```
+
+**Review** QA: pass @ `d858ab0` — independent re-review prior to ship. SEC: n/a — `needs-sec: no`.
+
+**Risks / follow-ups** Same `-race` sandbox limitation disclosed on M2-116/117/118 applies (no cgo
+toolchain here) — re-run with `-race` on a cgo-enabled machine before production. `RSSFeeds`/
+`TrendsBaseURL` remain unexposed via `config.yaml` (pre-existing, flagged in the ticket, out of scope);
+YouTube is the only signal source reachable from the running daemon today.
+
+**How to test** `export YOUTUBE_API_KEY=<key>; mayank2 run` — daily cron fires `scout.topics`; with
+channels configured under `config/channels/*.yaml` it now loads, syncs, and scouts them via the real
+Niche Scout service instead of returning a fixed placeholder.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
