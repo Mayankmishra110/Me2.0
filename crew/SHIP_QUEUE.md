@@ -57,6 +57,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-117 | `m2/M2-117` | pass @ `d067b4a` (independent re-review) | pass @ `d067b4a` (`needs-sec: yes`, satisfied) | **merged** · PR [#2](https://github.com/Mayankmishra110/Me2.0/pull/2) · rebased onto `origin/main` (`e236e5d`, clean, no conflicts) · force-with-lease pushed as `f4b85cc`/`d067b4a` · `--merge` commit `14312b7` on `main` (2026-09-29) |
 | M2-118 | `m2/M2-118` | pass @ `1fe7abb` (independent re-review) | pass @ `1fe7abb` (loopback-lock confirmed intact) | **merged** · PR [#4](https://github.com/Mayankmishra110/Me2.0/pull/4) · rebased onto `origin/main` (`0c89460`, first rebase since M2-116/117 landed; `run.go` auto-merged clean, only `crew/BRANCH_MAP.md` conflicted) · force-with-lease pushed as `403bbe6`/`1fe7abb` · `--merge` commit `f43371d` on `main` (2026-09-29) |
 | M2-119 | `m2/M2-119` | pass @ `d858ab0` (independent re-review) | n/a (`needs-sec: no`) | **merged** · PR [#6](https://github.com/Mayankmishra110/Me2.0/pull/6) · already rebased onto `origin/main` (`39d88d7`, clean, no conflicts; main hadn't moved) · ship found+fixed a real startup/shutdown race in the same worktree, pushed as `4ecbcf1` · `--merge` commit `8004df6` on `main` (2026-09-29) |
+| M2-120 | `m2/M2-120` | pass @ `64a6c78` (independent re-review; found dedup-normalization gap, fixed `09f85ff`) | n/a (`needs-sec: no`) | **merged** · PR [#8](https://github.com/Mayankmishra110/Me2.0/pull/8) · rebased onto `origin/main` (`8004df6`, after M2-119/M2-118 landed) · `--merge` commit `ad1e20b` on `main` (2026-09-29) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -209,6 +210,41 @@ YouTube is the only signal source reachable from the running daemon today.
 **How to test** `export YOUTUBE_API_KEY=<key>; mayank2 run` — daily cron fires `scout.topics`; with
 channels configured under `config/channels/*.yaml` it now loads, syncs, and scouts them via the real
 Niche Scout service instead of returning a fixed placeholder.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-120 — Make GET/POST /api/topics real (was a stub)
+Branch: `m2/M2-120` · PR: https://github.com/Mayankmishra110/Me2.0/pull/8 · Merge commit: `ad1e20b`
+
+**Goal** `POST /api/topics` was a pure echo (decode body, return it back) with no DB or queue effect —
+the one manual entry point SPEC §4 defines for a human to add a topic outside the automatic daily
+`scout.topics` discovery run did nothing. `GET/POST /api/topics` now read and write real `topics` rows,
+mirroring `content.Scout.AddManual`'s existing scoring/dedup convention (M2-202) so a manually-added
+topic seeds the same table the research stage reads from. Full detail in `tickets/M2-120.md`.
+
+**Rebase** Branch started off `origin/main` at `39d88d7`, rebased onto `origin/main` at `8004df6` after
+M2-119/M2-118 landed.
+
+**Found and fixed: a dedup-normalization gap** Independent qa/sec re-review (`64a6c78`, QA: changes)
+found a real drift between `internal/httpapi/topics.go`'s `normalizeTopicTitle` and
+`internal/content/scout.go`'s `normalizeTitle`: the latter stripped non-alphanumeric characters, the
+former did not, so a manual topic could dodge the "same normalized title within the dedup window"
+refusal the ticket claims to match. Fix (`09f85ff`) exports `scout.go`'s normalizer as
+`content.NormalizeTopicTitle` (pure rename, all 16 internal call sites updated, no behavior change) and
+`topics.go`'s `recentDuplicateTopic` now calls it directly for both the incoming title and every scanned
+row, with the old weaker `normalizeTopicTitle` genuinely deleted. Confirmed closed and re-verified in
+`e0c1d44`.
+
+**Review** QA: pass @ `64a6c78` (independent re-review; found + `09f85ff` fixed the dedup-normalization
+gap above). SEC: n/a — `needs-sec: no`.
+
+**Risks / follow-ups** Same `-race` sandbox limitation disclosed on M2-116/117/118/119 applies (no cgo
+toolchain here) — re-run with `-race` on a cgo-enabled machine before production.
+
+**How to test** `POST /api/topics` with `{channel_id, title, source_url?}` for a real channel; confirm a
+real `topics` row is written (`source='manual', status='new'`) and returned, a punctuation-variant
+duplicate within the dedup window is refused with 400, and `GET /api/topics` lists it back filterable by
+`channel_id`/`status`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
