@@ -197,19 +197,6 @@ func (s *Server) handleChannelMetrics(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) handleTopicsList(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"topics": []any{}})
-}
-
-func (s *Server) handleTopicsCreate(w http.ResponseWriter, r *http.Request) {
-	var body json.RawMessage
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid json")
-		return
-	}
-	writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "topic": json.RawMessage(body)})
-}
-
 func (s *Server) handleBuilder(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"plans":   []any{},
