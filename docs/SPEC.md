@@ -98,6 +98,7 @@ All four are independent of each other once 210 and 213 are done — safe to run
 | M2-211 | YouTube OAuth + uploader for 4 channels + quota tracking | 110, 210 |
 | M2-212 | Analytics pull + scores | 211 |
 | M2-213 | Storage retention + R2 presigned URLs | 102 |
+| M2-118 | httpapi: per-address bind resilience and serve the built dashboard | 106, 107, 116 |
 | M2-301 | Instagram Reels publisher | 210, 213 |
 | M2-302 | Facebook Page publisher | 210, 213 |
 | M2-303 | X (business) publisher | 210, 213 |

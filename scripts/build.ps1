@@ -4,7 +4,10 @@
 
 .DESCRIPTION
   1. web/: npm ci (only when node_modules is missing), then npm run build -> web/dist
-  2. go build -ldflags "-H windowsgui" -o bin/mayank2.exe ./cmd/mayank2
+  2. Copy web/dist/* into internal/httpapi/dist (go:embed cannot reach outside its
+     package directory, so the real dashboard is copied in as a build step; that
+     directory is gitignored — see internal/httpapi/spa.go and M2-118)
+  3. go build -ldflags "-H windowsgui" -o bin/mayank2.exe ./cmd/mayank2
 
   The exe is built with -H windowsgui so the logon task runs it without a
   console window. Use `go run ./cmd/mayank2 doctor` when you want console output.
@@ -56,6 +59,21 @@ if (-not $SkipWeb) {
     if (-not (Test-Path (Join-Path $web 'dist\index.html'))) {
         throw 'build: web/dist/index.html was not produced'
     }
+
+    # Copy the built dashboard into internal/httpapi/dist so go:embed picks it
+    # up (embed can only see files inside its own package directory). Keep
+    # .gitkeep so the directory still exists — and `go build` still compiles
+    # — for anyone who runs a Go-only build before ever building web/.
+    $distSrc = Join-Path $web 'dist'
+    $distTarget = Join-Path $repo 'internal\httpapi\dist'
+    if (-not (Test-Path $distTarget)) {
+        New-Item -ItemType Directory -Path $distTarget -Force | Out-Null
+    }
+    Get-ChildItem -Path $distTarget -Force |
+        Where-Object { $_.Name -ne '.gitkeep' } |
+        Remove-Item -Recurse -Force
+    Copy-Item -Path (Join-Path $distSrc '*') -Destination $distTarget -Recurse -Force
+    Write-Host "build: copied web\dist -> internal\httpapi\dist"
 }
 
 # A shell opened before Go was installed may not have it on PATH yet.
