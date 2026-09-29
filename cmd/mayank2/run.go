@@ -221,6 +221,20 @@ func runDaemon(ctx context.Context, cfg *config.Config, dbPath string, log *slog
 		fn(q)
 	}
 
+	// sched.Start must finish (its ctx-scoped catchUpLocked watermark writes
+	// in particular) before workers start processing jobs. Workers can drain
+	// an already-enqueued job to completion fast enough that a caller
+	// cancels ctx right after seeing it succeed; if that raced Start's own
+	// use of the same ctx, Start could return a spurious "context canceled"
+	// and runDaemon would treat a clean shutdown as fatal (seen flaking in
+	// TestRunDaemon_scoutTopicsIsRealHandler, M2-119). Starting the
+	// scheduler first means Start always completes before any job can run,
+	// so no shutdown can race it.
+	if err := sched.Start(ctx); err != nil {
+		return fmt.Errorf("run: start scheduler: %w", err)
+	}
+	log.Info("run: scheduler started")
+
 	// queue.StartWorkers sized from config, not hardcoded.
 	wg := q.StartWorkers(ctx, queue.WorkerPoolConfig{
 		HeavyWorkers: cfg.Queue.HeavyWorkers,
@@ -229,11 +243,6 @@ func runDaemon(ctx context.Context, cfg *config.Config, dbPath string, log *slog
 	})
 	log.Info("run: workers started",
 		"heavy", cfg.Queue.HeavyWorkers, "light", cfg.Queue.LightWorkers, "net", cfg.Queue.NetWorkers)
-
-	if err := sched.Start(ctx); err != nil {
-		return fmt.Errorf("run: start scheduler: %w", err)
-	}
-	log.Info("run: scheduler started")
 
 	var extraWG sync.WaitGroup
 
