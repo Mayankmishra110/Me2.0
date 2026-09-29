@@ -249,6 +249,145 @@ func TestRunDaemon_everySpecJobTypeRegistered(t *testing.T) {
 	}
 }
 
+// TestRunDaemon_scoutTopicsIsRealHandler is M2-119's acceptance test: proves
+// the scheduler's old scout.topics placeholder (which always returned
+// {"status":"placeholder","type":"scout.topics"} regardless of config) has
+// been swapped for internal/content.Scout's real queue handler.
+//
+// It does this two ways, both without any network access:
+//  1. No YOUTUBE_API_KEY set (the default here): the real handler's "not
+//     configured" (CONTEXT D24) skip path returns a distinctly different,
+//     reason-carrying result than the placeholder's fixed shape.
+//  2. YOUTUBE_API_KEY set but ChannelsDir pointed at an empty directory (no
+//     config/channels/*.yaml): the real handler runs its own
+//     LoadChannels/SyncChannels logic and reports channels/topics_written/
+//     errors counters — fields the placeholder never had — with zero
+//     channels found, so still no outbound HTTP call is made.
+func TestRunDaemon_scoutTopicsIsRealHandler(t *testing.T) {
+	t.Setenv("DASHBOARD_TOKEN", "test-dashboard-token")
+	t.Setenv("TELEGRAM_BOT_TOKEN", "")
+	t.Setenv("TELEGRAM_USER_ID", "")
+	t.Setenv("TELEGRAM_CHAT_ID", "")
+
+	t.Run("not configured skips cleanly, not the old placeholder shape", func(t *testing.T) {
+		t.Setenv("YOUTUBE_API_KEY", "")
+		cfg := testConfig(t)
+		cfg.Content.ChannelsDir = t.TempDir() // present but irrelevant: skip happens before it's read
+		dbPath := filepath.Join(t.TempDir(), "run-scout-notconfigured.db")
+		log := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+		ctx, cancel := context.WithCancel(context.Background())
+		extra := func(q *queue.Queue) {
+			if _, err := q.Enqueue(context.Background(), "scout.topics", map[string]string{"trigger": "cron"}); err != nil {
+				t.Errorf("enqueue scout.topics: %v", err)
+			}
+		}
+		runErrCh := make(chan error, 1)
+		go func() { runErrCh <- runDaemon(ctx, cfg, dbPath, log, extra) }()
+
+		verifyDB := waitForRunDB(t, dbPath)
+		waitForJobStatus(t, verifyDB, "scout.topics", "succeeded")
+		result := jobResult(t, verifyDB, "scout.topics")
+
+		if strings.Contains(result, `"placeholder"`) {
+			t.Fatalf("scout.topics still returned the scheduler placeholder shape: %s", result)
+		}
+		var parsed map[string]string
+		if err := json.Unmarshal([]byte(result), &parsed); err != nil {
+			t.Fatalf("scout.topics result not the expected skip shape: %s (%v)", result, err)
+		}
+		if parsed["status"] != "skipped" || parsed["reason"] != "not configured" {
+			t.Fatalf("scout.topics result = %v, want status=skipped reason=\"not configured\"", parsed)
+		}
+
+		stopDaemon(t, cancel, runErrCh)
+	})
+
+	t.Run("configured: runs real LoadChannels/SyncChannels logic", func(t *testing.T) {
+		t.Setenv("YOUTUBE_API_KEY", "test-key-not-a-real-credential")
+		cfg := testConfig(t)
+		cfg.Content.ChannelsDir = t.TempDir() // exists, but has no *.yaml -> 0 channels, no HTTP calls
+		dbPath := filepath.Join(t.TempDir(), "run-scout-configured.db")
+		log := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+		ctx, cancel := context.WithCancel(context.Background())
+		extra := func(q *queue.Queue) {
+			if _, err := q.Enqueue(context.Background(), "scout.topics", map[string]string{"trigger": "cron"}); err != nil {
+				t.Errorf("enqueue scout.topics: %v", err)
+			}
+		}
+		runErrCh := make(chan error, 1)
+		go func() { runErrCh <- runDaemon(ctx, cfg, dbPath, log, extra) }()
+
+		verifyDB := waitForRunDB(t, dbPath)
+		waitForJobStatus(t, verifyDB, "scout.topics", "succeeded")
+		result := jobResult(t, verifyDB, "scout.topics")
+
+		if strings.Contains(result, `"placeholder"`) || strings.Contains(result, `"skipped"`) {
+			t.Fatalf("scout.topics result looks like the placeholder or the not-configured skip: %s", result)
+		}
+		var parsed struct {
+			Channels      int   `json:"channels"`
+			TopicsWritten int   `json:"topics_written"`
+			Errors        []any `json:"errors"`
+		}
+		if err := json.Unmarshal([]byte(result), &parsed); err != nil {
+			t.Fatalf("scout.topics result not the real handler's shape: %s (%v)", result, err)
+		}
+		if parsed.Channels != 0 || parsed.TopicsWritten != 0 || len(parsed.Errors) != 0 {
+			t.Fatalf("scout.topics result = %+v, want all zero (empty ChannelsDir)", parsed)
+		}
+
+		stopDaemon(t, cancel, runErrCh)
+	})
+}
+
+func waitForRunDB(t *testing.T, dbPath string) *sql.DB {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var verifyDB *sql.DB
+	for {
+		db, err := sql.Open("sqlite", dbPath)
+		if err == nil {
+			if pingErr := db.PingContext(ctx); pingErr == nil {
+				verifyDB = db
+				break
+			}
+			_ = db.Close()
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("db at %s never became reachable: %v", dbPath, err)
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+	t.Cleanup(func() { _ = verifyDB.Close() })
+	return verifyDB
+}
+
+func jobResult(t *testing.T, sqlDB *sql.DB, jobType string) string {
+	t.Helper()
+	var result sql.NullString
+	if err := sqlDB.QueryRow(`SELECT result FROM jobs WHERE type=? ORDER BY created_at DESC LIMIT 1`, jobType).Scan(&result); err != nil {
+		t.Fatalf("read result for job type %s: %v", jobType, err)
+	}
+	return result.String
+}
+
+func stopDaemon(t *testing.T, cancel context.CancelFunc, runErrCh chan error) {
+	t.Helper()
+	cancel()
+	select {
+	case err := <-runErrCh:
+		if err != nil {
+			t.Fatalf("runDaemon returned an error on shutdown: %v", err)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("runDaemon did not shut down within 15s of context cancellation")
+	}
+}
+
 func waitForJobStatus(t *testing.T, sqlDB *sql.DB, jobType, want string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

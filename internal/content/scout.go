@@ -23,7 +23,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"mayank2/internal/queue"
 )
+
+// JobScoutTopics is the queue job type (SPEC §5) the scheduler's cron
+// trigger fires daily (internal/scheduler/scheduler.go's scoutAt). It used
+// to resolve to internal/scheduler's placeholder handler until this stage
+// (M2-202) had a queue adapter (M2-119).
+const JobScoutTopics = "scout.topics"
 
 // Env key that enables the YouTube Data API signal source (D24).
 const YouTubeAPIKeyEnv = "YOUTUBE_API_KEY"
@@ -121,6 +129,12 @@ type ScoutOptions struct {
 	TrendsBaseURL string
 	// TrendsAPIKey is sent as Authorization: Bearer <key> when set.
 	TrendsAPIKey string
+
+	// ChannelsDir is where config/channels/*.yaml live (LoadChannels). Only
+	// used by the scout.topics queue handler (RegisterHandler/handleJob) to
+	// discover which channels to run Scout.Run for; NewScout/Run themselves
+	// take a Channel directly and do not need it.
+	ChannelsDir string
 
 	Limit           int
 	ManualBoost     float64
@@ -426,6 +440,91 @@ func (s *Scout) AddManual(ctx context.Context, channelID, title, sourceURL strin
 		return Topic{}, fmt.Errorf("scout manual write %q: %w", title, err)
 	}
 	return topic, nil
+}
+
+// --- scout.topics queue handler (M2-119) ------------------------------------
+
+// scoutChannelError is one channel's Run failure, reported in handleJob's
+// result so a partial failure (e.g. one channel's YouTube quota exhausted)
+// is visible without failing the whole job.
+type scoutChannelError struct {
+	ChannelID string `json:"channel_id"`
+	Err       string `json:"err"`
+}
+
+// RegisterHandler registers scout.topics on the net resource class (YouTube
+// Data API / RSS / Trends are HTTP calls, not a local model load or a
+// render — CLAUDE.md's "heavy" rule is specifically about those).
+func (s *Scout) RegisterHandler(q *queue.Queue) {
+	if q == nil || s == nil {
+		return
+	}
+	q.Register(JobScoutTopics, queue.ResourceNet, 3, s.handleJob)
+}
+
+// handleJob runs Run for every configured channel (ARCHITECTURE §3:
+// "scheduler (daily per channel) -> scout.topics -> topics table"). The
+// scheduler's cron trigger enqueues an empty/{"trigger":"cron"} payload —
+// scout.topics is not per-channel like research.brief/script.write, so
+// there is nothing to unmarshal from job.Payload; the handler discovers
+// channels itself from ChannelsDir.
+//
+// Channels are loaded fresh (not cached) on every fire and synced into the
+// channels table first: Run's own doc comment requires the channel already
+// exist there (FK), and nothing in cmd/mayank2 syncs config/channels/*.yaml
+// into that table outside tests otherwise (SyncChannels, M2-201).
+func (s *Scout) handleJob(ctx context.Context, job queue.Job) (json.RawMessage, error) {
+	_ = job
+	if strings.TrimSpace(s.opts.ChannelsDir) == "" {
+		return nil, queue.Permanent(fmt.Errorf("content scout.topics: ChannelsDir not configured"))
+	}
+	channels, err := LoadChannels(s.opts.ChannelsDir)
+	if err != nil {
+		return nil, fmt.Errorf("content scout.topics: load channels: %w", err)
+	}
+
+	now := s.opts.Now().UTC()
+	recs, err := SyncChannels(ctx, s.db, channels, now)
+	if err != nil {
+		return nil, fmt.Errorf("content scout.topics: sync channels: %w", err)
+	}
+	warmupByID := make(map[string]*time.Time, len(recs))
+	for _, r := range recs {
+		warmupByID[r.ID] = r.WarmupStartedAt
+	}
+
+	var (
+		topicsWritten int
+		failed        []scoutChannelError
+	)
+	for _, ch := range channels {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		topics, runErr := s.Run(ctx, ch, warmupByID[ch.ID])
+		topicsWritten += len(topics)
+		if runErr != nil {
+			s.log.Error("content scout.topics: channel failed", "channel", ch.ID, "err", runErr)
+			failed = append(failed, scoutChannelError{ChannelID: ch.ID, Err: runErr.Error()})
+		}
+	}
+
+	result, marshalErr := json.Marshal(map[string]any{
+		"channels":       len(channels),
+		"topics_written": topicsWritten,
+		"errors":         failed,
+	})
+	if marshalErr != nil {
+		return nil, marshalErr
+	}
+	if len(channels) > 0 && len(failed) == len(channels) {
+		// Every channel failed: surface a retryable job error so the queue's
+		// retry/backoff applies, instead of reporting success with zero
+		// topics written.
+		return result, fmt.Errorf("content scout.topics: all %d channel(s) failed, e.g. %s: %s",
+			len(channels), failed[0].ChannelID, failed[0].Err)
+	}
+	return result, nil
 }
 
 // QuotaUsed returns YouTube API units spent in the last Run.
