@@ -2,7 +2,9 @@
 
 An always-on team of AI agents running on one Windows laptop. It runs a faceless content business (4 YouTube channels + Instagram, Facebook, X, Pinterest), publishes Mayank's tech blog (portfolio, LinkedIn, Medium, X), and builds software with two parallel coding agents. Everything public waits for a one-tap approval on Telegram.
 
-**Status:** documentation phase. Start with [docs/CONTEXT.md](docs/CONTEXT.md).
+**Status:** built and running (P1–P6). `doctor`/`run` work today; publishing needs your own
+platform API keys (see Quick start below) and local tools (ffmpeg, Ollama) installed. Start with
+[docs/CONTEXT.md](docs/CONTEXT.md).
 
 ## Docs
 
@@ -82,7 +84,7 @@ Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apike
 Cloud billing **off** on that project so usage stays on the free tier. `config.example.yaml`'s
 `llm.providers.gemini.model` comment records which model id is current and where it was checked.
 
-## Run (available after M2-101 … M2-109)
+## Run
 
 ```powershell
 copy config\config.example.yaml config\config.yaml   # then edit
