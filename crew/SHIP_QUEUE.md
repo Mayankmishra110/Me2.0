@@ -59,6 +59,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-119 | `m2/M2-119` | pass @ `d858ab0` (independent re-review) | n/a (`needs-sec: no`) | **merged** · PR [#6](https://github.com/Mayankmishra110/Me2.0/pull/6) · already rebased onto `origin/main` (`39d88d7`, clean, no conflicts; main hadn't moved) · ship found+fixed a real startup/shutdown race in the same worktree, pushed as `4ecbcf1` · `--merge` commit `8004df6` on `main` (2026-09-29) |
 | M2-120 | `m2/M2-120` | pass @ `64a6c78` (independent re-review; found dedup-normalization gap, fixed `09f85ff`) | n/a (`needs-sec: no`) | **merged** · PR [#8](https://github.com/Mayankmishra110/Me2.0/pull/8) · rebased onto `origin/main` (`8004df6`, after M2-119/M2-118 landed) · `--merge` commit `ad1e20b` on `main` (2026-09-29) |
 | M2-121 | `m2/M2-121` | pass @ `ead8983` (independent re-review) | pass @ `ead8983` (`needs-sec: yes`, satisfied) | **merged** · PR [#10](https://github.com/Mayankmishra110/Me2.0/pull/10) · already up to date with `origin/main` (`0adbdb7`, no rebase needed) · `--merge` commit `6374358` on `main` (2026-09-29) |
+| M2-122 | `m2/M2-122` | pass (independently re-derived) | pass (`needs-sec: yes`, satisfied) | **merged** · PR [#12](https://github.com/Mayankmishra110/Me2.0/pull/12) · already up to date with `origin/main` (`141096b`, no rebase needed) · `--merge` commit `00147b9` on `main` (2026-09-30) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -330,6 +331,66 @@ ticket's product-decision scope to change the canonical list); the daemon-level 
 **How to test** Enable Telegram + blog config, run a `blog.draft` through to merge for real content, and
 confirm the chain fires `blog.repurpose` and `blog.medium` exactly once each, with a real Telegram message
 sent containing the Medium import-story link; replay the same merge and confirm no double-enqueue.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-122 — Wire R2 presign into Instagram/Facebook/Pinterest publishers
+Branch: `m2/M2-122` · PR: https://github.com/Mayankmishra110/Me2.0/pull/12 · Merge commit: `00147b9`
+
+**Goal** `registerPublishHandlers` (`cmd/mayank2/run.go`) never built a `*storage.R2Client` or assigned
+Instagram/Facebook/Pinterest's `Presign` field, so every real publish to those three platforms failed
+with "R2 presigner not configured" even with valid `R2_*` credentials set. `buildPresigner` now wires a
+real `storage.R2Client` when R2 is configured, and a non-nil `notConfiguredPresigner` (never nil) that
+returns a clean, typed error when it isn't (CONTEXT D24). YouTube/X need no `Presign` (direct local
+upload). Full detail in `tickets/M2-122.md`.
+
+**Audit correction** The ticket was originally reported as a nil-interface panic risk. That does not
+hold: all three publishers already null-check `Presign` before calling it (verified in
+`instagram.go`/`facebook.go`/`pinterest.go`). The real bug was the presigner never being built at all,
+which silently broke publishing to all three platforms even when R2 was fully configured — a correctness
+bug, not a crash-safety one. Corrected and recorded honestly in the ticket and commit `cb7c3f9` rather
+than shipping the original (wrong) framing.
+
+**Honest follow-up gap, not fixed here** Confirmed and recorded in `docs/CONTEXT.md` §5 #10: nothing in
+the repo currently uploads a render to R2 (`git grep "\.Upload(ctx"` — the only hit repo-wide is a test
+file), so `R2KeyResolver`'s `VideoPath` fallback presigns a key that was never populated. This ticket only
+wires the presigner into the publishers; it does not make renders upload to R2. Tracked separately as
+**M2-123** — out of this ticket's scope, flagged not fixed.
+
+**Rebase** Branch was off `origin/main` at `141096b`, still up to date on arrival at qa/sec and again in
+ship — no rebase needed.
+
+**Checks** (real output, `data/worktrees/m2-122`, 2026-09-29/30)
+```
+gofmt -l .        → (no output — clean)
+go vet ./...      → (no output — clean)
+go build ./...    → (no output — clean)
+go test ./... -count=1
+ok all 23 packages, incl. internal/publish (presign_notconfigured_test.go: nil and
+not-configured Presign never panic, Instagram/Facebook/Pinterest) and cmd/mayank2
+(TestRunDaemon_PublishInstagramWithR2Unconfigured_NoPanic: a real publish.instagram job with
+R2 fully unconfigured fails cleanly and runDaemon drains without crashing)
+```
+
+**Review** QA: pass (independently re-derived: nil-guards precede use in all three publishers confirmed
+genuine — the audit correction holds; `buildPresigner` matches `internal/scheduler/cleanup.go`'s
+`storage.NewR2FromEnv` call byte-for-byte; `notConfiguredPresigner` never nil/never panics;
+`presign_notconfigured_test.go`'s 4 tests and `TestRunDaemon_PublishInstagramWithR2Unconfigured_NoPanic`
+re-run 5x with no flake; the `extraRegister` SQLITE_BUSY race fix confirmed real; the "renders never
+upload to R2" gap independently confirmed via `git grep "\.Upload(ctx"` and confirmed honestly documented
+in `docs/CONTEXT.md` §5 #10 and the ticket, not glossed over) · SEC: pass (`needs-sec: yes`, satisfied —
+no secret/token logging in `buildPresigner`, R2 credentials sourced the same way as the existing
+`storage.NewR2FromEnv` path, no new attack surface)
+
+**Risks / follow-ups** Same `-race` sandbox limitation disclosed on M2-116 through M2-121 applies (no cgo
+toolchain here) — re-run with `-race` on a cgo-enabled machine before production. **M2-123** (new ticket):
+wire renders to actually upload to R2 — today `R2KeyResolver`'s presigned key is never populated by
+anything, so Instagram/Facebook/Pinterest publish jobs will still fail downstream of this fix until a
+render's output is actually uploaded to the bucket this presigner points at.
+
+**How to test** With `R2_*` env vars set and a completed render, drive a `publish.instagram` (or
+facebook/pinterest) job through the queue; confirm it no longer fails with "R2 presigner not configured".
+With R2 unset, confirm the same job fails with a clean typed error, no panic.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
