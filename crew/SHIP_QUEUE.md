@@ -60,6 +60,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-120 | `m2/M2-120` | pass @ `64a6c78` (independent re-review; found dedup-normalization gap, fixed `09f85ff`) | n/a (`needs-sec: no`) | **merged** · PR [#8](https://github.com/Mayankmishra110/Me2.0/pull/8) · rebased onto `origin/main` (`8004df6`, after M2-119/M2-118 landed) · `--merge` commit `ad1e20b` on `main` (2026-09-29) |
 | M2-121 | `m2/M2-121` | pass @ `ead8983` (independent re-review) | pass @ `ead8983` (`needs-sec: yes`, satisfied) | **merged** · PR [#10](https://github.com/Mayankmishra110/Me2.0/pull/10) · already up to date with `origin/main` (`0adbdb7`, no rebase needed) · `--merge` commit `6374358` on `main` (2026-09-29) |
 | M2-122 | `m2/M2-122` | pass (independently re-derived) | pass (`needs-sec: yes`, satisfied) | **merged** · PR [#12](https://github.com/Mayankmishra110/Me2.0/pull/12) · already up to date with `origin/main` (`141096b`, no rebase needed) · `--merge` commit `00147b9` on `main` (2026-09-30) |
+| M2-123 | `m2/M2-123` | pass @ `002d3e0` (independent re-review) | pass @ `002d3e0` (`needs-sec: yes`, satisfied) | **merged** · PR [#14](https://github.com/Mayankmishra110/Me2.0/pull/14) · rebased onto `origin/main` (`9240be8`, one real conflict in `registerPublishHandlers`, resolved keeping the shared-`R2Client` superset design) · `--merge` commit `c78a0c8` on `main` (2026-10-01) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -391,6 +392,64 @@ render's output is actually uploaded to the bucket this presigner points at.
 **How to test** With `R2_*` env vars set and a completed render, drive a `publish.instagram` (or
 facebook/pinterest) job through the queue; confirm it no longer fails with "R2 presigner not configured".
 With R2 unset, confirm the same job fails with a clean typed error, no panic.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-123 — Upload renders to R2 so publishers can actually reach them
+Branch: `m2/M2-123` · PR: https://github.com/Mayankmishra110/Me2.0/pull/14 · Merge commit: `c78a0c8`
+
+**Goal** Closes the gap M2-122's review found: renders were never actually uploaded to R2, so the
+presigned URLs M2-122 wired up would 404 at publish time. Design is eager upload at render time
+(`internal/content/render.go`) plus a read-back resolver at publish time (`internal/publish/r2resolver.go`,
+new) that turns an `assets.r2_key` into a live presigned URL. Render and publish now share one `R2Client`
+instance. Full detail in `tickets/M2-123.md`.
+
+**Mid-build gap fix, same code path** Found and fixed that Pinterest's cover-image presign was never wired
+to use R2 at all — Instagram and Facebook had it, Pinterest didn't (`internal/publish/pinterest.go`). Now
+wired identically to the other two platforms.
+
+**No new migration** Confirmed `assets.r2_key` has existed since M2-102's initial migration
+(`migrations/001_init.sql`) — this ticket only starts writing/reading it, the schema was already there.
+
+**Rebase** Branch was off `origin/main` at `9240be8` (after M2-122 landed), still unchanged on arrival in
+ship. One real conflict in `registerPublishHandlers` — expected overlap with M2-122's `buildPresigner` —
+resolved by keeping this ticket's superset design (one shared `R2Client` across render+publish), deleting
+the now-dead duplicate `buildPresigner` code. No product-behavior disagreement.
+
+**Checks** (real output, `data/worktrees/m2-123`, 2026-10-01)
+```
+gofmt -l .        → (no output — clean)
+go vet ./...      → (no output — clean)
+go build ./...    → (no output — clean)
+go test ./... -count=1
+ok all packages, incl. internal/content (render_r2_test.go: upload-succeeds /
+upload-fails-continues / R2-unconfigured paths) and internal/publish
+(r2resolver_test.go: presigned-URL resolution for Instagram/Facebook/Pinterest)
+
+sh .githooks/pre-commit --all → all checks passed (go, web, remotion, media-tools;
+web/ and remotion/ node_modules were missing in this fresh worktree — pre-existing
+environment gap unrelated to this ticket's scope, npm install run in both to
+unblock, not a code change)
+```
+
+**Review** QA: pass (independent re-derived: `r2_key` column confirmed already present in
+`migrations/001_init.sql` since M2-102 — no missing migration; Pinterest's `R2KeyResolver` field confirmed
+genuinely absent at `9240be8` via `git show`, now wired identically to Instagram/Facebook; D24 nil-R2
+degrade path traced end-to-end; no secrets in the new upload-failure log line; 3 new tests in
+`internal/content/render_r2_test.go` cover paths with no prior direct coverage) · SEC: pass (`needs-sec: yes`,
+satisfied — shared `R2Client` reuses the same credential-sourcing path as M2-122, no new attack surface, no
+token logging)
+
+**Risks / follow-ups** Same `-race` sandbox limitation disclosed on prior tickets applies (no cgo toolchain
+here) — re-run with `-race` on a cgo-enabled machine before production.
+
+**How to test** Trigger a render for any brand kit/format; confirm the resulting `assets` row has a
+non-empty `r2_key`. Trigger a publish to Instagram, Facebook, or Pinterest and confirm the platform
+receives a live presigned URL that resolves to the uploaded render (not a 404).
+
+**Closes out the publish-pipeline chain started with M2-122**: with this merged, Instagram/Facebook/Pinterest
+publishing is now end-to-end reachable with real credentials (render → R2 upload → presigned URL → platform
+fetch), not just wired without being reachable.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
