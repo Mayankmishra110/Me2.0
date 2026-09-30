@@ -129,7 +129,7 @@ Batch-2 merge wave complete for 103/104/213/114/201/105/106/110/202/203 + Schedu
 
 | Ticket | Branch | Feature | Role | Commits (own range) | Merge commit | State |
 |---|---|---|---|---|---|---|
-| (none) | — | — | — | — | — | — |
+| M2-123 | `m2/M2-123` (worktree `data/worktrees/m2-123`, rebased onto `origin/main` at `9240be8` after M2-122 landed) | Upload finished renders to R2 at render time (`Renderer.recordFile`) + read-back `AssetR2KeyResolver` at publish time, closing the "renders never upload to R2" gap M2-122 documented | be, then qa/sec (independent re-review) | `190af92` (feat, rebased; includes the Pinterest `R2KeyResolver` gap fix) | (not yet merged) | QA+SEC pass (independent re-review, re-derived from real code: `r2_key` column confirmed already present in `migrations/001_init.sql` since M2-102 — no missing migration; Pinterest's `R2KeyResolver` field confirmed genuinely absent at `9240be8` via `git show`, now wired identically to Instagram/Facebook; D24 nil-R2 degrade path traced end-to-end; no secrets in the new upload-failure log line). Rebase onto `origin/main` (1 ahead/5 behind) hit one real conflict in `registerPublishHandlers` — expected overlap with M2-122, resolved keeping this ticket's shared-`r2Client`-parameter design, removing the now-redundant `buildPresigner` and its duplicate type defs; no product-behavior conflict. qa added 3 new tests (`internal/content/render_r2_test.go`) covering the upload-succeeds / upload-fails-continues / R2-unconfigured paths that had no direct coverage before. `gofmt -l .`/`go vet ./...`/`go build ./...` clean, `go test ./... -count=1` green (23 packages, tip `190af92`). Ready for ship. |
 
 ## How to regenerate/verify this file
 
