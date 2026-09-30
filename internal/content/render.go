@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"math/big"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -56,6 +57,23 @@ type Renderer struct {
 	Now           func() time.Time
 	NewID         func() string
 	Log           *slog.Logger
+
+	// R2 uploads finished render/thumbnail assets to Cloudflare R2 (M2-123,
+	// CONTEXT D20) right after each one is written locally, so the assets
+	// row's r2_key is populated and internal/publish's
+	// Instagram/Facebook/Pinterest publishers (which presign R2KeyResolver's
+	// result, or fall back to VideoPath — see M2-122) have a real object to
+	// point at. R2 is optional (D24, "run with only the keys you have"): a
+	// nil R2 (no R2_* env keys configured) means every render still
+	// completes and is fully usable locally (dashboard preview,
+	// /media/{asset-id}, YouTube/X direct-upload publishers) — it just has
+	// no r2_key, so an Instagram/Facebook/Pinterest publish attempt for that
+	// asset fails cleanly at presign time instead of at render time. An R2
+	// upload failure while R2 *is* configured (network blip, bad creds)
+	// follows the same rule: it's logged and the render still succeeds
+	// locally rather than failing the whole render job — a transient R2
+	// outage must not block content from being produced and queued.
+	R2 *storage.R2Client
 }
 
 // RegisterHandlers registers voice.tts / render.* on the heavy pool.
@@ -136,6 +154,62 @@ type recordedAsset struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
 	Bytes  int64  `json:"bytes"`
+	// R2Key is empty when the asset was never uploaded to R2 (R2 not
+	// configured, this asset kind isn't uploaded, or the upload failed).
+	R2Key string `json:"r2_key,omitempty"`
+}
+
+// uploadKinds are the asset kinds a publisher can presign a public URL for
+// (Instagram/Facebook/Pinterest video via VideoPath, Pinterest cover image
+// via ThumbnailPath — internal/publish). Voice audio and subtitle files are
+// never presigned by any publisher, so they are never uploaded.
+var uploadKinds = map[string]bool{
+	assetKindRender: true,
+	assetKindThumb:  true,
+}
+
+// r2ObjectKey builds the R2 key for a render/thumbnail asset. It always uses
+// forward slashes (R2/S3 keys, not OS paths) and mirrors the local layout
+// (Layout.Path(storage.KindRenders, contentID)/<filename>) so the key is
+// predictable from content_id + filename alone.
+func r2ObjectKey(contentID, filename string) string {
+	return path.Join("renders", contentID, filename)
+}
+
+// r2ContentType is a minimal extension -> MIME map for the two kinds
+// uploadKinds ever uploads; anything else is sent with no Content-Type.
+func r2ContentType(filename string) string {
+	switch strings.ToLower(filepath.Ext(filename)) {
+	case ".mp4":
+		return "video/mp4"
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	default:
+		return ""
+	}
+}
+
+// uploadToR2 uploads localPath under its content-addressed key and returns
+// the key. Callers treat a non-nil error as "log and continue" (see
+// Renderer.R2's doc comment) — never as a reason to fail the render.
+func (r *Renderer) uploadToR2(ctx context.Context, contentID, localPath string) (string, error) {
+	f, err := os.Open(localPath)
+	if err != nil {
+		return "", fmt.Errorf("content render: r2 upload open %s: %w", localPath, err)
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return "", fmt.Errorf("content render: r2 upload stat %s: %w", localPath, err)
+	}
+	filename := filepath.Base(localPath)
+	key := r2ObjectKey(contentID, filename)
+	if err := r.R2.Upload(ctx, key, f, st.Size(), r2ContentType(filename)); err != nil {
+		return "", err
+	}
+	return key, nil
 }
 
 // --- handlers ----------------------------------------------------------------
@@ -498,37 +572,60 @@ func (r *Renderer) confineMediaPath(path, field string) (string, error) {
 	return abs, nil
 }
 
-func (r *Renderer) recordFile(ctx context.Context, contentID, kind, path string) (recordedAsset, error) {
+func (r *Renderer) recordFile(ctx context.Context, contentID, kind, filePath string) (recordedAsset, error) {
 	var zero recordedAsset
-	sha, size, err := media.DigestFile(path)
+	sha, size, err := media.DigestFile(filePath)
 	if err != nil {
 		return zero, err
 	}
+
+	var r2Key string
+	if r.R2 != nil && uploadKinds[kind] {
+		key, uerr := r.uploadToR2(ctx, contentID, filePath)
+		if uerr != nil {
+			// R2 configured but this upload failed: local render already
+			// succeeded and is already on disk, so this is a warning, not a
+			// render failure (see Renderer.R2's doc comment / CONTEXT D24).
+			// The asset row keeps r2_key NULL; a later publish attempt for
+			// it fails cleanly at presign time instead of silently pointing
+			// at an object that doesn't exist.
+			r.log().Warn("content render: r2 upload failed, asset stays local-only", "content_id", contentID, "kind", kind, "path", filePath, "error", uerr)
+		} else {
+			r2Key = key
+		}
+	}
+
 	id := r.newID()
 	da := r.deleteAfter()
+	var r2KeyArg any
+	if r2Key != "" {
+		r2KeyArg = r2Key
+	}
 	_, err = r.DB.ExecContext(ctx, `
-INSERT INTO assets (id, content_id, kind, path, sha256, bytes, delete_after)
-VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		id, contentID, kind, path, sha, size, da,
+INSERT INTO assets (id, content_id, kind, path, r2_key, sha256, bytes, delete_after)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, contentID, kind, filePath, r2KeyArg, sha, size, da,
 	)
 	if err != nil {
 		return zero, fmt.Errorf("content render: insert asset %s: %w", kind, err)
 	}
-	return recordedAsset{ID: id, Kind: kind, Path: path, SHA256: sha, Bytes: size}, nil
+	return recordedAsset{ID: id, Kind: kind, Path: filePath, SHA256: sha, Bytes: size, R2Key: r2Key}, nil
 }
 
 func (r *Renderer) findAsset(ctx context.Context, contentID, kind string) (recordedAsset, bool, error) {
 	var a recordedAsset
+	var r2Key sql.NullString
 	err := r.DB.QueryRowContext(ctx, `
-SELECT id, kind, path, COALESCE(sha256, ''), COALESCE(bytes, 0)
+SELECT id, kind, path, COALESCE(sha256, ''), COALESCE(bytes, 0), r2_key
 FROM assets WHERE content_id=? AND kind=?
-ORDER BY id DESC LIMIT 1`, contentID, kind).Scan(&a.ID, &a.Kind, &a.Path, &a.SHA256, &a.Bytes)
+ORDER BY id DESC LIMIT 1`, contentID, kind).Scan(&a.ID, &a.Kind, &a.Path, &a.SHA256, &a.Bytes, &r2Key)
 	if err == sql.ErrNoRows {
 		return a, false, nil
 	}
 	if err != nil {
 		return a, false, fmt.Errorf("content render: find asset %s/%s: %w", contentID, kind, err)
 	}
+	a.R2Key = r2Key.String
 	return a, true, nil
 }
 

@@ -166,12 +166,32 @@ func runDaemon(ctx context.Context, cfg *config.Config, dbPath string, log *slog
 		return fmt.Errorf("run: build telegram bot: %w", err)
 	}
 
+	// Built once and shared by both register calls below (M2-123): the
+	// render pipeline uploads to it (Renderer.R2), the publish pipeline
+	// presigns from it (registerPublishHandlers) and resolves r2_key with it
+	// (publish.AssetR2KeyResolver) — one client, one R2_* env read, same
+	// storage.NewR2FromEnv + NotConfiguredError pattern
+	// internal/scheduler/cleanup.go already uses for storage.cleanup's
+	// optional R2 delete. nil (R2 not configured, CONTEXT D24) is valid and
+	// expected: rendering stays local-only and publish keeps failing
+	// cleanly at presign time, exactly as before this ticket.
+	r2Client, err2 := storage.NewR2FromEnv(nil, storage.R2Options{})
+	if err2 != nil {
+		var notConfigured *storage.NotConfiguredError
+		if !errors.As(err2, &notConfigured) {
+			log.Error("run: r2 client build failed, renders stay local-only and instagram/facebook/pinterest publish will fail cleanly until fixed", "error", err2)
+		} else {
+			log.Info("run: r2 not configured, renders stay local-only (CONTEXT D24); instagram/facebook/pinterest publish will fail cleanly until configured", "missing_env", notConfigured.MissingEnv)
+		}
+		r2Client = nil
+	}
+
 	// Single point of registration (ticket AC): every real job handler is
 	// registered exactly once, from here, before StartWorkers runs.
-	if err := registerComplianceAndContent(q, sqlDB, router, approvals, layout, cfg, log); err != nil {
+	if err := registerComplianceAndContent(q, sqlDB, router, approvals, layout, cfg, log, r2Client); err != nil {
 		return fmt.Errorf("run: register compliance/content handlers: %w", err)
 	}
-	registerPublishHandlers(q, sqlDB, secretsStore, log)
+	registerPublishHandlers(q, sqlDB, secretsStore, log, r2Client)
 	if err := registerBlogHandlers(q, sqlDB, bus, router, approvals, secretsStore, bot, cfg, log); err != nil {
 		return fmt.Errorf("run: register blog handlers: %w", err)
 	}
@@ -319,7 +339,7 @@ func runDaemon(ctx context.Context, cfg *config.Config, dbPath string, log *slog
 // and the four content.Renderer heavy-pool job types.
 func registerComplianceAndContent(
 	q *queue.Queue, sqlDB *sql.DB, router *llm.Router, approvals *content.ApprovalService,
-	layout *storage.Layout, cfg *config.Config, log *slog.Logger,
+	layout *storage.Layout, cfg *config.Config, log *slog.Logger, r2Client *storage.R2Client,
 ) error {
 	eng := compliance.NewEngine(
 		compliance.DefaultThresholds(),
@@ -345,6 +365,7 @@ func registerComplianceAndContent(
 		Tools:         tools,
 		RetentionDays: cfg.Content.RetentionDays,
 		Log:           log,
+		R2:            r2Client, // M2-123: nil is valid (R2 not configured, CONTEXT D24) — local-only renders
 	}
 	renderer.RegisterHandlers(q)
 
@@ -533,49 +554,59 @@ func registerBlogHandlers(q *queue.Queue, sqlDB *sql.DB, bus *events.Bus, router
 	return nil
 }
 
-// registerPublishHandlers wires the five multi-platform publishers this
-// ticket owns (publish.youtube / .facebook / .instagram / .x / .pinterest /
-// .linkedin). Each publisher's OAuth token lookup is lazy (built from
-// internal/secrets at publish time, not at startup) so a missing platform
-// key switches that platform off cleanly at use time (CONTEXT D24) instead
-// of blocking daemon startup.
+// publishPresigner is the method set Instagram/Facebook/Pinterest each
+// declare their own unexported Presign-field interface with (igPresigner,
+// fbPresigner, pinPresigner in internal/publish) — identical signatures, so
+// a single concrete value satisfies all three structurally.
+type publishPresigner interface {
+	PresignGET(ctx context.Context, key string, expiry time.Duration) (url string, ttl time.Duration, err error)
+}
+
+// notConfiguredPresigner stands in for a real *storage.R2Client's PresignGET
+// when R2 isn't configured, so Instagram/Facebook/Pinterest always have a
+// non-nil Presign wired (CONTEXT D24: degrade cleanly, never panic) and get
+// a consistent, specific error the moment a publish attempt actually needs
+// a presigned URL, instead of a bare nil-interface panic.
+type notConfiguredPresigner struct{ err error }
+
+func (n notConfiguredPresigner) PresignGET(ctx context.Context, key string, expiry time.Duration) (string, time.Duration, error) {
+	return "", 0, fmt.Errorf("publish: r2 presign: %w", n.err)
+}
+
+// registerPublishHandlers wires the six multi-platform publishers
+// (publish.youtube / .facebook / .instagram / .x / .pinterest / .linkedin).
+// Each publisher's OAuth token lookup is lazy (built from internal/secrets
+// at publish time, not at startup) so a missing platform key switches that
+// platform off cleanly at use time (CONTEXT D24) instead of blocking daemon
+// startup.
 //
-// M2-122: Instagram/Facebook/Pinterest each have a Presign field (D20 —
-// Meta/Pinterest need a temporary public GET URL for the video, not a local
-// path) that this function used to leave at its nil zero value, and nothing
-// else in the codebase ever assigned it either — see internal/publish
-// resolvePublicURL in instagram.go/facebook.go/pinterest.go, each of which
-// already null-checks Presign before calling it, so this was never actually
-// a nil-interface panic. But it did mean every real Instagram/Facebook/
-// Pinterest publish attempt failed with "R2 presigner not configured" even
-// when real R2_* credentials were present in .env — the presigner was just
-// never constructed. buildPresigner (below) builds one real
-// *storage.R2Client from the R2_* env vars (same storage.NewR2FromEnv +
-// NotConfiguredError pattern internal/scheduler/cleanup.go already uses for
-// storage.cleanup) and wires it into all three; when R2 isn't configured it
-// wires a small wrapper that still returns a clean, typed error at call
-// time (CONTEXT D24: degrade, never panic) instead of leaving the field
-// nil and relying solely on each publisher's own guard.
+// Instagram/Facebook/Pinterest each have a Presign field (D20 — Meta/
+// Pinterest need a temporary public GET URL for the video/cover image, not
+// a local path) and an R2KeyResolver field (content_id -> R2 object key,
+// nil falls back to using VideoPath/ThumbnailPath directly as the key).
+// r2Client (built once in cmdRun, shared with content.Renderer — M2-123)
+// backs both: when configured it presigns real URLs and
+// publish.AssetR2KeyResolver reads back the r2_key Renderer.R2 wrote at
+// render time; when nil (R2 not configured), Presign is still wired to
+// notConfiguredPresigner (never left nil — D24 "degrade, never panic") and
+// R2KeyResolver harmlessly always returns "" (no r2_key rows exist), so
+// every publish attempt fails cleanly and specifically at presign time
+// instead of a nil-interface panic or a silent wrong-URL guess.
 //
 // YouTube and X upload the local file directly (resumable upload / chunked
 // media upload from p.VideoPath, see internal/publish/youtube.go confine()+
 // openFile and internal/publish/x.go confine()) — neither has a Presign
 // field, so neither needs R2 at all (M2-211's own documented flow).
-//
-// R2KeyResolver (Facebook/Instagram/Pinterest) is left nil here, unchanged
-// from before this ticket: nil falls back to using p.VideoPath directly as
-// the R2 object key. See this ticket's Notes (tickets/M2-122.md) for why
-// that fallback's assumption — that something uploads the render to R2
-// under that same key — does not currently hold: no code path in this repo
-// calls (*storage.R2Client).Upload outside of internal/storage's own tests,
-// so even with Presign now wired to a real, configured R2Client, a
-// presigned GET for p.VideoPath will point at an object that was never
-// uploaded. That gap is flagged in the ticket, not fixed here (out of this
-// ticket's crash/never-wired scope; fixing it means deciding where in the
-// render pipeline an upload belongs).
-func registerPublishHandlers(q *queue.Queue, sqlDB *sql.DB, store *secrets.Store, log *slog.Logger) {
+func registerPublishHandlers(q *queue.Queue, sqlDB *sql.DB, store *secrets.Store, log *slog.Logger, r2Client *storage.R2Client) {
 	redirect := redirectURL()
-	presign := buildPresigner(log)
+
+	var presign publishPresigner
+	if r2Client != nil {
+		presign = r2Client
+	} else {
+		presign = notConfiguredPresigner{err: storage.ErrR2NotConfigured}
+	}
+	resolveR2Key := publish.AssetR2KeyResolver(sqlDB)
 
 	yt := &publish.YouTube{
 		DB:     sqlDB,
@@ -585,18 +616,20 @@ func registerPublishHandlers(q *queue.Queue, sqlDB *sql.DB, store *secrets.Store
 	yt.RegisterHandler(q)
 
 	fb := &publish.Facebook{
-		DB:      sqlDB,
-		Tokens:  publish.TokenSourceFor(tokenSourceFor(store, "meta", redirect)),
-		Presign: presign,
-		Log:     log,
+		DB:            sqlDB,
+		Tokens:        publish.TokenSourceFor(tokenSourceFor(store, "meta", redirect)),
+		Presign:       presign,
+		R2KeyResolver: resolveR2Key,
+		Log:           log,
 	}
 	fb.RegisterHandler(q)
 
 	ig := &publish.Instagram{
-		DB:      sqlDB,
-		Tokens:  publish.TokenSourceFor(tokenSourceFor(store, "meta", redirect)),
-		Presign: presign,
-		Log:     log,
+		DB:            sqlDB,
+		Tokens:        publish.TokenSourceFor(tokenSourceFor(store, "meta", redirect)),
+		Presign:       presign,
+		R2KeyResolver: resolveR2Key,
+		Log:           log,
 	}
 	ig.RegisterHandler(q)
 
@@ -608,10 +641,11 @@ func registerPublishHandlers(q *queue.Queue, sqlDB *sql.DB, store *secrets.Store
 	x.RegisterHandler(q)
 
 	pin := &publish.Pinterest{
-		DB:      sqlDB,
-		Tokens:  publish.TokenSourceFor(tokenSourceFor(store, "pinterest", redirect)),
-		Presign: presign,
-		Log:     log,
+		DB:            sqlDB,
+		Tokens:        publish.TokenSourceFor(tokenSourceFor(store, "pinterest", redirect)),
+		Presign:       presign,
+		R2KeyResolver: resolveR2Key,
+		Log:           log,
 	}
 	pin.RegisterHandler(q)
 
@@ -621,49 +655,6 @@ func registerPublishHandlers(q *queue.Queue, sqlDB *sql.DB, store *secrets.Store
 		Log:    log,
 	}
 	li.RegisterHandler(q)
-}
-
-// publishPresigner is the method set Instagram/Facebook/Pinterest each
-// declare their own unexported Presign-field interface with (igPresigner,
-// fbPresigner, pinPresigner in internal/publish) — identical signatures, so
-// a single concrete value satisfies all three structurally.
-type publishPresigner interface {
-	PresignGET(ctx context.Context, key string, expiry time.Duration) (url string, ttl time.Duration, err error)
-}
-
-// buildPresigner builds the one real *storage.R2Client the whole daemon
-// uses to presign Instagram/Facebook/Pinterest video URLs (D20), from the
-// four R2_* env vars — same construction internal/scheduler/cleanup.go
-// already uses for storage.cleanup's optional R2 delete. When R2 isn't
-// configured (any of the four keys missing/blank, CONTEXT D24), this
-// returns notConfiguredPresigner instead of nil: each publish attempt still
-// gets a clean, typed "R2 not configured" error at the moment it actually
-// tries to presign, rather than depending solely on the nil check each
-// publisher's own resolvePublicURL already has.
-func buildPresigner(log *slog.Logger) publishPresigner {
-	r2, err := storage.NewR2FromEnv(nil, storage.R2Options{})
-	if err != nil {
-		var notConfigured *storage.NotConfiguredError
-		if !errors.As(err, &notConfigured) {
-			log.Error("run: r2 client build failed, instagram/facebook/pinterest publish will fail cleanly until fixed", "error", err)
-			return notConfiguredPresigner{err: err}
-		}
-		log.Info("run: r2 not configured, instagram/facebook/pinterest publish will fail cleanly until configured (CONTEXT D24)", "missing_env", notConfigured.MissingEnv)
-		return notConfiguredPresigner{err: err}
-	}
-	return r2
-}
-
-// notConfiguredPresigner stands in for a real *storage.R2Client's PresignGET
-// when R2 isn't configured, so Instagram/Facebook/Pinterest always have a
-// non-nil Presign wired (CONTEXT D24: degrade cleanly, never panic) and get
-// a consistent, specific error the moment a publish attempt actually needs
-// a presigned URL, instead of a bare "R2 presigner not configured" that
-// doesn't say why.
-type notConfiguredPresigner struct{ err error }
-
-func (n notConfiguredPresigner) PresignGET(ctx context.Context, key string, expiry time.Duration) (string, time.Duration, error) {
-	return "", 0, fmt.Errorf("publish: r2 presign: %w", n.err)
 }
 
 // builderHandlers holds the four constructed builder components, mostly so

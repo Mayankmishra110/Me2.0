@@ -53,15 +53,19 @@ type pinPresigner interface {
 // Pinterest creates Idea/video pins on a configured board (PlaylistID = board_id).
 // Destination link is the first http(s) Tag, or empty.
 type Pinterest struct {
-	DB           *sql.DB
-	Tokens       TokenSourceFor
-	API          PinterestAPI
-	Presign      pinPresigner
-	Now          func() time.Time
-	Log          *slog.Logger
-	DataRoot     string
-	PollInterval time.Duration
-	PollTimeout  time.Duration
+	DB      *sql.DB
+	Tokens  TokenSourceFor
+	API     PinterestAPI
+	Presign pinPresigner
+	// R2KeyResolver maps content_id → R2 object key for the cover image
+	// (ThumbnailPath). Nil, or an empty-string result, falls back to using
+	// ThumbnailPath directly as the key — see internal/publish/r2resolver.go.
+	R2KeyResolver func(ctx context.Context, contentID, videoPath string) (string, error)
+	Now           func() time.Time
+	Log           *slog.Logger
+	DataRoot      string
+	PollInterval  time.Duration
+	PollTimeout   time.Duration
 }
 
 func (p *Pinterest) Platform() string { return "pinterest" }
@@ -205,6 +209,15 @@ func (p *Pinterest) resolveCoverURL(ctx context.Context, req PublishRequest) (st
 	}
 	if strings.HasPrefix(key, "http://") || strings.HasPrefix(key, "https://") {
 		return key, nil
+	}
+	if p.R2KeyResolver != nil {
+		k, err := p.R2KeyResolver(ctx, req.ContentID, req.ThumbnailPath)
+		if err != nil {
+			return "", err
+		}
+		if strings.TrimSpace(k) != "" {
+			key = k
+		}
 	}
 	if p.Presign == nil {
 		return "", fmt.Errorf("publish/pinterest: R2 presigner not configured for cover")
