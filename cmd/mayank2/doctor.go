@@ -246,10 +246,26 @@ func checkLLMProviders(ctx context.Context, cfg *config.Config) []checkResult {
 // embedding provider, and with Ollama not installed it must fall through to
 // Gemini's openai_compat /embeddings endpoint). A missing/empty route is a
 // real misconfiguration (G2 will fail closed on every script — see
-// internal/compliance/g2.go) so it's ❌. Ollama simply not running, or a
-// provider with no embed_model / no key, is a candidate being skipped, not
-// broken — so a chain with no ready candidate at all is ⚪ "not configured",
-// matching D24 ("missing keys switch it off cleanly"), never ❌.
+// internal/compliance/g2.go) so it's ❌.
+//
+// Within a non-empty chain, an individual candidate being skipped (Ollama
+// simply not running, a provider missing its key or embed_model, an unknown
+// provider name) is not itself broken — that's D24's "missing keys switch it
+// off cleanly" — as long as SOME later candidate resolves, in which case this
+// returns ok for that candidate and never reaches the cases below.
+//
+// But there is no legitimate ⚪ outcome for this check once every candidate
+// in the chain has been tried and none is ready: unlike the per-provider
+// checks (checkOllamaProvider, checkOpenAICompatProvider), which answer "is
+// this specific optional provider configured," this function answers "will
+// G2 actually have a working embedder" — and the answer "no, none of them
+// work right now" has the identical real-world consequence as the
+// missing-route case above (G2 fails closed on every script, permanently,
+// until someone notices and fixes it), regardless of which specific reason
+// (no key, unreachable, no embed_model, unknown provider) caused every
+// candidate to be skipped. So exhausting a non-empty chain is always ❌, the
+// same as an empty one — never ⚪. (Found by independent QA re-review,
+// 2026-10-04: see tickets/M2-124.md ## Review.)
 func checkEmbedRoute(ctx context.Context, cfg *config.Config) checkResult {
 	const label = "llm embeddings (route)"
 	chain := cfg.LLM.Routes["embed"]
@@ -304,7 +320,7 @@ func checkEmbedRoute(ctx context.Context, cfg *config.Config) checkResult {
 			notes = append(notes, name+": kind "+pc.Kind+" does not support embeddings")
 		}
 	}
-	return offResult(label, fmt.Sprintf("not configured (feature off): no provider in chain %v is ready yet (%s) — G2 originality gate fails closed until one is", chain, strings.Join(notes, "; ")))
+	return brokenResult(label, fmt.Sprintf("no provider in chain %v is ready (%s) — G2 originality gate fails closed on every script until one is", chain, strings.Join(notes, "; ")))
 }
 
 // checkOllamaProvider probes a local Ollama server. Unreachable is ⚪ (optional

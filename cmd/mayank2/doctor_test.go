@@ -256,18 +256,28 @@ func TestCheckEmbedRoute(t *testing.T) {
 		}
 	})
 
-	t.Run("no ollama running, no gemini key -> off, not broken", func(t *testing.T) {
+	t.Run("no ollama running, no gemini key -> broken (zero usable candidates)", func(t *testing.T) {
+		// This is the exact "fresh Gemini-only machine, forgot GEMINI_API_KEY"
+		// scenario M2-124 targets. Ollama-not-running alone is fine (D24), but
+		// with no other ready candidate in the chain either, G2 will fail
+		// closed on every script, permanently — identical in consequence to
+		// the missing-route case, so this must be ❌, not ⚪. See the
+		// independent QA re-review finding in tickets/M2-124.md ## Review.
 		t.Setenv("GEMINI_API_KEY", "")
 		cfg := &config.Config{LLM: config.LLMConfig{
 			Providers: baseProviders("http://127.0.0.1:1", "gemini-embedding-001"),
 			Routes:    map[string][]string{"embed": {"ollama", "gemini"}},
 		}}
 		got := checkEmbedRoute(context.Background(), cfg)
-		if got.Status != statusOff {
-			t.Fatalf("want statusOff (Ollama not installed is a feature-off, not broken), got %+v", got)
+		if got.Status != statusBroken {
+			t.Fatalf("want statusBroken (no usable embedder -> G2 fails closed on every script), got %+v", got)
 		}
 	})
 
+	// "gemini key set, no ollama -> ok, resolves to gemini" (below) is the
+	// genuinely-intentional-off case: Ollama simply not running is still fine
+	// (D24) precisely because a later candidate in the chain actually works —
+	// the aggregate route check never reaches the exhaustion branch at all.
 	t.Run("gemini key set, no ollama -> ok, resolves to gemini", func(t *testing.T) {
 		t.Setenv("GEMINI_API_KEY", "fake-test-key-not-real")
 		cfg := &config.Config{LLM: config.LLMConfig{
@@ -307,15 +317,20 @@ func TestCheckEmbedRoute(t *testing.T) {
 		}
 	})
 
-	t.Run("no embed_model anywhere -> off", func(t *testing.T) {
+	t.Run("no embed_model anywhere -> broken (zero usable candidates)", func(t *testing.T) {
+		// Ollama here is also unreachable (http://127.0.0.1:1), and gemini has
+		// no embed_model configured, so every candidate in the chain is
+		// skipped -> same exhaustion case as the missing-key subtest above,
+		// and the same consequence: G2 fails closed on every script. ❌, not
+		// ⚪ — this was statusOff before the M2-124 QA re-review fix.
 		t.Setenv("GEMINI_API_KEY", "fake-test-key-not-real")
 		cfg := &config.Config{LLM: config.LLMConfig{
 			Providers: baseProviders("http://127.0.0.1:1", ""), // gemini configured but no embed_model
 			Routes:    map[string][]string{"embed": {"ollama", "gemini"}},
 		}}
 		got := checkEmbedRoute(context.Background(), cfg)
-		if got.Status != statusOff {
-			t.Fatalf("want statusOff, got %+v", got)
+		if got.Status != statusBroken {
+			t.Fatalf("want statusBroken, got %+v", got)
 		}
 	})
 }
