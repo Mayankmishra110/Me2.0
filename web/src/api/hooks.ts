@@ -37,6 +37,35 @@ export function useHealth() {
   })
 }
 
+/**
+ * Auth check for route guarding. `/api/health` is public (SPEC §4), so it
+ * can't tell us whether the session cookie is valid; `/api/agents` is the
+ * cheapest endpoint behind `requireAuth`. Deliberately shares `queryKeys.agents`
+ * with `useAgents` so RequireAuth and HomePage don't double-fetch.
+ */
+export function useAuthStatus() {
+  return useQuery({
+    queryKey: queryKeys.agents,
+    queryFn: () => apiFetch<AgentsResponse>('/api/agents'),
+    retry: false,
+  })
+}
+
+export function useLogin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (token: string) =>
+      apiFetch<{ ok: boolean }>('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+        skipAuthEvent: true,
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.agents })
+    },
+  })
+}
+
 export function useAgents() {
   return useQuery({
     queryKey: queryKeys.agents,
