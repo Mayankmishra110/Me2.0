@@ -61,6 +61,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-121 | `m2/M2-121` | pass @ `ead8983` (independent re-review) | pass @ `ead8983` (`needs-sec: yes`, satisfied) | **merged** · PR [#10](https://github.com/Mayankmishra110/Me2.0/pull/10) · already up to date with `origin/main` (`0adbdb7`, no rebase needed) · `--merge` commit `6374358` on `main` (2026-09-29) |
 | M2-122 | `m2/M2-122` | pass (independently re-derived) | pass (`needs-sec: yes`, satisfied) | **merged** · PR [#12](https://github.com/Mayankmishra110/Me2.0/pull/12) · already up to date with `origin/main` (`141096b`, no rebase needed) · `--merge` commit `00147b9` on `main` (2026-09-30) |
 | M2-123 | `m2/M2-123` | pass @ `002d3e0` (independent re-review) | pass @ `002d3e0` (`needs-sec: yes`, satisfied) | **merged** · PR [#14](https://github.com/Mayankmishra110/Me2.0/pull/14) · rebased onto `origin/main` (`9240be8`, one real conflict in `registerPublishHandlers`, resolved keeping the shared-`R2Client` superset design) · `--merge` commit `c78a0c8` on `main` (2026-10-01) |
+| M2-124 | `m2/M2-124` | pass @ `9305d73` (independent re-review, changes→fix→re-review cycle) | pass @ `9305d73` (`needs-sec: yes`, satisfied) | **merged** · PR [#17](https://github.com/Mayankmishra110/Me2.0/pull/17) · already up to date with `origin/main` (`e40d3f5`, no rebase needed) · `--merge` commit `8e258a0` on `main` (2026-10-04) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -450,6 +451,82 @@ receives a live presigned URL that resolves to the uploaded render (not a 404).
 **Closes out the publish-pipeline chain started with M2-122**: with this merged, Instagram/Facebook/Pinterest
 publishing is now end-to-end reachable with real credentials (render → R2 upload → presigned URL → platform
 fetch), not just wired without being reachable.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-124 — Run fully on one Gemini key (no Ollama)
+Branch: `m2/M2-124` · PR: https://github.com/Mayankmishra110/Me2.0/pull/17 · Merge commit: `8e258a0`
+
+**Goal** Mayank's decision to drop the Ollama dependency: every LLM task route (`research`, `script`,
+`metadata`, `classify`, `translate_cleanup`) must be reachable through Gemini alone, including the embeddings
+path the originality gate (G2) needs, via Gemini's OpenAI-compatible endpoint (`internal/llm/openai.go`).
+Fingerprints now record which embed model produced them (`migrations/003_fingerprint_embed_model.sql`) so
+G2 never diffs a stored prior from one embedding model against a live embed from another. Full detail in
+`tickets/M2-124.md`.
+
+**Review cycle (changes → fix → re-review)** Independent qa/sec re-review (`d8eec15`) found a real
+doctor-severity bug: `checkEmbedRoute` reported the embed chain as ⚪ off when it was actually configured but
+unusable (key present, calls failing) — the same real-world consequence as the already-❌ missing-route case,
+since G2 fails closed either way and would silently block every script's originality check. Fixed (`3b4c97b`):
+an exhausted non-empty chain with zero ready candidates always reports ❌ broken, never ⚪ off, regardless of
+which reason exhausted it; the two genuinely-ok paths (Gemini key set, Ollama reachable) confirmed unchanged.
+Re-verified and marked done in `9305d73`.
+
+**Rebase** Branch was already up to date with `origin/main` at `e40d3f5` on arrival in ship — confirmed via
+`git ls-remote origin main` matching the tip the prior review had already checked against. No rebase needed.
+
+**Checks** (real output, `data/worktrees/m2-124`, tip `9305d73`, 2026-10-04)
+```
+gofmt -l .        → (no output — clean)
+go vet ./...      → (no output — clean)
+go test ./... -count=1
+ok  	mayank2/cmd/mayank2        3.532s
+ok  	mayank2/internal/agency    1.826s
+ok  	mayank2/internal/analytics 2.388s
+ok  	mayank2/internal/blog      54.097s
+ok  	mayank2/internal/builder   41.217s
+ok  	mayank2/internal/compliance 1.064s
+ok  	mayank2/internal/config    1.005s
+ok  	mayank2/internal/content   7.824s
+ok  	mayank2/internal/content/formats 0.687s
+ok  	mayank2/internal/db        1.188s
+ok  	mayank2/internal/events    2.766s
+ok  	mayank2/internal/httpapi   4.062s
+ok  	mayank2/internal/llm       0.591s
+ok  	mayank2/internal/media     1.625s
+ok  	mayank2/internal/micro_saas 1.844s
+ok  	mayank2/internal/publish   11.431s
+ok  	mayank2/internal/queue     4.028s
+ok  	mayank2/internal/revenue   1.805s
+ok  	mayank2/internal/scheduler 1.806s
+ok  	mayank2/internal/secrets   1.162s
+ok  	mayank2/internal/storage   0.707s
+ok  	mayank2/internal/telegram  3.596s
+ok  	mayank2/internal/tickets   0.682s
+?   	mayank2/migrations         [no test files]
+```
+Relevant tests: `TestG2_priorsWithoutEmbedFailsClosed`, `TestG2_emptyEmbedAgainstPriorsFailsClosed`,
+`TestG2_noPriorsNoEmbedPasses`, `TestG1_originalPasses` (`internal/compliance/gates_test.go`);
+`TestEncodeDecodeEmbedding` (`internal/compliance/engine_test.go`); `TestGeminiOnlyEmbed`, `TestOllamaEmbed`,
+`TestEmbedNoProviderAvailable`, `TestEmbedRouteMissing`, `TestEmbedSkipsNonEmbeddingProvider`
+(`internal/llm/router_test.go`); `TestCheckEmbedRoute` (`cmd/mayank2/doctor_test.go`, the doctor-severity fix).
+
+**Review** QA: pass @ `9305d73` (independent re-review through a changes→fix→re-review cycle; the
+`checkEmbedRoute` severity gap above found and fixed) · SEC: pass @ `9305d73` (`needs-sec: yes`, satisfied —
+Gemini embed call reuses the existing key-sourcing path, no new secret surface, no cross-model vector
+comparison possible)
+
+**Open product question (flagged, not resolved here)** G2's similarity thresholds were originally tuned
+against `nomic-embed-text` (Ollama) output and have not been re-validated against `gemini-embedding-001`'s
+vector space — different embedding models produce different similarity distributions, so the same numeric
+threshold may be stricter or looser in practice on Gemini embeddings than it was on Ollama's. The gate still
+fails closed and never cross-compares models, so this is a tuning question, not a safety gap. Logged under
+Open questions in `docs/CONTEXT.md`.
+
+**How to test** Run `mayank2 doctor` with only `GEMINI_API_KEY` set (no Ollama reachable) and confirm every
+LLM route, including embed, reports ready; then unset the key or point at a dead endpoint and confirm `doctor`
+reports the embed route ❌ broken (not ⚪ off) and that a script run gets a G2 fail-closed result, not a
+silent pass.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
