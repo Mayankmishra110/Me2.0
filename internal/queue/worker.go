@@ -280,7 +280,7 @@ func (q *Queue) runJob(ctx context.Context, job Job, workerID string, cfg Worker
 		q.finalizePermanent(finalizeCtx, job, err)
 		return
 	}
-	q.finalizeError(finalizeCtx, job, workerID, reg.maxAttempts, err)
+	q.finalizeError(finalizeCtx, job, workerID, job.MaxAttempts, err)
 }
 
 // invoke runs the handler, converting a panic into a retryable error so one

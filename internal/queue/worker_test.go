@@ -287,6 +287,126 @@ func TestRunJob_panicIsRetryable(t *testing.T) {
 	}
 }
 
+// TestRunJob_deadLettersAtJobsOwnMaxAttempts_NotLiveRegistration is the
+// M2-128 regression test. It simulates a job enqueued under an older build,
+// where its job type was registered with a lower maxAttempts than it is
+// registered with now (e.g. "publish.youtube"/"analytics.pull" going from 3
+// to 5 across builds): the job's own row froze max_attempts=3 at Enqueue
+// time, but the currently-live registration says 5. runJob's finalizeError
+// call must honor the row's own max_attempts (3), not the live
+// registration's (5) - otherwise an in-flight job retries past its own
+// row's cap instead of dead-lettering at it, exactly as found live on
+// jb-004/jb-007 in the E2E test DB.
+func TestRunJob_deadLettersAtJobsOwnMaxAttempts_NotLiveRegistration(t *testing.T) {
+	q, clock := testQueue(t)
+	alwaysFails := func(ctx context.Context, job Job) (json.RawMessage, error) {
+		return nil, errors.New("handler always fails")
+	}
+	// Currently live: this job type is registered with maxAttempts=5.
+	q.Register("t.stalecap", ResourceLight, 5, alwaysFails)
+	id, err := q.Enqueue(context.Background(), "t.stalecap", map[string]string{})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	// Simulate the row having been enqueued under an older build where
+	// "t.stalecap" was registered with maxAttempts=3: tamper with the row
+	// directly, as the live registration's Register call cannot be changed
+	// after the fact.
+	if _, err := q.db.ExecContext(context.Background(),
+		`UPDATE jobs SET max_attempts=3 WHERE id=?`, id); err != nil {
+		t.Fatalf("tamper max_attempts: %v", err)
+	}
+
+	cfg := WorkerPoolConfig{HeartbeatInterval: time.Hour, LeaseTTL: 5 * time.Minute}.withDefaults()
+	backoffs := []time.Duration{time.Minute, 5 * time.Minute, 30 * time.Minute}
+
+	for attempt := 1; attempt <= 3; attempt++ {
+		job, ok, err := q.claim(context.Background(), ResourceLight, fmt.Sprintf("w%d", attempt), 5*time.Minute)
+		if err != nil || !ok {
+			t.Fatalf("claim attempt %d: ok=%v err=%v", attempt, ok, err)
+		}
+		if job.MaxAttempts != 3 {
+			t.Fatalf("job.MaxAttempts = %d, want 3 (the row's own frozen value)", job.MaxAttempts)
+		}
+		q.runJob(context.Background(), job, fmt.Sprintf("w%d", attempt), cfg)
+
+		row := readJob(t, q.db, id)
+		if row.attempts != attempt {
+			t.Fatalf("after attempt %d: attempts = %d, want %d", attempt, row.attempts, attempt)
+		}
+		if attempt < 3 {
+			if row.status != "queued" {
+				t.Fatalf("after attempt %d: status = %q, want queued", attempt, row.status)
+			}
+			clock.Advance(backoffs[attempt-1] + time.Second)
+		}
+	}
+
+	row := readJob(t, q.db, id)
+	if row.status != "dead" {
+		t.Fatalf("status = %q, want dead (dead-lettered at the row's own max_attempts=3, not the live registration's 5)", row.status)
+	}
+	if row.attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", row.attempts)
+	}
+	if n := countEvents(t, q.db, "alert", id); n != 1 {
+		t.Fatalf("alert events for job = %d, want 1", n)
+	}
+}
+
+// TestRunJob_deadLettersAtRegisteredMaxAttempts_NormalCase proves the
+// untampered case still works: a job type registered and enqueued at the
+// same maxAttempts dead-letters exactly at that value, via the full runJob
+// path (not finalizeError called directly).
+func TestRunJob_deadLettersAtRegisteredMaxAttempts_NormalCase(t *testing.T) {
+	q, clock := testQueue(t)
+	alwaysFails := func(ctx context.Context, job Job) (json.RawMessage, error) {
+		return nil, errors.New("handler always fails")
+	}
+	q.Register("t.normalcap", ResourceLight, 3, alwaysFails)
+	id, err := q.Enqueue(context.Background(), "t.normalcap", map[string]string{})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	cfg := WorkerPoolConfig{HeartbeatInterval: time.Hour, LeaseTTL: 5 * time.Minute}.withDefaults()
+	backoffs := []time.Duration{time.Minute, 5 * time.Minute, 30 * time.Minute}
+
+	for attempt := 1; attempt <= 3; attempt++ {
+		job, ok, err := q.claim(context.Background(), ResourceLight, fmt.Sprintf("w%d", attempt), 5*time.Minute)
+		if err != nil || !ok {
+			t.Fatalf("claim attempt %d: ok=%v err=%v", attempt, ok, err)
+		}
+		if job.MaxAttempts != 3 {
+			t.Fatalf("job.MaxAttempts = %d, want 3", job.MaxAttempts)
+		}
+		q.runJob(context.Background(), job, fmt.Sprintf("w%d", attempt), cfg)
+
+		row := readJob(t, q.db, id)
+		if row.attempts != attempt {
+			t.Fatalf("after attempt %d: attempts = %d, want %d", attempt, row.attempts, attempt)
+		}
+		if attempt < 3 {
+			if row.status != "queued" {
+				t.Fatalf("after attempt %d: status = %q, want queued", attempt, row.status)
+			}
+			clock.Advance(backoffs[attempt-1] + time.Second)
+		}
+	}
+
+	row := readJob(t, q.db, id)
+	if row.status != "dead" {
+		t.Fatalf("status = %q, want dead", row.status)
+	}
+	if row.attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", row.attempts)
+	}
+	if n := countEvents(t, q.db, "alert", id); n != 1 {
+		t.Fatalf("alert events for job = %d, want 1", n)
+	}
+}
+
 // TestCrashRecovery_expiredLeaseIsReclaimedAndRun proves the acceptance
 // criterion end to end: a job claimed by a worker that then "dies" (never
 // heartbeats, never finishes) is requeued once its lease expires, and a
