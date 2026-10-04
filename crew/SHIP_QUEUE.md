@@ -65,6 +65,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-125 | `m2/M2-125` | pass @ `843e649` (independent re-review, changes→fix→re-review cycle, verified by falsification) | n/a (`needs-sec: no`) | **merged** · PR [#19](https://github.com/Mayankmishra110/Me2.0/pull/19) · confirmed still ancestor-clean on `origin/main` (`3d6fad9`, `git merge-base --is-ancestor` true, no rebase needed) · `--merge` commit `b5e7f08` on `main` (2026-10-04) — see incident note below and `docs/CONTEXT.md` §5 item 12 |
 | M2-126 | `m2/M2-126` | pass @ `c1ceb72` (independent re-review) | n/a (`needs-sec: no`) | **merged** · PR [#22](https://github.com/Mayankmishra110/Me2.0/pull/22) · rebased onto `origin/main` (`3d0ac5d`, PR #21 docs-PR-scope-gate fix, clean, no conflicts) · `--merge` commit `5439281` on `main` (2026-10-04) |
 | M2-128 | `m2/M2-128` | pass @ `139c98f` (independent re-review, verified by falsification) | n/a (`needs-sec: no`) | **merged** · PR [#24](https://github.com/Mayankmishra110/Me2.0/pull/24) · confirmed ancestor-clean on `origin/main` (`ca04901`, `git merge-base --is-ancestor` true, no rebase needed) · `--merge` commit `5f1e095` on `main` (2026-10-04) |
+| M2-127 | `m2/M2-127` | pass (independently re-derived from real code, incl. the full `/api/pause`→`/api/resume` flow) | pass (`needs-sec: yes`, satisfied — bcrypt storage, masked terminal input, no PIN logging confirmed) | **merged** · PR [#25](https://github.com/Mayankmishra110/Me2.0/pull/25) · rebased onto `origin/main` twice (first onto `5f1e095` after M2-128's own merge, then onto `fc8b058` after M2-128's docs bookkeeping landed) — both conflicts confined to the `crew/BRANCH_MAP.md` tracking row, resolved by keeping both rows each time; no `go.mod`/`go.sum` conflict (new dep `golang.org/x/term`, `go mod tidy` confirmed consistent post-rebase) · force-with-lease pushed as `2b9e914`/`6df17b9` · `--merge` commit `cec5a5b` on `main` (2026-10-04) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -673,6 +674,64 @@ compliance surface.
 **How to test** Enqueue a job of a given type, then raise that type's registered `maxAttempts`
 after enqueue; confirm the already-enqueued job still dead-letters at its own row's original cap,
 not the new live registration's higher one.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-127 — Implement real PIN protection for resume
+Branch: `m2/M2-127` · PR: https://github.com/Mayankmishra110/Me2.0/pull/25 · Merge commit: `cec5a5b`
+
+**Goal** `mayank2 set-pin` was a stub (`cmdStub`, printed "not implemented yet", touched nothing),
+and `checkPIN` in `internal/httpapi/routes.go` accepted any non-empty string when no `pin_hash` was
+set — confirmed live with `pin:"0000"` succeeding against an unset PIN.
+
+**Fix** `set-pin` now reads a masked PIN via an interactive terminal prompt (`term.ReadPassword`,
+with a line-read fallback for non-TTY), rejects a positional CLI arg outright (never accepts the PIN
+as an argument, to avoid shell-history/process-list leakage), bcrypt-hashes it
+(`bcrypt.DefaultCost`), and upserts into `settings.pin_hash` — the same key `internal/telegram`
+already used, not a parallel PIN system. `checkPIN` now fails closed: no row, an empty value, or any
+other unset state refuses before any bcrypt call runs, and the only accept path is a real
+`bcrypt.CompareHashAndPassword` against the stored hash.
+
+**Rebase** Not up to date on arrival — `origin/main` had advanced twice while M2-127 was in review:
+first by M2-128's own merge (`5f1e095`), then by M2-128's docs bookkeeping (`fc8b058`). Rebased onto
+`origin/main` in two passes; both times the only conflict was the tracking row in
+`crew/BRANCH_MAP.md` (expected — both tickets' ship steps add/update a row in the same file),
+resolved by keeping both tickets' rows rather than picking one side. No `go.mod`/`go.sum` conflict
+at either pass — M2-128 didn't touch dependencies — but this ticket's own new dependency
+(`golang.org/x/term`, for masked terminal input) was re-checked with `go mod tidy` after each rebase;
+no diff, confirming consistency.
+
+**Checks** (real output, `data/worktrees/m2-127`, post-rebase, 2026-10-04)
+```
+$ export GOROOT="/c/Program Files/Go" PATH="/c/Program Files/Go/bin:$PATH"
+$ gofmt -l .
+(no output — clean)
+$ go vet ./...
+(no output — clean)
+$ go test ./... -count=1
+ok all 23 packages (cmd/mayank2, internal/agency, analytics, blog, builder, compliance, config,
+content, content/formats, db, events, httpapi, llm, media, micro_saas, publish, queue, revenue,
+scheduler, secrets, storage, telegram, tickets); migrations has no test files
+$ go mod tidy
+(no output — go.mod/go.sum already consistent)
+```
+
+**Review** QA: pass / SEC: pass (2026-10-04) — independently re-derived from real code, not the
+build report: `checkPIN` read directly, confirmed `sql.ErrNoRows` and empty-value both refuse before
+any bcrypt call runs for every input incl. `""`; `cmd/mayank2/setpin.go` read directly, confirmed
+real `bcrypt.GenerateFromPassword` hashing and the same upsert pattern as other settings under key
+`pin_hash`, byte-identical to `internal/telegram/settings.go`'s `settingPINHash`; no PIN logging
+found in either file; full `/api/pause`→`/api/resume` flow re-verified: 401 before any PIN is set,
+401 for a wrong PIN once one is set, 200 only for the correct one.
+
+**Risks / follow-ups** None new.
+
+**How to test** Run `mayank2 set-pin`, enter a PIN at the masked prompt; confirm a correct PIN
+resumes via `/api/resume` and a wrong or missing one is refused with 401 — including before any PIN
+has ever been set (the original stub's failure mode).
+
+This closes out the M2-124→125→126→127→128 roadmap round dispatched 2026-10-04 — all five now
+present in `origin/main` history in dependency order.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
