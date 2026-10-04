@@ -21,7 +21,7 @@ Commands:
   doctor    Check tools, secrets presence, disk, RAM, channels
   migrate   Apply database migrations (idempotent)
   llm ask   Run one prompt through the model router (internal/llm)
-  set-pin   Set the Telegram / dashboard PIN (not implemented yet)
+  set-pin   Set the Telegram / dashboard resume PIN (prompts; see set-pin -h)
   auth      OAuth sign-in for a platform account (DPAPI vault)
 
 Global flags (doctor / migrate / llm ask / auth):
@@ -67,7 +67,9 @@ func run(args []string) int {
 		return cmdAuth(ctx, rest)
 	case "run":
 		return cmdRun(ctx, rest)
-	case "status", "set-pin":
+	case "set-pin":
+		return cmdSetPin(ctx, rest)
+	case "status":
 		return cmdStub(cmd, rest)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", cmd, usage)
