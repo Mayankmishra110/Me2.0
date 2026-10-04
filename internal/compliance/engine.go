@@ -238,7 +238,7 @@ func (e *Engine) saveFingerprint(ctx context.Context, item ContentItem) error {
 	if text == "" {
 		return nil
 	}
-	vecs, err := e.Embed.Embed(ctx, []string{text})
+	vecs, model, err := e.Embed.Embed(ctx, []string{text})
 	if err != nil {
 		return err
 	}
@@ -246,7 +246,7 @@ func (e *Engine) saveFingerprint(ctx context.Context, item ContentItem) error {
 		return fmt.Errorf("empty embedding")
 	}
 	sum := sha256.Sum256([]byte(NormalizeForShingle(text)))
-	return e.Store.Save(ctx, item.ID, sum[:], EncodeEmbedding(vecs[0]))
+	return e.Store.Save(ctx, item.ID, sum[:], EncodeEmbedding(vecs[0]), model)
 }
 
 func (e *Engine) log() *slog.Logger {

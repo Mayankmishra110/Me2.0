@@ -9,20 +9,24 @@ import (
 	"mayank2/internal/llm"
 )
 
-// RouterEmbedder embeds via the LLM router's Ollama provider.
+// RouterEmbedder embeds via the LLM router's "embed" route (config
+// llm.routes.embed, e.g. ollama nomic-embed-text or, with no Ollama, Gemini's
+// openai_compat embeddings endpoint — CONTEXT D25 / M2-124). The model that
+// actually produced the vectors is returned so G2 never compares vectors from
+// two different embedding models.
 type RouterEmbedder struct {
 	Router *llm.Router
 }
 
-func (e RouterEmbedder) Embed(ctx context.Context, texts []string) ([][]float64, error) {
+func (e RouterEmbedder) Embed(ctx context.Context, texts []string) ([][]float64, string, error) {
 	if e.Router == nil {
-		return nil, fmt.Errorf("compliance: nil Router for embeddings")
+		return nil, "", fmt.Errorf("compliance: nil Router for embeddings")
 	}
 	resp, err := e.Router.Embed(ctx, llm.EmbedRequest{Texts: texts})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return resp.Vectors, nil
+	return resp.Vectors, resp.Model, nil
 }
 
 // Completer is the subset of llm.Router used by LLMClassifier.

@@ -99,6 +99,7 @@ func cmdDoctor(ctx context.Context, args []string) int {
 
 	if cfg != nil {
 		checks = append(checks, checkLLMProviders(ctx, cfg)...)
+		checks = append(checks, checkEmbedRoute(ctx, cfg))
 		checks = append(checks, checkDisk(cfg.DataDir))
 		checks = append(checks, checkChannels(cfg))
 	} else {
@@ -238,6 +239,88 @@ func checkLLMProviders(ctx context.Context, cfg *config.Config) []checkResult {
 		}
 	}
 	return out
+}
+
+// checkEmbedRoute reports which provider llm.routes.embed actually resolves
+// to (M2-124 / CONTEXT D25: the G2 compliance originality gate needs a real
+// embedding provider, and with Ollama not installed it must fall through to
+// Gemini's openai_compat /embeddings endpoint). A missing/empty route is a
+// real misconfiguration (G2 will fail closed on every script — see
+// internal/compliance/g2.go) so it's ❌.
+//
+// Within a non-empty chain, an individual candidate being skipped (Ollama
+// simply not running, a provider missing its key or embed_model, an unknown
+// provider name) is not itself broken — that's D24's "missing keys switch it
+// off cleanly" — as long as SOME later candidate resolves, in which case this
+// returns ok for that candidate and never reaches the cases below.
+//
+// But there is no legitimate ⚪ outcome for this check once every candidate
+// in the chain has been tried and none is ready: unlike the per-provider
+// checks (checkOllamaProvider, checkOpenAICompatProvider), which answer "is
+// this specific optional provider configured," this function answers "will
+// G2 actually have a working embedder" — and the answer "no, none of them
+// work right now" has the identical real-world consequence as the
+// missing-route case above (G2 fails closed on every script, permanently,
+// until someone notices and fixes it), regardless of which specific reason
+// (no key, unreachable, no embed_model, unknown provider) caused every
+// candidate to be skipped. So exhausting a non-empty chain is always ❌, the
+// same as an empty one — never ⚪. (Found by independent QA re-review,
+// 2026-10-04: see tickets/M2-124.md ## Review.)
+func checkEmbedRoute(ctx context.Context, cfg *config.Config) checkResult {
+	const label = "llm embeddings (route)"
+	chain := cfg.LLM.Routes["embed"]
+	if len(chain) == 0 {
+		return brokenResult(label, "llm.routes.embed is missing/empty — the G2 originality gate fails closed on every script without it")
+	}
+
+	var notes []string
+	for _, name := range chain {
+		pc, ok := cfg.LLM.Providers[name]
+		if !ok {
+			notes = append(notes, name+": unknown provider")
+			continue
+		}
+		if strings.TrimSpace(pc.EmbedModel) == "" {
+			notes = append(notes, name+": no embed_model configured")
+			continue
+		}
+		switch pc.Kind {
+		case "ollama":
+			base := strings.TrimRight(pc.BaseURL, "/")
+			if err := config.RequireLoopbackURL(base); err != nil {
+				notes = append(notes, name+": "+err.Error())
+				continue
+			}
+			cctx, cancel := context.WithTimeout(ctx, docHTTPTimeout)
+			req, err := http.NewRequestWithContext(cctx, http.MethodGet, base+"/api/tags", nil)
+			if err != nil {
+				cancel()
+				notes = append(notes, name+": "+err.Error())
+				continue
+			}
+			resp, err := ollamaHTTPClient().Do(req)
+			cancel()
+			if err != nil {
+				notes = append(notes, name+": not running")
+				continue
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				notes = append(notes, fmt.Sprintf("%s: http %d", name, resp.StatusCode))
+				continue
+			}
+			return okResult(label, fmt.Sprintf("resolves to %s (embed_model=%s); chain=%v", name, pc.EmbedModel, chain))
+		case "openai_compat":
+			if strings.TrimSpace(os.Getenv(pc.KeyEnv)) == "" {
+				notes = append(notes, name+": "+pc.KeyEnv+" not set")
+				continue
+			}
+			return okResult(label, fmt.Sprintf("resolves to %s (embed_model=%s); chain=%v", name, pc.EmbedModel, chain))
+		default:
+			notes = append(notes, name+": kind "+pc.Kind+" does not support embeddings")
+		}
+	}
+	return brokenResult(label, fmt.Sprintf("no provider in chain %v is ready (%s) — G2 originality gate fails closed on every script until one is", chain, strings.Join(notes, "; ")))
 }
 
 // checkOllamaProvider probes a local Ollama server. Unreachable is ⚪ (optional

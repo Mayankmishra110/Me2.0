@@ -7,9 +7,11 @@ import (
 	"strings"
 )
 
-// Embedder produces vectors for script originality (Ollama nomic-embed-text).
+// Embedder produces vectors for script originality. Returns the model id
+// that produced the vectors (e.g. "nomic-embed-text" or "gemini-embedding-001")
+// so callers can avoid comparing vectors from different models (CONTEXT D25).
 type Embedder interface {
-	Embed(ctx context.Context, texts []string) ([][]float64, error)
+	Embed(ctx context.Context, texts []string) (vectors [][]float64, model string, err error)
 }
 
 // G2 Self-originality: embedding cosine vs prior scripts + title Jaccard.
@@ -32,7 +34,7 @@ func (g G2) Check(ctx context.Context, item ContentItem) GateResult {
 	maxCos := 0.0
 	cosDetail := "no prior embeddings"
 
-	vec, err := g.scriptVector(ctx, item)
+	vec, model, err := g.scriptVector(ctx, item)
 	if err != nil {
 		return GateResult{ID: "G2", Passed: false, Detail: fmt.Sprintf("embed: %v", err)}
 	}
@@ -45,13 +47,30 @@ func (g G2) Check(ctx context.Context, item ContentItem) GateResult {
 				Detail: "embedding required to compare against prior scripts",
 			}
 		}
+		// Only compare vectors produced by the same embedding model — a
+		// different model's vectors aren't comparable (dimensionality and
+		// semantics differ). Mismatched-model priors are skipped, not
+		// treated as a match or a failure (CONTEXT D25 / M2-124).
+		compared, skipped := 0, 0
 		for _, prior := range item.PriorEmbeddings {
-			c := cosine(vec, prior)
+			if prior.Model != model {
+				skipped++
+				continue
+			}
+			compared++
+			c := cosine(vec, prior.Vector)
 			if c > maxCos {
 				maxCos = c
 			}
 		}
-		cosDetail = fmt.Sprintf("max cosine=%.4f", maxCos)
+		switch {
+		case compared > 0 && skipped > 0:
+			cosDetail = fmt.Sprintf("max cosine=%.4f (model=%s; %d prior(s) skipped: different embed model)", maxCos, model, skipped)
+		case compared > 0:
+			cosDetail = fmt.Sprintf("max cosine=%.4f (model=%s)", maxCos, model)
+		default:
+			cosDetail = fmt.Sprintf("no priors for embed model %s; %d prior(s) skipped: different embed model", model, skipped)
+		}
 	} else if len(vec) == 0 {
 		cosDetail = "no prior embeddings; cosine skipped"
 	}
@@ -79,25 +98,25 @@ func (g G2) Check(ctx context.Context, item ContentItem) GateResult {
 	return GateResult{ID: "G2", Passed: passed, Score: scorePtr(maxCos), Detail: detail}
 }
 
-func (g G2) scriptVector(ctx context.Context, item ContentItem) ([]float64, error) {
+func (g G2) scriptVector(ctx context.Context, item ContentItem) ([]float64, string, error) {
 	if g.Embed == nil {
 		if len(item.PriorEmbeddings) > 0 {
-			return nil, fmt.Errorf("embedding required to compare against prior scripts")
+			return nil, "", fmt.Errorf("embedding required to compare against prior scripts")
 		}
-		return nil, nil
+		return nil, "", nil
 	}
 	text := strings.TrimSpace(item.ScriptText)
 	if text == "" {
-		return nil, fmt.Errorf("empty script text")
+		return nil, "", fmt.Errorf("empty script text")
 	}
-	vecs, err := g.Embed.Embed(ctx, []string{text})
+	vecs, model, err := g.Embed.Embed(ctx, []string{text})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if len(vecs) == 0 || len(vecs[0]) == 0 {
-		return nil, fmt.Errorf("empty embedding")
+		return nil, "", fmt.Errorf("empty embedding")
 	}
-	return vecs[0], nil
+	return vecs[0], model, nil
 }
 
 func cosine(a, b []float64) float64 {
