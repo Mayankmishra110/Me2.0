@@ -18,7 +18,11 @@ export function LoginPage() {
   const login = useLogin()
   const navigate = useNavigate()
   const location = useLocation()
-  const auth = useAuthStatus()
+  // This is LoginPage's own "already logged in?" probe, not a session-expiry
+  // signal — it must not fire the global unauthorized event (that would
+  // clobber the `location.state.from` RequireAuth just set and we'd lose the
+  // originally requested destination; see tickets/M2-125.md Review).
+  const auth = useAuthStatus({ skipAuthEvent: true })
 
   const redirectTo = (location.state as LocationState | null)?.from?.pathname ?? '/'
 

@@ -42,11 +42,19 @@ export function useHealth() {
  * can't tell us whether the session cookie is valid; `/api/agents` is the
  * cheapest endpoint behind `requireAuth`. Deliberately shares `queryKeys.agents`
  * with `useAgents` so RequireAuth and HomePage don't double-fetch.
+ *
+ * `skipAuthEvent`: pass `true` when this call is a routine "am I already
+ * logged in?" probe rather than a signal that an active session just expired
+ * (e.g. `LoginPage`'s own check) — mirrors `useLogin`'s `skipAuthEvent` so a
+ * benign, expected 401 here doesn't also fire the global unauthorized event
+ * and clobber routing state (e.g. `location.state.from`) another caller just
+ * set.
  */
-export function useAuthStatus() {
+export function useAuthStatus(options?: { skipAuthEvent?: boolean }) {
+  const skipAuthEvent = options?.skipAuthEvent
   return useQuery({
     queryKey: queryKeys.agents,
-    queryFn: () => apiFetch<AgentsResponse>('/api/agents'),
+    queryFn: () => apiFetch<AgentsResponse>('/api/agents', { skipAuthEvent }),
     retry: false,
   })
 }
