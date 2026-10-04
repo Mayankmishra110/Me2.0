@@ -63,6 +63,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-123 | `m2/M2-123` | pass @ `002d3e0` (independent re-review) | pass @ `002d3e0` (`needs-sec: yes`, satisfied) | **merged** · PR [#14](https://github.com/Mayankmishra110/Me2.0/pull/14) · rebased onto `origin/main` (`9240be8`, one real conflict in `registerPublishHandlers`, resolved keeping the shared-`R2Client` superset design) · `--merge` commit `c78a0c8` on `main` (2026-10-01) |
 | M2-124 | `m2/M2-124` | pass @ `9305d73` (independent re-review, changes→fix→re-review cycle) | pass @ `9305d73` (`needs-sec: yes`, satisfied) | **merged** · PR [#17](https://github.com/Mayankmishra110/Me2.0/pull/17) · already up to date with `origin/main` (`e40d3f5`, no rebase needed) · `--merge` commit `8e258a0` on `main` (2026-10-04) |
 | M2-125 | `m2/M2-125` | pass @ `843e649` (independent re-review, changes→fix→re-review cycle, verified by falsification) | n/a (`needs-sec: no`) | **merged** · PR [#19](https://github.com/Mayankmishra110/Me2.0/pull/19) · confirmed still ancestor-clean on `origin/main` (`3d6fad9`, `git merge-base --is-ancestor` true, no rebase needed) · `--merge` commit `b5e7f08` on `main` (2026-10-04) — see incident note below and `docs/CONTEXT.md` §5 item 12 |
+| M2-126 | `m2/M2-126` | pass @ `c1ceb72` (independent re-review) | n/a (`needs-sec: no`) | **merged** · PR [#22](https://github.com/Mayankmishra110/Me2.0/pull/22) · rebased onto `origin/main` (`3d0ac5d`, PR #21 docs-PR-scope-gate fix, clean, no conflicts) · `--merge` commit `5439281` on `main` (2026-10-04) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -577,6 +578,55 @@ falsification) · SEC: n/a (`needs-sec: no`)
 confirm redirect to the originally-requested destination (not the dashboard home default). Let a session
 expire mid-use: confirm the global 401 handler redirects to `/login` without clobbering the next intended
 destination.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-126 — Fix agents-panel stub, stale /more copy, topics field-name asymmetry
+Branch: `m2/M2-126` · PR: https://github.com/Mayankmishra110/Me2.0/pull/22 · Merge commit: `5439281`
+
+**Goal** Three independent, small E2E-audit findings fixed in one ticket: `GET /api/agents` stops being a
+hardcoded `{"agents":[]}` stub and derives real agent cards from the `jobs` table; `/more` page copy only
+lists pages that are genuinely not built yet; `POST /api/topics` accepts the same camelCase field names its
+own `GET /api/topics` response already uses, removing the snake_case/camelCase trap. Full detail in
+`tickets/M2-126.md`.
+
+**Rebase** `git fetch origin && git merge-base --is-ancestor origin/main HEAD` confirmed true at
+`origin/main` `3d0ac5d` (PR #21, the docs-PR-scope-gate fix) — already rebased with zero conflicts by the
+independent QA re-review pass before ship picked it up. No further rebase needed.
+
+**Checks** (real output, `data/worktrees/m2-126`, 2026-10-04)
+```
+$ export GOROOT="/c/Program Files/Go" PATH="/c/Program Files/Go/bin:$PATH"
+$ gofmt -l .
+(no output — clean)
+$ go vet ./...
+(no output — clean)
+$ go test ./... -count=1
+ok all 22 packages (cmd/mayank2, internal/agency, analytics, blog, builder, compliance, config,
+content, content/formats, db, events, httpapi, llm, media, micro_saas, publish, queue, revenue,
+scheduler, secrets, storage, telegram, tickets); migrations has no test files
+
+$ cd web
+$ npm run lint       → oxlint src, exit 0
+$ npm run typecheck   → tsc --noEmit (tsconfig.app.json + tsconfig.node.json), exit 0
+$ npm test -- --run   → Test Files 5 passed (5), Tests 15 passed (15)
+$ npm run build        → tsc -b && vite build, ✓ built in 405ms
+```
+
+**Review** QA: pass @ `c1ceb72` (independent re-review, all three findings re-verified against real code
+and real command output — see `tickets/M2-126.md` `## Review` for the full 7-point writeup) · SEC: n/a
+(`needs-sec: no`, confirmed — diff only reads existing `jobs`/`settings` rows with parameterized queries
+and renames a request-body field; no new auth/secrets/publish-path surface)
+
+**Risks / follow-ups** `/api/agents`' `nextRun` reflects the next already-*queued* row's `run_at`, not a
+recomputation of the scheduler's cron spec (documented limitation, not a bug) — wiring a real
+`*queue.Queue` + `*scheduler.Scheduler` reference into `httpapi.Server` for a fuller `nextRun` is a good
+follow-up ticket, out of this one's `touches`.
+
+**How to test** `GET /api/agents` with real `jobs` rows seeded for several agent types; confirm
+`state`/`currentJob`/`lastSuccess`/`nextRun` reflect them, not an empty stub. Load `/more` in the dashboard;
+confirm Builder and Revenue are no longer listed as not-yet-built. `POST /api/topics` with the old
+snake_case body (`channel_id`); confirm `400`, then with `channelId`; confirm it succeeds.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
