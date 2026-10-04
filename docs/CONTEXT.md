@@ -111,6 +111,21 @@ An **income pipeline** that grows into an **agency across many domains**:
     `G2MaxCosine` etc. should be re-tuned per embed model, or whether one threshold is confirmed to hold
     across both. Not fixed by M2-124 (wiring/fail-closed/no-cross-model-mixing scope only) — flagging
     here per this file's own rule rather than guessing on a compliance threshold.
+12. **(incident, 2026-10-04) The M2-124 post-merge docs-bookkeeping PR (#18, `tmp/ship-m2-124-docs`,
+    commit `a58e02b`) was labeled as a small docs-only sync but actually deleted `tickets/M2-125.md`
+    (256 lines) and reverted the entire M2-125 login UI from `main`: `web/src/pages/LoginPage.tsx`,
+    `web/src/components/auth/RequireAuth.tsx`, `web/src/api/authEvents.ts`, plus edits to
+    `web/src/api/client.ts`, `web/src/api/hooks.ts`, `web/src/App.tsx`, `web/src/components/ui/input.tsx`,
+    and their tests — roughly 690 lines net removed, none of it docs. This landed on `main` (inside
+    `8e258a0..3d6fad9`) *before* `m2/M2-125` was rebased and merged via PR #19 (`b5e7f08`). Because
+    `m2/M2-125`'s own commits re-add those same files from scratch, the rebase + merge had nothing to
+    conflict with and silently restored everything with a clean `MERGEABLE` status — `main` is correct
+    and complete as of `b5e7f08` (verified: `tickets/M2-125.md`, `LoginPage.tsx`, `RequireAuth.tsx` all
+    present), but this was luck of file-level non-overlap, not a conflict catching the problem. Needs a
+    decision: how did a "docs bookkeeping" commit end up reverting shipped feature code, and should ship's
+    post-merge bookkeeping step get a diff-stat sanity check (e.g. refuse to touch anything outside
+    `crew/`, `docs/`, `tickets/*` status frontmatter) so this can't recur silently on a ticket with less
+    lucky file overlap.
 
 ## 6. External accounts Mayank must set up (real waiting time)
 
