@@ -56,7 +56,8 @@ yet merged into `main`. Merge order follows the dependency graph (SPEC §2): a t
    **Update [BRANCH_MAP.md](../BRANCH_MAP.md)** in the same commit: move the row to merged with the real
    commit list and merge-commit hash (`git log --oneline <merge>^1..<merge>^2`). Every branch gets a row —
    this is what "each commit, each branch mapped to a feature" means.
-   **Update [SHIP_QUEUE.md](../SHIP_QUEUE.md)** to `merged`.
+   **Update [SHIP_QUEUE.md](../SHIP_QUEUE.md)** to `merged`. **Before merging this (or any) bookkeeping
+   PR, run the docs-PR scope gate** below — don't assume "it's just docs" without checking the diff stat.
 
 ## Migrating phase-branch work (one-time, while D23's backlog still exists)
 
@@ -79,6 +80,35 @@ though the real QA/SEC verdict existed on their own branch/the phase branch — 
 CONTEXT.md's note near D25, and the 2026-09-28 incident where M2-104/M2-114/M2-201/M2-211/M2-213 all had
 this). If you find one, sync `main`'s copy from the authoritative branch before treating `done` as true.
 
+## The docs-PR scope gate (mandatory, every "docs-only bookkeeping" PR)
+
+Before merging **any** PR labeled or treated as "docs-only bookkeeping" — including the post-merge
+`BRANCH_MAP.md`/`SHIP_QUEUE.md` sync in step 6 below, and any `tmp/ship-M2-xxx-docs`-style branch — run:
+
+```
+git diff --stat <base>...<head>
+```
+
+and read every path in the output. It is docs-only **only if every single path** is one of:
+
+- under `docs/`
+- under `crew/`
+- a ticket file (`tickets/*.md`) touching only its frontmatter, `## Review`, or `## Ship` section
+
+**If any other path appears — any `.go`, `.tsx`, `.ts`, `.py`, anything under `config/`,
+`migrations/`, `web/`, `internal/`, `media-tools/`, `remotion/`, etc. — STOP.** Do not self-merge it as
+"obviously safe." Treat it exactly like a normal ticket PR: it needs the real review path (independent
+QA, plus SEC when the change touches anything security/compliance-relevant), not a bookkeeping rubber
+stamp. This applies whether `ship` is the one merging it or anyone else is tempted to wave it through
+because "it's just docs."
+
+This gate exists because of the 2026-10-04 incident (see CONTEXT.md decision log D29 and the former
+open question §5 #12): a post-merge docs PR for M2-124 was merged as "pure bookkeeping" without anyone
+checking its diff stat, and it actually contained a 690-line accidental revert of M2-125's entire login
+UI. It only self-corrected because M2-125's later PR happened to re-add the exact same files byte-for-
+byte, so Git saw no conflict. Never assume that luck again — run the diff-stat check every time, no
+exceptions, no "it's probably fine."
+
 ## You never
 
 - Force-push a branch someone else has open in a worktree without telling them in the ticket.
@@ -86,3 +116,5 @@ this). If you find one, sync `main`'s copy from the authoritative branch before 
 - Commit `.env`, `config/config.yaml` or anything under `data/`.
 - Merge a ticket that's missing a real `QA: pass` (or `SEC: pass` when flagged) just to move fast — D25's
   auto-merge is conditional, not unconditional. Auto is for "no click needed," not "no check needed."
+- Self-merge a "docs-only bookkeeping" PR without running the docs-PR scope gate above. "It's probably
+  fine" is exactly what let a 690-line feature revert land on `main` on 2026-10-04 (D29).

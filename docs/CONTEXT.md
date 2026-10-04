@@ -61,6 +61,7 @@ An **income pipeline** that grows into an **agency across many domains**:
 | D27 | **`blog.medium` sends its Medium import link through a new, narrow `internal/telegram.Bot.SendMessage` / `Bot.ChatID` accessor — not a wholesale `Bot.Client()` and not a second Telegram client built inside `internal/blog`.** `Client`'s only genuinely unsafe-to-share method is `GetUpdates`: a second caller polling it would race `Bot.Run`'s own long-poll loop and could silently drop inbound approval taps/commands, bypassing the allowlist that lives entirely in `Bot.handleMessage`, not in `Client`. `SendMessage` is stateless and carries none of that risk, and its signature matches `internal/blog`'s `TelegramSender` exactly, so `*telegram.Bot` satisfies it directly with no adapter type. | Resolved 2026-09-29 (M2-121), closing §5 open question 6: centralizes on the one bot token / HTTP client per CLAUDE.md's "Telegram bot" (M2-105) being the one place Telegram access should live, without exposing the one method that would actually be risky. See `internal/telegram/bot.go`'s `SendMessage`/`ChatID` doc comments and `tickets/M2-121.md` Notes. |
 
 | D28 | **The product runs on a single Gemini API key with no Ollama installed.** Every LLM task route (`research`, `script`, `metadata`, `classify`, `translate_cleanup`) resolves with `GEMINI_API_KEY` alone, and the G2 compliance originality gate's embeddings come from Gemini's OpenAI-compatible `/embeddings` endpoint (`gemini-embedding-001`) via a new `llm.routes.embed` route, instead of depending on a local Ollama model. `script_fingerprints` rows are tagged with the embed model that produced them (`migrations/003_fingerprint_embed_model.sql`) so G2 never compares vectors from two different embedding models; `doctor` shows Ollama absence as ⚪ (D24) and reports embedding-route status separately. | Mayank's decision (2026-10-01): this machine will not have Ollama installed; the LLM/embeddings path must work end to end on the one free Gemini key alone, without weakening the G2 originality gate (CLAUDE.md: "never weaken or bypass a compliance gate"). See `tickets/M2-124.md`. |
+| D29 | **Postmortem (2026-10-04): a "docs-only bookkeeping" PR merged without a diff-stat check accidentally reverted a shipped feature on `main`.** M2-124's routine post-merge bookkeeping step (update `BRANCH_MAP.md`/`SHIP_QUEUE.md`, commit, open a small PR, self-merge as "pure docs, no code change") was PR #18 (`tmp/ship-m2-124-docs`, commit `a58e02b`). Its worktree was stale relative to `main` at the time it captured its diff, so the commit also deleted `tickets/M2-125.md` and reverted the entire M2-125 login UI (`web/src/pages/LoginPage.tsx`, `web/src/components/auth/RequireAuth.tsx`, `web/src/api/authEvents.ts`, plus edits to `client.ts`/`hooks.ts`/`App.tsx`/`input.tsx` and their tests — ~690 net lines, none of it docs). Nobody ran `git diff --stat` before merging it as "obviously safe." It landed inside `8e258a0..3d6fad9` on `main`. It self-corrected only by luck: M2-125's own PR #19 (`b5e7f08`) re-added the exact same files from scratch, so the rebase/merge had zero conflict and silently restored everything — `main` is confirmed correct and complete as of `b5e7f08`, but a less lucky file overlap would have shipped a silent revert straight to a public repo. **Fix:** `crew/roles/ship.md` now has a named, mandatory "docs-PR scope gate" — run `git diff --stat <base>...<head>` on every PR treated as docs-only bookkeeping and verify every changed path is under `docs/`, `crew/`, or a ticket's frontmatter/`## Review`/`## Ship` section; if any other path appears (any `.go`/`.tsx`/`.ts`/`.py`, `config/`, `migrations/`, etc.), stop and route it through the normal independent QA/SEC review path instead of self-merging. | Closes the open question filed at the time (§5 #12) about how a docs commit reverted shipped code and whether ship's bookkeeping step needed a diff-stat sanity check — it did; this is that check, named so future ship sessions can reference it. |
 
 ## 5. Open questions (ask Mayank; record the answer in the decision log)
 
@@ -111,21 +112,13 @@ An **income pipeline** that grows into an **agency across many domains**:
     `G2MaxCosine` etc. should be re-tuned per embed model, or whether one threshold is confirmed to hold
     across both. Not fixed by M2-124 (wiring/fail-closed/no-cross-model-mixing scope only) — flagging
     here per this file's own rule rather than guessing on a compliance threshold.
-12. **(incident, 2026-10-04) The M2-124 post-merge docs-bookkeeping PR (#18, `tmp/ship-m2-124-docs`,
+12. ~~**(incident, 2026-10-04) The M2-124 post-merge docs-bookkeeping PR (#18, `tmp/ship-m2-124-docs`,
     commit `a58e02b`) was labeled as a small docs-only sync but actually deleted `tickets/M2-125.md`
-    (256 lines) and reverted the entire M2-125 login UI from `main`: `web/src/pages/LoginPage.tsx`,
-    `web/src/components/auth/RequireAuth.tsx`, `web/src/api/authEvents.ts`, plus edits to
-    `web/src/api/client.ts`, `web/src/api/hooks.ts`, `web/src/App.tsx`, `web/src/components/ui/input.tsx`,
-    and their tests — roughly 690 lines net removed, none of it docs. This landed on `main` (inside
-    `8e258a0..3d6fad9`) *before* `m2/M2-125` was rebased and merged via PR #19 (`b5e7f08`). Because
-    `m2/M2-125`'s own commits re-add those same files from scratch, the rebase + merge had nothing to
-    conflict with and silently restored everything with a clean `MERGEABLE` status — `main` is correct
-    and complete as of `b5e7f08` (verified: `tickets/M2-125.md`, `LoginPage.tsx`, `RequireAuth.tsx` all
-    present), but this was luck of file-level non-overlap, not a conflict catching the problem. Needs a
-    decision: how did a "docs bookkeeping" commit end up reverting shipped feature code, and should ship's
-    post-merge bookkeeping step get a diff-stat sanity check (e.g. refuse to touch anything outside
-    `crew/`, `docs/`, `tickets/*` status frontmatter) so this can't recur silently on a ticket with less
-    lucky file overlap.
+    (256 lines) and reverted the entire M2-125 login UI from `main`...**~~ **Resolved 2026-10-04 — see D29
+    above.** D29 is the postmortem for this exact incident, and `crew/roles/ship.md` now has a named,
+    mandatory "docs-PR scope gate" (`git diff --stat <base>...<head>`, every path must be under `docs/`,
+    `crew/`, or a ticket's frontmatter/`## Review`/`## Ship` section, else stop and route through normal
+    QA/SEC review) so a bookkeeping PR can't silently carry a real revert again.
 
 ## 6. External accounts Mayank must set up (real waiting time)
 
