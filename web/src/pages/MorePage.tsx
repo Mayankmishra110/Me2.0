@@ -5,7 +5,7 @@ export function MorePage() {
     <div className="flex flex-col gap-3">
       <h1 className="text-xl font-semibold">More</h1>
       <p className="text-sm text-[var(--muted)]">
-        Pipeline, Builder, Calendar, Channels, Revenue, and Settings arrive in later tickets.
+        Pipeline, Calendar, Channels, and Settings arrive in later tickets.
       </p>
       <Link className="min-h-11 text-[var(--accent)] underline-offset-2 hover:underline" to="/logs">
         Open Logs

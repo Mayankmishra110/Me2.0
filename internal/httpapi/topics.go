@@ -41,9 +41,9 @@ const (
 )
 
 type topicCreateBody struct {
-	ChannelID string `json:"channel_id"`
+	ChannelID string `json:"channelId"`
 	Title     string `json:"title"`
-	SourceURL string `json:"source_url"`
+	SourceURL string `json:"sourceUrl"`
 }
 
 func (s *Server) handleTopicsCreate(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +60,7 @@ func (s *Server) handleTopicsCreate(w http.ResponseWriter, r *http.Request) {
 
 	channelID := strings.TrimSpace(body.ChannelID)
 	if channelID == "" {
-		writeError(w, http.StatusBadRequest, "topics: channel_id is required")
+		writeError(w, http.StatusBadRequest, "topics: channelId is required")
 		return
 	}
 
@@ -81,16 +81,16 @@ func (s *Server) handleTopicsCreate(w http.ResponseWriter, r *http.Request) {
 	sourceURL := strings.TrimSpace(body.SourceURL)
 	if sourceURL != "" {
 		if len(sourceURL) > maxTopicSourceURLLen {
-			writeError(w, http.StatusBadRequest, "topics: source_url is too long")
+			writeError(w, http.StatusBadRequest, "topics: sourceUrl is too long")
 			return
 		}
 		if hasControlChars(sourceURL) {
-			writeError(w, http.StatusBadRequest, "topics: source_url contains invalid control characters")
+			writeError(w, http.StatusBadRequest, "topics: sourceUrl contains invalid control characters")
 			return
 		}
 		u, err := url.Parse(sourceURL)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			writeError(w, http.StatusBadRequest, "topics: source_url must be an http(s) URL")
+			writeError(w, http.StatusBadRequest, "topics: sourceUrl must be an http(s) URL")
 			return
 		}
 	}
@@ -101,7 +101,7 @@ func (s *Server) handleTopicsCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !channelExists {
-		writeError(w, http.StatusBadRequest, "topics: unknown channel_id")
+		writeError(w, http.StatusBadRequest, "topics: unknown channelId")
 		return
 	}
 

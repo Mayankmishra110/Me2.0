@@ -34,7 +34,7 @@ VALUES ('ch1', 'youtube', 'test', 'en', 'money_side_hustles', 'active')`); err !
 	}
 
 	rr = httptest.NewRecorder()
-	body, _ := json.Marshal(map[string]any{"channel_id": "ch1", "title": "Budgeting for beginners"})
+	body, _ := json.Marshal(map[string]any{"channelId": "ch1", "title": "Budgeting for beginners"})
 	req = httptest.NewRequest(http.MethodPost, "/api/topics", bytes.NewReader(body))
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized {
@@ -62,9 +62,9 @@ VALUES ('ch1', 'youtube', 'test', 'en', 'money_side_hustles', 'active')`); err !
 	// Valid create -> 201 + real DB row (not an echo).
 	rr = httptest.NewRecorder()
 	body, _ = json.Marshal(map[string]any{
-		"channel_id": "ch1",
-		"title":      "  Budgeting for beginners  ",
-		"source_url": "https://example.com/article",
+		"channelId": "ch1",
+		"title":     "  Budgeting for beginners  ",
+		"sourceUrl": "https://example.com/article",
 	})
 	req = httptest.NewRequest(http.MethodPost, "/api/topics", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -133,7 +133,7 @@ VALUES ('ch1', 'youtube', 'test', 'en', 'money_side_hustles', 'active')`); err !
 
 	// Duplicate within the dedup window -> refused.
 	rr = httptest.NewRecorder()
-	body, _ = json.Marshal(map[string]any{"channel_id": "ch1", "title": "budgeting for beginners"})
+	body, _ = json.Marshal(map[string]any{"channelId": "ch1", "title": "budgeting for beginners"})
 	req = httptest.NewRequest(http.MethodPost, "/api/topics", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
@@ -166,7 +166,7 @@ VALUES ('ch1', 'youtube', 'test', 'en', 'money_side_hustles', 'active')`); err !
 
 	// First topic, no punctuation.
 	rr := httptest.NewRecorder()
-	body, _ := json.Marshal(map[string]any{"channel_id": "ch1", "title": "AI Tools 2024"})
+	body, _ := json.Marshal(map[string]any{"channelId": "ch1", "title": "AI Tools 2024"})
 	req := httptest.NewRequest(http.MethodPost, "/api/topics", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
@@ -177,7 +177,7 @@ VALUES ('ch1', 'youtube', 'test', 'en', 'money_side_hustles', 'active')`); err !
 
 	// Same topic, re-typed with punctuation -> must be caught as a duplicate.
 	rr = httptest.NewRecorder()
-	body, _ = json.Marshal(map[string]any{"channel_id": "ch1", "title": "AI Tools: 2024!"})
+	body, _ = json.Marshal(map[string]any{"channelId": "ch1", "title": "AI Tools: 2024!"})
 	req = httptest.NewRequest(http.MethodPost, "/api/topics", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
@@ -212,14 +212,15 @@ VALUES ('ch1', 'youtube', 'test', 'en', 'money_side_hustles', 'active')`); err !
 		body map[string]any
 		raw  string // when set, used instead of body (malformed JSON case)
 	}{
-		{name: "missing channel_id", body: map[string]any{"title": "x"}},
-		{name: "empty title", body: map[string]any{"channel_id": "ch1", "title": "   "}},
-		{name: "unknown channel", body: map[string]any{"channel_id": "does-not-exist", "title": "valid title"}},
-		{name: "oversized title", body: map[string]any{"channel_id": "ch1", "title": strings.Repeat("a", 201)}},
-		{name: "control chars in title", body: map[string]any{"channel_id": "ch1", "title": "hello\x00world"}},
-		{name: "bad source_url scheme", body: map[string]any{"channel_id": "ch1", "title": "some topic", "source_url": "javascript:alert(1)"}},
-		{name: "shell-injection-looking title accepted only as plain text", body: map[string]any{"channel_id": "ch1", "title": "topic; rm -rf / #"}},
-		{name: "malformed json", raw: `{"channel_id":`},
+		{name: "missing channelId", body: map[string]any{"title": "x"}},
+		{name: "empty title", body: map[string]any{"channelId": "ch1", "title": "   "}},
+		{name: "unknown channel", body: map[string]any{"channelId": "does-not-exist", "title": "valid title"}},
+		{name: "oversized title", body: map[string]any{"channelId": "ch1", "title": strings.Repeat("a", 201)}},
+		{name: "control chars in title", body: map[string]any{"channelId": "ch1", "title": "hello\x00world"}},
+		{name: "bad sourceUrl scheme", body: map[string]any{"channelId": "ch1", "title": "some topic", "sourceUrl": "javascript:alert(1)"}},
+		{name: "shell-injection-looking title accepted only as plain text", body: map[string]any{"channelId": "ch1", "title": "topic; rm -rf / #"}},
+		{name: "snake_case channel_id is no longer accepted", body: map[string]any{"channel_id": "ch1", "title": "valid title"}},
+		{name: "malformed json", raw: `{"channelId":`},
 	}
 
 	acceptedOnce := false
@@ -261,7 +262,7 @@ VALUES ('ch1', 'youtube', 'test', 'en', 'money_side_hustles', 'active')`); err !
 func TestTopicsCreate_databaseNotConfigured(t *testing.T) {
 	s := &Server{log: nil}
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/topics", strings.NewReader(`{"channel_id":"x","title":"y"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/topics", strings.NewReader(`{"channelId":"x","title":"y"}`))
 	// Call handler directly since db is nil (bypassing auth wiring, which
 	// needs a full Server); this only proves the nil-db guard.
 	defer func() {

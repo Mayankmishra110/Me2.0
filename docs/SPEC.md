@@ -122,6 +122,7 @@ All four are independent of each other once 210 and 213 are done — safe to run
 | M2-603 | Agency lead list + proposal drafts | 111, 601 |
 | M2-604 | Pinterest affiliate boards | 304, 601 |
 | M2-124 | Run fully on one Gemini key — no Ollama | 111, 114, 205 |
+| M2-126 | Fix agents-panel stub, stale /more copy, topics field-name asymmetry | M2-103, M2-106, M2-108, M2-120 |
 
 Ticket files exist for P1 and P2. P3+ tickets are written when P2 reaches M2-210. P1–P6 all have real ticket files now (M2-601…604 was the last placeholder row).
 
@@ -167,7 +168,7 @@ Base `/api`, JSON, auth via session cookie (login with token at `POST /api/login
 | GET | `/api/content?channel=&stage=` | pipeline items |
 | GET | `/api/calendar?from=&to=` | scheduled publications |
 | GET | `/api/channels/{id}/metrics?range=` | channel analytics |
-| GET/POST | `/api/topics` | list / add manual topic |
+| GET/POST | `/api/topics` | list / add manual topic — both directions use `channelId`/`sourceUrl` (camelCase); POST body: `{channelId, title, sourceUrl?}` |
 | GET | `/api/builder` | plans, threads, audits |
 | GET/POST | `/api/revenue` | revenue entries |
 | POST | `/api/pause` / `/api/resume` | `{scope: "all" | agent}` (resume needs PIN) |
