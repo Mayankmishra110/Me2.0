@@ -64,6 +64,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-124 | `m2/M2-124` | pass @ `9305d73` (independent re-review, changes→fix→re-review cycle) | pass @ `9305d73` (`needs-sec: yes`, satisfied) | **merged** · PR [#17](https://github.com/Mayankmishra110/Me2.0/pull/17) · already up to date with `origin/main` (`e40d3f5`, no rebase needed) · `--merge` commit `8e258a0` on `main` (2026-10-04) |
 | M2-125 | `m2/M2-125` | pass @ `843e649` (independent re-review, changes→fix→re-review cycle, verified by falsification) | n/a (`needs-sec: no`) | **merged** · PR [#19](https://github.com/Mayankmishra110/Me2.0/pull/19) · confirmed still ancestor-clean on `origin/main` (`3d6fad9`, `git merge-base --is-ancestor` true, no rebase needed) · `--merge` commit `b5e7f08` on `main` (2026-10-04) — see incident note below and `docs/CONTEXT.md` §5 item 12 |
 | M2-126 | `m2/M2-126` | pass @ `c1ceb72` (independent re-review) | n/a (`needs-sec: no`) | **merged** · PR [#22](https://github.com/Mayankmishra110/Me2.0/pull/22) · rebased onto `origin/main` (`3d0ac5d`, PR #21 docs-PR-scope-gate fix, clean, no conflicts) · `--merge` commit `5439281` on `main` (2026-10-04) |
+| M2-128 | `m2/M2-128` | pass @ `139c98f` (independent re-review, verified by falsification) | n/a (`needs-sec: no`) | **merged** · PR [#24](https://github.com/Mayankmishra110/Me2.0/pull/24) · confirmed ancestor-clean on `origin/main` (`ca04901`, `git merge-base --is-ancestor` true, no rebase needed) · `--merge` commit `5f1e095` on `main` (2026-10-04) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -627,6 +628,51 @@ follow-up ticket, out of this one's `touches`.
 `state`/`currentJob`/`lastSuccess`/`nextRun` reflect them, not an empty stub. Load `/more` in the dashboard;
 confirm Builder and Revenue are no longer listed as not-yet-built. `POST /api/topics` with the old
 snake_case body (`channel_id`); confirm `400`, then with `channelId`; confirm it succeeds.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-128 — Honor job's own max_attempts, not live registration, when deciding dead-letter
+Branch: `m2/M2-128` · PR: https://github.com/Mayankmishra110/Me2.0/pull/24 · Merge commit: `5f1e095`
+
+**Goal** A read-only investigation into two live jobs (`jb-004`, `jb-007`) that were retrying past
+their own row's `max_attempts` cap found a real bug in `runJob`'s two `finalizeError` call sites:
+the handler-no-longer-registered path correctly used `job.MaxAttempts` (the row's own value, frozen
+at `Enqueue` time from the then-live registration), but the normal handler-error path — the one
+every real failure goes through — incorrectly used the live `reg.maxAttempts`. A later increase to
+a job type's registered retry limit let already-enqueued jobs retry past their own row's cap instead
+of dead-lettering when they should have. Full detail in `tickets/M2-128.md`.
+
+**Fix** One line, `internal/queue/worker.go`: the normal handler-error path now reads
+`job.MaxAttempts` instead of `reg.maxAttempts`, matching the other call site and the value frozen
+on the row at `Enqueue` time.
+
+**Rebase** Confirmed `git merge-base --is-ancestor origin/main HEAD` true at `origin/main` `ca04901`
+on arrival in ship — no rebase needed.
+
+**Checks** (real output, `data/worktrees/m2-128`, 2026-10-04)
+```
+$ export GOROOT="/c/Program Files/Go" PATH="/c/Program Files/Go/bin:$PATH"
+$ gofmt -l .
+(no output — clean)
+$ go vet ./...
+(no output — clean)
+$ go test ./... -count=1
+ok all 23 packages (cmd/mayank2, internal/agency, analytics, blog, builder, compliance, config,
+content, content/formats, db, events, httpapi, llm, media, micro_saas, publish, queue, revenue,
+scheduler, secrets, storage, telegram, tickets); migrations has no test files
+```
+
+**Review** QA: pass @ `139c98f` (independent re-review, verified by falsification — reverted the
+fix, reproduced the exact described failure — status stayed "queued" instead of going "dead" at a
+job's own cap of 3 while using the live registration's 5 — then restored the fix and reconfirmed)
+· SEC: n/a (`needs-sec: no`) — pure internal retry-accounting logic, no new network/credential/
+compliance surface.
+
+**Risks / follow-ups** None new.
+
+**How to test** Enqueue a job of a given type, then raise that type's registered `maxAttempts`
+after enqueue; confirm the already-enqueued job still dead-letters at its own row's original cap,
+not the new live registration's higher one.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
