@@ -62,6 +62,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-122 | `m2/M2-122` | pass (independently re-derived) | pass (`needs-sec: yes`, satisfied) | **merged** · PR [#12](https://github.com/Mayankmishra110/Me2.0/pull/12) · already up to date with `origin/main` (`141096b`, no rebase needed) · `--merge` commit `00147b9` on `main` (2026-09-30) |
 | M2-123 | `m2/M2-123` | pass @ `002d3e0` (independent re-review) | pass @ `002d3e0` (`needs-sec: yes`, satisfied) | **merged** · PR [#14](https://github.com/Mayankmishra110/Me2.0/pull/14) · rebased onto `origin/main` (`9240be8`, one real conflict in `registerPublishHandlers`, resolved keeping the shared-`R2Client` superset design) · `--merge` commit `c78a0c8` on `main` (2026-10-01) |
 | M2-124 | `m2/M2-124` | pass @ `9305d73` (independent re-review, changes→fix→re-review cycle) | pass @ `9305d73` (`needs-sec: yes`, satisfied) | **merged** · PR [#17](https://github.com/Mayankmishra110/Me2.0/pull/17) · already up to date with `origin/main` (`e40d3f5`, no rebase needed) · `--merge` commit `8e258a0` on `main` (2026-10-04) |
+| M2-125 | `m2/M2-125` | pass @ `843e649` (independent re-review, changes→fix→re-review cycle, verified by falsification) | n/a (`needs-sec: no`) | **merged** · PR [#19](https://github.com/Mayankmishra110/Me2.0/pull/19) · confirmed still ancestor-clean on `origin/main` (`3d6fad9`, `git merge-base --is-ancestor` true, no rebase needed) · `--merge` commit `b5e7f08` on `main` (2026-10-04) — see incident note below and `docs/CONTEXT.md` §5 item 12 |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -527,6 +528,55 @@ Open questions in `docs/CONTEXT.md`.
 LLM route, including embed, reports ready; then unset the key or point at a dead endpoint and confirm `doctor`
 reports the embed route ❌ broken (not ⚪ off) and that a script run gets a G2 fail-closed result, not a
 silent pass.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-125 — Add real login UI to dashboard
+Branch: `m2/M2-125` · PR: https://github.com/Mayankmishra110/Me2.0/pull/19 · Merge commit: `b5e7f08`
+
+**Goal** Closes a HIGH-severity finding from a live E2E audit: there was no way to authenticate from the
+browser at all — `POST /api/login` was only ever called by test mocks. Adds `/login` + `LoginPage.tsx`,
+a `RequireAuth.tsx` route guard, and global session-expiry handling via `authEvents.ts`. Full detail in
+`tickets/M2-125.md`.
+
+**Review cycle (changes → fix → re-review)** Independent qa review (`2ef2e6b`) built a non-isolated repro
+test proving `LoginPage`'s own mount-time auth-probe was silently wiping the intended post-login redirect
+destination before the user ever submitted the form. Fixed (`f175373`) by threading a `skipAuthEvent` flag
+through `useAuthStatus` so the login page's own background probe no longer fires the same state-clearing
+event a real login/logout does. Verified by falsification in `843e649`: flipped `skipAuthEvent` back off,
+reproduced the exact original failure, restored it, confirmed it held.
+
+**Rebase** Already rebased onto `origin/main` at `8e258a0` (after M2-124). On arrival in ship, `origin/main`
+had advanced to `3d6fad9` (PR #18, a same-day docs-bookkeeping merge) — confirmed
+`git merge-base --is-ancestor origin/main HEAD` true, so no further rebase was needed.
+
+**Incident found while shipping** PR #18 (`tmp/ship-m2-124-docs`, commit `a58e02b`), merged to `main` just
+before this ticket's PR, was described/labeled as docs-only bookkeeping but its actual diff deleted
+`tickets/M2-125.md` and reverted this ticket's entire UI (`LoginPage.tsx`, `RequireAuth.tsx`,
+`authEvents.ts`, plus edits to `client.ts`/`hooks.ts`/`App.tsx`/`input.tsx`) — ~690 lines, none of it docs.
+Because `m2/M2-125`'s own commits re-add those exact files, rebasing/merging this branch had nothing to
+textually conflict with and silently restored everything (`gh pr` reported clean `MERGEABLE`). Confirmed
+post-merge that `main` is correct and complete: `tickets/M2-125.md`, `LoginPage.tsx`, `RequireAuth.tsx` all
+present on `origin/main` at `b5e7f08`. Logged as open question 12 in `docs/CONTEXT.md` §5 — this was file-
+level luck, not a conflict catching the problem, and needs a decision on hardening the docs-bookkeeping step.
+
+**Checks** (real output, `data/worktrees/m2-125/web`, tip `843e649`, 2026-10-04)
+```
+npm run lint       → oxlint src, exit 0
+npm run typecheck   → tsc --noEmit (tsconfig.app.json + tsconfig.node.json), exit 0
+npm test -- --run   → Test Files 5 passed (5), Tests 15 passed (15)
+npm run build        → tsc -b && vite build, ✓ built in 668ms
+```
+
+**Review** QA: pass @ `843e649` (independent re-review through a changes→fix→re-review cycle, verified by
+falsification) · SEC: n/a (`needs-sec: no`)
+
+**Impact** The dashboard is now actually usable by a human from the browser — it was not before this ticket.
+
+**How to test** Load the dashboard with no session: confirm redirect to `/login`. Submit valid credentials:
+confirm redirect to the originally-requested destination (not the dashboard home default). Let a session
+expire mid-use: confirm the global 401 handler redirects to `/login` without clobbering the next intended
+destination.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
