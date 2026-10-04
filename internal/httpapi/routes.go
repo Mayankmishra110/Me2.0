@@ -331,16 +331,16 @@ func (s *Server) handleResume(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "paused": false, "scope": body.Scope})
 }
 
+// checkPIN compares pin against the bcrypt hash stored in settings.pin_hash
+// (written by `mayank2 set-pin`; same key internal/telegram uses). Fails
+// closed: if no hash is set yet, every PIN is rejected — resume requires
+// set-pin to have been run first, never an implicit "any PIN works". The
+// raw PIN is never logged.
 func (s *Server) checkPIN(ctx context.Context, pin string) error {
 	var hash string
 	err := s.db.QueryRowContext(ctx, `SELECT value FROM settings WHERE key=?`, "pin_hash").Scan(&hash)
 	if errors.Is(err, sql.ErrNoRows) || hash == "" {
-		// PIN not configured yet (set-pin lands later). Still require a non-empty
-		// value so resume is never a silent no-check.
-		if strings.TrimSpace(pin) == "" {
-			return errors.New("pin required")
-		}
-		return nil
+		return errors.New("pin not configured; run mayank2 set-pin first")
 	}
 	if err != nil {
 		return err
