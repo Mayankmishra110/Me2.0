@@ -233,6 +233,93 @@ func TestDoctor_table(t *testing.T) {
 	})
 }
 
+// TestCheckEmbedRoute covers M2-124 / CONTEXT D25: with no Ollama installed,
+// doctor must show the embedding provider status, never fail with ❌ just
+// because Ollama isn't running, and fail loudly (❌) only when the route
+// itself is missing (which would make G2 fail closed on every script).
+func TestCheckEmbedRoute(t *testing.T) {
+	baseProviders := func(geminiBaseURL, geminiEmbedModel string) map[string]config.ProviderConfig {
+		return map[string]config.ProviderConfig{
+			"ollama": {Kind: "ollama", BaseURL: "http://127.0.0.1:1", Model: "qwen", EmbedModel: "nomic-embed-text"},
+			"gemini": {Kind: "openai_compat", BaseURL: geminiBaseURL, KeyEnv: "GEMINI_API_KEY", Model: "gemini-x", EmbedModel: geminiEmbedModel},
+		}
+	}
+
+	t.Run("missing route -> broken", func(t *testing.T) {
+		cfg := &config.Config{LLM: config.LLMConfig{
+			Providers: baseProviders("http://127.0.0.1:1", "gemini-embedding-001"),
+			Routes:    map[string][]string{},
+		}}
+		got := checkEmbedRoute(context.Background(), cfg)
+		if got.Status != statusBroken {
+			t.Fatalf("want statusBroken, got %+v", got)
+		}
+	})
+
+	t.Run("no ollama running, no gemini key -> off, not broken", func(t *testing.T) {
+		t.Setenv("GEMINI_API_KEY", "")
+		cfg := &config.Config{LLM: config.LLMConfig{
+			Providers: baseProviders("http://127.0.0.1:1", "gemini-embedding-001"),
+			Routes:    map[string][]string{"embed": {"ollama", "gemini"}},
+		}}
+		got := checkEmbedRoute(context.Background(), cfg)
+		if got.Status != statusOff {
+			t.Fatalf("want statusOff (Ollama not installed is a feature-off, not broken), got %+v", got)
+		}
+	})
+
+	t.Run("gemini key set, no ollama -> ok, resolves to gemini", func(t *testing.T) {
+		t.Setenv("GEMINI_API_KEY", "fake-test-key-not-real")
+		cfg := &config.Config{LLM: config.LLMConfig{
+			Providers: baseProviders("http://127.0.0.1:1", "gemini-embedding-001"),
+			Routes:    map[string][]string{"embed": {"ollama", "gemini"}},
+		}}
+		got := checkEmbedRoute(context.Background(), cfg)
+		if got.Status != statusOK {
+			t.Fatalf("want statusOK, got %+v", got)
+		}
+		if !strings.Contains(got.Detail, "gemini") || !strings.Contains(got.Detail, "gemini-embedding-001") {
+			t.Fatalf("detail should name the resolved provider and model, got %q", got.Detail)
+		}
+	})
+
+	t.Run("ollama reachable -> ok, resolves to ollama first", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"models":[{"name":"nomic-embed-text:latest"}]}`))
+		}))
+		defer srv.Close()
+		t.Setenv("GEMINI_API_KEY", "fake-test-key-not-real")
+
+		cfg := &config.Config{LLM: config.LLMConfig{
+			Providers: map[string]config.ProviderConfig{
+				"ollama": {Kind: "ollama", BaseURL: srv.URL, Model: "qwen", EmbedModel: "nomic-embed-text"},
+				"gemini": {Kind: "openai_compat", BaseURL: "http://127.0.0.1:1", KeyEnv: "GEMINI_API_KEY", Model: "gemini-x", EmbedModel: "gemini-embedding-001"},
+			},
+			Routes: map[string][]string{"embed": {"ollama", "gemini"}},
+		}}
+		got := checkEmbedRoute(context.Background(), cfg)
+		if got.Status != statusOK {
+			t.Fatalf("want statusOK, got %+v", got)
+		}
+		if !strings.Contains(got.Detail, "resolves to ollama") {
+			t.Fatalf("detail should resolve to ollama (first in chain and reachable), got %q", got.Detail)
+		}
+	})
+
+	t.Run("no embed_model anywhere -> off", func(t *testing.T) {
+		t.Setenv("GEMINI_API_KEY", "fake-test-key-not-real")
+		cfg := &config.Config{LLM: config.LLMConfig{
+			Providers: baseProviders("http://127.0.0.1:1", ""), // gemini configured but no embed_model
+			Routes:    map[string][]string{"embed": {"ollama", "gemini"}},
+		}}
+		got := checkEmbedRoute(context.Background(), cfg)
+		if got.Status != statusOff {
+			t.Fatalf("want statusOff, got %+v", got)
+		}
+	})
+}
+
 // doctorExitCode mirrors cmdDoctor's exit-code policy: non-zero iff any check
 // is broken; "off" never fails the run.
 func doctorExitCode(checks []checkResult) int {

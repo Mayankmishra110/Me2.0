@@ -10,8 +10,15 @@ import (
 
 // FingerprintStore persists G2 embeddings in script_fingerprints.
 type FingerprintStore interface {
-	Save(ctx context.Context, contentID string, shinglesHash, embedding []byte) error
-	ListEmbeddings(ctx context.Context, channelID string, limit int, excludeContentID string) ([][]float64, error)
+	// Save upserts a fingerprint row. model is the embedding model that
+	// produced embedding (e.g. "nomic-embed-text", "gemini-embedding-001") —
+	// stored alongside the vector so later comparisons never mix models
+	// (CONTEXT D25 / M2-124).
+	Save(ctx context.Context, contentID string, shinglesHash, embedding []byte, model string) error
+	// ListEmbeddings returns recent channel embeddings (most recent content
+	// first), each tagged with the model that produced it. Callers (G2) must
+	// only compare vectors sharing the same model.
+	ListEmbeddings(ctx context.Context, channelID string, limit int, excludeContentID string) ([]PriorEmbedding, error)
 	ListTitles(ctx context.Context, channelID string, limit int, excludeContentID string) ([]string, error)
 }
 
@@ -20,28 +27,32 @@ type SQLFingerprintStore struct {
 	DB *sql.DB
 }
 
-// Save upserts a fingerprint row.
-func (s *SQLFingerprintStore) Save(ctx context.Context, contentID string, shinglesHash, embedding []byte) error {
+// Save upserts a fingerprint row, including the embedding model id.
+func (s *SQLFingerprintStore) Save(ctx context.Context, contentID string, shinglesHash, embedding []byte, model string) error {
 	_, err := s.DB.ExecContext(ctx, `
-INSERT INTO script_fingerprints (content_id, shingles_hash, embedding)
-VALUES (?, ?, ?)
+INSERT INTO script_fingerprints (content_id, shingles_hash, embedding, embed_model)
+VALUES (?, ?, ?, ?)
 ON CONFLICT(content_id) DO UPDATE SET
   shingles_hash = excluded.shingles_hash,
-  embedding = excluded.embedding
-`, contentID, shinglesHash, embedding)
+  embedding = excluded.embedding,
+  embed_model = excluded.embed_model
+`, contentID, shinglesHash, embedding, model)
 	if err != nil {
 		return fmt.Errorf("compliance: save fingerprint %s: %w", contentID, err)
 	}
 	return nil
 }
 
-// ListEmbeddings returns recent channel embeddings (most recent content first).
-func (s *SQLFingerprintStore) ListEmbeddings(ctx context.Context, channelID string, limit int, excludeContentID string) ([][]float64, error) {
+// ListEmbeddings returns recent channel embeddings (most recent content
+// first) tagged with the embed_model that produced each one. G1-M2-124: the
+// model tag is what lets G2 skip vectors from a different embedding model
+// instead of comparing incompatible vectors.
+func (s *SQLFingerprintStore) ListEmbeddings(ctx context.Context, channelID string, limit int, excludeContentID string) ([]PriorEmbedding, error) {
 	if limit <= 0 {
 		limit = 200
 	}
 	rows, err := s.DB.QueryContext(ctx, `
-SELECT f.embedding
+SELECT f.embedding, f.embed_model
 FROM script_fingerprints f
 JOIN content_items c ON c.id = f.content_id
 WHERE c.channel_id = ? AND f.embedding IS NOT NULL AND f.content_id != ?
@@ -52,17 +63,18 @@ LIMIT ?
 		return nil, fmt.Errorf("compliance: list embeddings: %w", err)
 	}
 	defer rows.Close()
-	var out [][]float64
+	var out []PriorEmbedding
 	for rows.Next() {
 		var blob []byte
-		if err := rows.Scan(&blob); err != nil {
+		var model string
+		if err := rows.Scan(&blob, &model); err != nil {
 			return nil, err
 		}
 		vec, err := DecodeEmbedding(blob)
 		if err != nil {
 			continue
 		}
-		out = append(out, vec)
+		out = append(out, PriorEmbedding{Vector: vec, Model: model})
 	}
 	return out, rows.Err()
 }

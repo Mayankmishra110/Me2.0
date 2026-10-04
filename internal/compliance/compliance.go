@@ -76,9 +76,19 @@ type ContentItem struct {
 	ScriptText      string   // spoken text used for G1/G2/G4/G7
 	SourceTexts     []string // fetched source bodies for G1
 	Brief           Brief
-	Recent          []HistoryEntry // most recent first (G6)
-	PriorTitles     []string       // channel titles for G2 Jaccard
-	PriorEmbeddings [][]float64    // channel script embeddings for G2 cosine
+	Recent          []HistoryEntry   // most recent first (G6)
+	PriorTitles     []string         // channel titles for G2 Jaccard
+	PriorEmbeddings []PriorEmbedding // channel script embeddings for G2 cosine, tagged by embed model
+}
+
+// PriorEmbedding is one stored script_fingerprints embedding plus the model
+// that produced it. Vectors from different embedding models are not
+// comparable (different dimensionality/semantics), so G2 only computes
+// cosine similarity between vectors sharing the same Model — see
+// CONTEXT.md D25/M2-124. A mismatched-model prior is skipped, not compared.
+type PriorEmbedding struct {
+	Vector []float64
+	Model  string
 }
 
 // Brief holds facts/numbers needed by G3 (mirrors content.Brief fields used here).

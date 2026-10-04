@@ -28,14 +28,37 @@ llm:
     # for the key to actually be free). Re-check these pages before bumping this id — Google
     # ships new Gemini point releases often and retires old ones (e.g. 2.0 Flash retired
     # 2026-03-03).
-    gemini:     { kind: openai_compat, base_url: "https://generativelanguage.googleapis.com/v1beta/openai", key_env: GEMINI_API_KEY, model: "gemini-3.8-flash" }
+    # embed_model: Gemini's embeddings model id, verified 2026-10-01 against
+    # ai.google.dev/gemini-api/docs/openai (the OpenAI-compat guide documents
+    # POST {base_url}/embeddings alongside /chat/completions) and
+    # ai.google.dev/gemini-api/docs/embeddings (gemini-embedding-001 is the
+    # current embeddings model; the free tier's rate limit applies the same
+    # way as the chat model above). Re-check both pages before bumping this
+    # id. Vectors from this model are NOT comparable to nomic-embed-text
+    # vectors (different dimensionality/semantics) — script_fingerprints
+    # rows store the embed_model alongside each vector so G2 (compliance
+    # originality gate) only ever compares same-model vectors; see CONTEXT
+    # D25 / M2-124. Thresholds (G2MaxCosine etc., COMPLIANCE §3) were tuned
+    # for nomic-embed-text and have NOT been re-tuned for gemini-embedding-001
+    # — flagged in CONTEXT.md §5 open questions.
+    gemini:     { kind: openai_compat, base_url: "https://generativelanguage.googleapis.com/v1beta/openai", key_env: GEMINI_API_KEY, model: "gemini-3.8-flash", embed_model: "gemini-embedding-001" }
     claude:     { kind: claude_cli, bin: "claude" }
   routes:
+    # Every content route below resolves with GEMINI_API_KEY alone (CONTEXT
+    # D25 / M2-124: Ollama will not be installed on this machine). ollama/groq
+    # stay first where present as the cheaper/local-first choice (CONTEXT
+    # D13) — they're skipped cleanly when not configured (D24) and gemini
+    # still resolves the chain.
     research:          [groq, cerebras, openrouter, gemini, ollama]
     script:            [groq, cerebras, openrouter, gemini, ollama]
-    metadata:          [ollama, groq]
-    classify:          [ollama, groq]
+    metadata:          [ollama, groq, gemini]
+    classify:          [ollama, groq, gemini]
     translate_cleanup: [ollama, gemini]
+    # embed: llm.Router.Embed's own route (not a Task/Complete route). Local
+    # Ollama nomic-embed-text first when installed, Gemini's openai_compat
+    # /embeddings endpoint otherwise — the only embedding path the G2
+    # originality gate needs with no Ollama installed (CONTEXT D25 / M2-124).
+    embed:             [ollama, gemini]
     blog:              [claude]
     builder:           [claude]
 

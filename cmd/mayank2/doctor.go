@@ -99,6 +99,7 @@ func cmdDoctor(ctx context.Context, args []string) int {
 
 	if cfg != nil {
 		checks = append(checks, checkLLMProviders(ctx, cfg)...)
+		checks = append(checks, checkEmbedRoute(ctx, cfg))
 		checks = append(checks, checkDisk(cfg.DataDir))
 		checks = append(checks, checkChannels(cfg))
 	} else {
@@ -238,6 +239,72 @@ func checkLLMProviders(ctx context.Context, cfg *config.Config) []checkResult {
 		}
 	}
 	return out
+}
+
+// checkEmbedRoute reports which provider llm.routes.embed actually resolves
+// to (M2-124 / CONTEXT D25: the G2 compliance originality gate needs a real
+// embedding provider, and with Ollama not installed it must fall through to
+// Gemini's openai_compat /embeddings endpoint). A missing/empty route is a
+// real misconfiguration (G2 will fail closed on every script — see
+// internal/compliance/g2.go) so it's ❌. Ollama simply not running, or a
+// provider with no embed_model / no key, is a candidate being skipped, not
+// broken — so a chain with no ready candidate at all is ⚪ "not configured",
+// matching D24 ("missing keys switch it off cleanly"), never ❌.
+func checkEmbedRoute(ctx context.Context, cfg *config.Config) checkResult {
+	const label = "llm embeddings (route)"
+	chain := cfg.LLM.Routes["embed"]
+	if len(chain) == 0 {
+		return brokenResult(label, "llm.routes.embed is missing/empty — the G2 originality gate fails closed on every script without it")
+	}
+
+	var notes []string
+	for _, name := range chain {
+		pc, ok := cfg.LLM.Providers[name]
+		if !ok {
+			notes = append(notes, name+": unknown provider")
+			continue
+		}
+		if strings.TrimSpace(pc.EmbedModel) == "" {
+			notes = append(notes, name+": no embed_model configured")
+			continue
+		}
+		switch pc.Kind {
+		case "ollama":
+			base := strings.TrimRight(pc.BaseURL, "/")
+			if err := config.RequireLoopbackURL(base); err != nil {
+				notes = append(notes, name+": "+err.Error())
+				continue
+			}
+			cctx, cancel := context.WithTimeout(ctx, docHTTPTimeout)
+			req, err := http.NewRequestWithContext(cctx, http.MethodGet, base+"/api/tags", nil)
+			if err != nil {
+				cancel()
+				notes = append(notes, name+": "+err.Error())
+				continue
+			}
+			resp, err := ollamaHTTPClient().Do(req)
+			cancel()
+			if err != nil {
+				notes = append(notes, name+": not running")
+				continue
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				notes = append(notes, fmt.Sprintf("%s: http %d", name, resp.StatusCode))
+				continue
+			}
+			return okResult(label, fmt.Sprintf("resolves to %s (embed_model=%s); chain=%v", name, pc.EmbedModel, chain))
+		case "openai_compat":
+			if strings.TrimSpace(os.Getenv(pc.KeyEnv)) == "" {
+				notes = append(notes, name+": "+pc.KeyEnv+" not set")
+				continue
+			}
+			return okResult(label, fmt.Sprintf("resolves to %s (embed_model=%s); chain=%v", name, pc.EmbedModel, chain))
+		default:
+			notes = append(notes, name+": kind "+pc.Kind+" does not support embeddings")
+		}
+	}
+	return offResult(label, fmt.Sprintf("not configured (feature off): no provider in chain %v is ready yet (%s) — G2 originality gate fails closed until one is", chain, strings.Join(notes, "; ")))
 }
 
 // checkOllamaProvider probes a local Ollama server. Unreachable is ⚪ (optional

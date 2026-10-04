@@ -253,22 +253,69 @@ func (r *Router) completeWithSchema(ctx context.Context, p Provider, req Request
 	}
 }
 
-// Embed runs embeddings via the ollama provider (nomic-embed-text by default).
+// embedProvider is implemented by provider kinds that can produce vector
+// embeddings. Not every Provider kind supports this (claude_cli does not).
+type embedProvider interface {
+	Embed(ctx context.Context, req EmbedRequest) (EmbedResponse, error)
+}
+
+// TaskEmbed is the route name used for embeddings (config llm.routes.embed).
+// It is not a Task/Complete route — Embed has its own request/response shape
+// — but it is routed the same way: first available, embedding-capable
+// provider in the chain wins, with the same unavailable/fall-through and
+// quota bookkeeping as Complete.
+const TaskEmbed = "embed"
+
+// Embed runs embeddings via config llm.routes.embed (e.g. local Ollama
+// nomic-embed-text first, falling back to Gemini's openai_compat embeddings
+// endpoint when Ollama isn't installed — CONTEXT D25 / M2-124). The
+// EmbedResponse.Model field tells the caller exactly which model produced
+// the vectors, so callers never compare vectors from two different models.
 func (r *Router) Embed(ctx context.Context, req EmbedRequest) (EmbedResponse, error) {
-	var ollama *ollamaProvider
-	for _, p := range r.providers {
-		if op, ok := p.(*ollamaProvider); ok {
-			ollama = op
-			break
+	chain, ok := r.routes[TaskEmbed]
+	if !ok || len(chain) == 0 {
+		return EmbedResponse{}, fmt.Errorf("%w: no route for task %q", ErrNoProvider, TaskEmbed)
+	}
+
+	var errs []error
+	for _, name := range chain {
+		p, ok := r.providers[name]
+		if !ok {
+			errs = append(errs, fmt.Errorf("unknown provider %q", name))
+			continue
 		}
+		ep, ok := p.(embedProvider)
+		if !ok {
+			errs = append(errs, fmt.Errorf("%s: provider kind %q does not support embeddings", name, p.Kind()))
+			continue
+		}
+		if !p.Available(ctx) {
+			errs = append(errs, fmt.Errorf("%s: marked unavailable", name))
+			continue
+		}
+
+		resp, err := ep.Embed(ctx, req)
+		if err != nil {
+			var u *ErrUnavailable
+			if errors.As(err, &u) {
+				until := u.Until
+				if until.IsZero() {
+					until = r.now().Add(defaultBackoff(u.Reason))
+				}
+				r.quotas.MarkUnavailable(name, until, u.Reason)
+				r.log.Info("llm: embed provider unavailable, falling through",
+					"provider", name, "reason", u.Reason, "until", until.UTC().Format(time.RFC3339))
+			} else {
+				r.log.Info("llm: embed provider failed, falling through", "provider", name, "err", err.Error())
+			}
+			errs = append(errs, fmt.Errorf("%s: %w", name, err))
+			continue
+		}
+		resp.Provider = p.Name()
+		return resp, nil
 	}
-	if ollama == nil {
-		return EmbedResponse{}, fmt.Errorf("%w: no ollama provider configured for embeddings", ErrNoProvider)
-	}
-	if !ollama.Available(ctx) {
-		return EmbedResponse{}, fmt.Errorf("%w: ollama unavailable", ErrNoProvider)
-	}
-	return ollama.Embed(ctx, req)
+
+	return EmbedResponse{}, fmt.Errorf("%w for task %q: %w", ErrNoProvider, TaskEmbed, errors.Join(errs...))
 }
 
 func isContentTask(t Task) bool {

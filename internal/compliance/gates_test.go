@@ -37,11 +37,11 @@ func TestG1_originalPasses(t *testing.T) {
 
 func TestG2_nearDuplicateFails(t *testing.T) {
 	vec := []float64{1, 0, 0, 0}
-	embed := staticEmbedder{v: vec}
+	embed := staticEmbedder{v: vec, model: "gemini-embedding-001"}
 	item := ContentItem{
 		ScriptText:      "A unique looking script that is actually a near duplicate of a prior one on this channel.",
 		Title:           "Totally different title words here",
-		PriorEmbeddings: [][]float64{vec}, // identical → cosine 1.0
+		PriorEmbeddings: []PriorEmbedding{{Vector: vec, Model: "gemini-embedding-001"}}, // identical → cosine 1.0
 	}
 	r := (G2{Th: DefaultThresholds(), Embed: embed}).Check(context.Background(), item)
 	if r.Passed {
@@ -53,11 +53,11 @@ func TestG2_nearDuplicateFails(t *testing.T) {
 }
 
 func TestG2_distinctPasses(t *testing.T) {
-	embed := staticEmbedder{v: []float64{1, 0, 0}}
+	embed := staticEmbedder{v: []float64{1, 0, 0}, model: "gemini-embedding-001"}
 	item := ContentItem{
 		ScriptText:      "Fresh angle on side hustles.",
 		Title:           "Side hustles that pay in 2024",
-		PriorEmbeddings: [][]float64{{0, 1, 0}},
+		PriorEmbeddings: []PriorEmbedding{{Vector: []float64{0, 1, 0}, Model: "gemini-embedding-001"}},
 		PriorTitles:     []string{"Cooking pasta at home"},
 	}
 	r := (G2{Th: DefaultThresholds(), Embed: embed}).Check(context.Background(), item)
@@ -70,7 +70,7 @@ func TestG2_priorsWithoutEmbedFailsClosed(t *testing.T) {
 	item := ContentItem{
 		ScriptText:      "Any script text that would otherwise look fine without an originality check.",
 		Title:           "Unique title about freelancing tips",
-		PriorEmbeddings: [][]float64{{1, 0, 0}},
+		PriorEmbeddings: []PriorEmbedding{{Vector: []float64{1, 0, 0}, Model: "gemini-embedding-001"}},
 		PriorTitles:     []string{"Cooking pasta at home"},
 	}
 	r := (G2{Th: DefaultThresholds(), Embed: nil}).Check(context.Background(), item)
@@ -86,14 +86,39 @@ func TestG2_emptyEmbedAgainstPriorsFailsClosed(t *testing.T) {
 	item := ContentItem{
 		ScriptText:      "Script with an embedder that returns an empty vector.",
 		Title:           "Unique title words here",
-		PriorEmbeddings: [][]float64{{0, 1, 0}},
+		PriorEmbeddings: []PriorEmbedding{{Vector: []float64{0, 1, 0}, Model: "gemini-embedding-001"}},
 	}
-	r := (G2{Th: DefaultThresholds(), Embed: staticEmbedder{v: nil}}).Check(context.Background(), item)
+	r := (G2{Th: DefaultThresholds(), Embed: staticEmbedder{v: nil, model: "gemini-embedding-001"}}).Check(context.Background(), item)
 	if r.Passed {
 		t.Fatalf("G2 must fail closed on empty embedding with priors; got %+v", r)
 	}
 	if !strings.Contains(strings.ToLower(r.Detail), "embed") {
 		t.Fatalf("detail should mention embed failure; got %q", r.Detail)
+	}
+}
+
+// TestG2_crossModelPriorsSkippedNotCompared proves a prior embedding stored
+// under a different model (e.g. leftover Ollama nomic-embed-text vectors
+// after switching to Gemini, CONTEXT D25 / M2-124) is never fed into cosine
+// similarity, and does not trip the "fail closed" path either: it is simply
+// not comparable, so G2 passes when the only priors are a different model.
+func TestG2_crossModelPriorsSkippedNotCompared(t *testing.T) {
+	vec := []float64{1, 0, 0, 0}
+	embed := staticEmbedder{v: vec, model: "gemini-embedding-001"}
+	item := ContentItem{
+		ScriptText: "A script whose only channel history was embedded with a retired model.",
+		Title:      "Totally new framing",
+		// Identical vector, but tagged with the OLD model — must be skipped,
+		// not compared (an identical-looking vector would otherwise trip a
+		// false "near duplicate").
+		PriorEmbeddings: []PriorEmbedding{{Vector: vec, Model: "nomic-embed-text"}},
+	}
+	r := (G2{Th: DefaultThresholds(), Embed: embed}).Check(context.Background(), item)
+	if !r.Passed {
+		t.Fatalf("G2 should pass when the only priors are from a different embed model; got %+v", r)
+	}
+	if !strings.Contains(r.Detail, "skipped") {
+		t.Fatalf("detail should note the skipped cross-model prior; got %q", r.Detail)
 	}
 }
 
@@ -133,13 +158,20 @@ func TestG4_cleanPasses(t *testing.T) {
 	}
 }
 
-type staticEmbedder struct{ v []float64 }
+type staticEmbedder struct {
+	v     []float64
+	model string
+}
 
-func (s staticEmbedder) Embed(ctx context.Context, texts []string) ([][]float64, error) {
+func (s staticEmbedder) Embed(ctx context.Context, texts []string) ([][]float64, string, error) {
 	out := make([][]float64, len(texts))
 	for i := range texts {
 		cp := append([]float64(nil), s.v...)
 		out[i] = cp
 	}
-	return out, nil
+	model := s.model
+	if model == "" {
+		model = "static-test-model"
+	}
+	return out, model, nil
 }

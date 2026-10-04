@@ -120,6 +120,7 @@ All four are independent of each other once 210 and 213 are done — safe to run
 | M2-602 | Micro-SaaS idea → spec → Builder flow | 501, 601 |
 | M2-603 | Agency lead list + proposal drafts | 111, 601 |
 | M2-604 | Pinterest affiliate boards | 304, 601 |
+| M2-124 | Run fully on one Gemini key — no Ollama | 111, 114, 205 |
 
 Ticket files exist for P1 and P2. P3+ tickets are written when P2 reaches M2-210. P1–P6 all have real ticket files now (M2-601…604 was the last placeholder row).
 
