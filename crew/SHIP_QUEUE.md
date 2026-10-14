@@ -66,6 +66,7 @@ States: `in-progress` → `merged-to-phase` → `pushed` → `pr-open` (Mayank o
 | M2-126 | `m2/M2-126` | pass @ `c1ceb72` (independent re-review) | n/a (`needs-sec: no`) | **merged** · PR [#22](https://github.com/Mayankmishra110/Me2.0/pull/22) · rebased onto `origin/main` (`3d0ac5d`, PR #21 docs-PR-scope-gate fix, clean, no conflicts) · `--merge` commit `5439281` on `main` (2026-10-04) |
 | M2-128 | `m2/M2-128` | pass @ `139c98f` (independent re-review, verified by falsification) | n/a (`needs-sec: no`) | **merged** · PR [#24](https://github.com/Mayankmishra110/Me2.0/pull/24) · confirmed ancestor-clean on `origin/main` (`ca04901`, `git merge-base --is-ancestor` true, no rebase needed) · `--merge` commit `5f1e095` on `main` (2026-10-04) |
 | M2-127 | `m2/M2-127` | pass (independently re-derived from real code, incl. the full `/api/pause`→`/api/resume` flow) | pass (`needs-sec: yes`, satisfied — bcrypt storage, masked terminal input, no PIN logging confirmed) | **merged** · PR [#25](https://github.com/Mayankmishra110/Me2.0/pull/25) · rebased onto `origin/main` twice (first onto `5f1e095` after M2-128's own merge, then onto `fc8b058` after M2-128's docs bookkeeping landed) — both conflicts confined to the `crew/BRANCH_MAP.md` tracking row, resolved by keeping both rows each time; no `go.mod`/`go.sum` conflict (new dep `golang.org/x/term`, `go mod tidy` confirmed consistent post-rebase) · force-with-lease pushed as `2b9e914`/`6df17b9` · `--merge` commit `cec5a5b` on `main` (2026-10-04) |
+| M2-129 | `m2/M2-129` | pass @ `e458ac4` (independent re-review, real-browser Playwright/Chromium repro) | n/a (`needs-sec: no`) | **merged** · PR [#29](https://github.com/Mayankmishra110/Me2.0/pull/29) · already up to date with `origin/main` (`f5b65d9`, no rebase needed) · `--merge` commit `e21c69e` on `main` (2026-10-14) |
 
 ### M2-117 — Wire remaining job handlers (research, script, visuals, blog)
 Branch: `m2/M2-117` · PR: https://github.com/Mayankmishra110/Me2.0/pull/2 · Merge commit: `14312b7`
@@ -732,6 +733,54 @@ has ever been set (the original stub's failure mode).
 
 This closes out the M2-124→125→126→127→128 roadmap round dispatched 2026-10-04 — all five now
 present in `origin/main` history in dependency order.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+### M2-129 — Disable Mock Service Worker in production builds
+Branch: `m2/M2-129` · PR: https://github.com/Mayankmishra110/Me2.0/pull/29 · Merge commit: `e21c69e`
+
+**Goal** Closes the single most important finding from the project's final pre-handover QA pass:
+production builds shipped with Mock Service Worker (MSW) still active, intercepting every browser
+`fetch()` call. MSW's fake 200s on `GET /api/agents` meant `RequireAuth` (M2-125) never saw the real
+401 it needs to redirect to `/login`, so the real login screen never rendered for an actual browser
+visitor even though server-side auth/PIN/agents work was all correct. Full detail in
+`tickets/M2-129.md`.
+
+**Fix** `web/src/main.tsx`'s `prepare()` now gates MSW startup on `if (!import.meta.env.DEV) return`
+— Vite's own statically-replaced dev flag — instead of a build-time opt-out env var nobody set.
+`web/src/vite-env.d.ts`'s now-dead `VITE_USE_MSW` ambient type removed. `web/vite.config.ts` gets a
+build-only `dropMswAsset()` plugin (`closeBundle` hook) that deletes `dist/mockServiceWorker.js` so
+the inert asset doesn't ship in the embedded production binary either.
+
+**Rebase** `git fetch origin && git ls-remote origin main` confirmed still `f5b65d9` (last ticket from
+this round, nothing else landed) on arrival in ship — branch already sat directly on top, no rebase
+needed.
+
+**Checks** (real output, `data/worktrees/m2-129/web`, 2026-10-14)
+```
+npm ci                → added 265 packages, audited 266 (1 high sev vuln pre-existing, unrelated)
+npm run lint           → oxlint src, exit 0
+npm run typecheck       → tsc --noEmit (tsconfig.app.json + tsconfig.node.json), exit 0
+npm test -- --run        → Test Files 5 passed (5), Tests 15 passed (15)
+npm run build              → tsc -b && vite build, ✓ built in 473ms
+                              dist/ confirmed free of mockServiceWorker.js (still present in
+                              web/public/ source, excluded from the production bundle)
+```
+
+**Review** QA: pass @ `e458ac4` (independent re-review, genuine reproduced real-browser verification —
+Playwright/Chromium, fresh unauthenticated visit lands on `/login`, zero `mockServiceWorker.js`
+network requests, dev mode confirmed unaffected under `npm run dev`) · SEC: n/a (`needs-sec: no`)
+
+**Risks / follow-ups** None new. This is the final ticket of the M2-116→M2-129 roadmap round; full
+chain confirmed present in `origin/main` history in dependency order
+(`git log --oneline origin/main | grep -oE "M2-1[0-9][0-9]" | sort -u`).
+
+**How to test** Run `npm run build` and serve `dist/`; confirm a fresh unauthenticated visit lands on
+`/login` with no `mockServiceWorker.js` network request. Run `npm run dev`; confirm MSW's mock data
+still renders, unaffected.
+
+This closes out the M2-116 → M2-129 roadmap round dispatched this round — all fourteen tickets now
+present in `origin/main` history.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
